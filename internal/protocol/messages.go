@@ -20,6 +20,19 @@ type JoinRequest struct {
 	Name     string `json:"name"`
 }
 
+type DiscoverRequest struct{}
+
+type TableInfo struct {
+	TableID    string `json:"table_id"`
+	Players    int    `json:"players"`
+	MaxPlayers int    `json:"max_players"`
+	Started    bool   `json:"started"`
+}
+
+type DiscoverResponse struct {
+	Tables []TableInfo `json:"tables"`
+}
+
 type JoinResponse struct {
 	Accepted bool   `json:"accepted"`
 	Reason   string `json:"reason,omitempty"`

@@ -2,32 +2,43 @@
 
 Multiplayer Hearts in Go using embedded NATS.
 
-This project uses a host-peer architecture: one player runs `heartsd`, which starts an embedded NATS server and the authoritative table engine. Other players run `hearts-cli` and connect to that host.
+There is CLI binary. After launch, each player can either open a game locally or discover and join a game bus.
 
 ## Quick start
 
-1. Start host (table authority + embedded NATS):
+1. In each terminal, launch the same CLI:
 
    ```bash
-   go run ./cmd/heartsd -table demo -host 127.0.0.1 -port 4222
+   go run ./cmd/hearts -name Alice
    ```
 
-2. In four terminals, join as players:
+2. In one terminal, open a table (this starts embedded NATS + table authority):
+
+   ```text
+   open demo
+   ```
+
+3. In other terminals, connect and discover/join:
 
    ```bash
-   go run ./cmd/hearts-cli -url nats://127.0.0.1:4222 -table demo -name Alice
-   go run ./cmd/hearts-cli -url nats://127.0.0.1:4222 -table demo -name Bob
-   go run ./cmd/hearts-cli -url nats://127.0.0.1:4222 -table demo -name Carol
-   go run ./cmd/hearts-cli -url nats://127.0.0.1:4222 -table demo -name Dave
+   go run ./cmd/hearts -name Bob
    ```
 
-3. From any client, start the round:
+   Then inside the CLI:
+
+   ```text
+   connect nats://127.0.0.1:4222
+   discover
+   join demo
+   ```
+
+4. From any player at the table, start the round:
 
    ```text
    start
    ```
 
-4. Play cards:
+5. Play cards:
 
    ```text
    play 2C
@@ -36,14 +47,14 @@ This project uses a host-peer architecture: one player runs `heartsd`, which sta
 
 ## Project structure
 
-- `cmd/heartsd`: embedded NATS host + table service
-- `cmd/hearts-cli`: terminal client
+- `cmd/hearts`: unified CLI (open, discover, join, play)
 - `internal/game`: card model, rule checks, trick/scoring logic
 - `internal/protocol`: NATS subjects + wire messages
 - `internal/table`: authoritative table state machine
 
 ## NATS subjects
 
+- `hearts.discovery`: request/reply table discovery
 - `hearts.table.<id>.join`: request/reply join seat
 - `hearts.table.<id>.start`: request/reply start round
 - `hearts.table.<id>.play`: request/reply play card

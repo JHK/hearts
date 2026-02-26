@@ -1,4 +1,4 @@
-.PHONY: fmt test run-host run-cli
+.PHONY: fmt test run
 
 fmt:
 	gofmt -w cmd internal
@@ -6,8 +6,5 @@ fmt:
 test:
 	go test ./...
 
-run-host:
-	go run ./cmd/heartsd
-
-run-cli:
-	go run ./cmd/hearts-cli
+run:
+	go run ./cmd/hearts

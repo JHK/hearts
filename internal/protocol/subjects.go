@@ -2,6 +2,10 @@ package protocol
 
 import "fmt"
 
+func DiscoverSubject() string {
+	return "hearts.discovery"
+}
+
 func JoinSubject(tableID string) string {
 	return fmt.Sprintf("hearts.table.%s.join", tableID)
 }

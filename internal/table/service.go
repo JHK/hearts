@@ -59,6 +59,10 @@ func NewService(tableID string, nc *nats.Conn) *Service {
 }
 
 func (s *Service) Register() error {
+	if _, err := s.nc.Subscribe(protocol.DiscoverSubject(), s.handleDiscover); err != nil {
+		return err
+	}
+
 	if _, err := s.nc.Subscribe(protocol.JoinSubject(s.tableID), s.handleJoin); err != nil {
 		return err
 	}
@@ -72,6 +76,22 @@ func (s *Service) Register() error {
 	}
 
 	return nil
+}
+
+func (s *Service) handleDiscover(msg *nats.Msg) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	response := protocol.DiscoverResponse{
+		Tables: []protocol.TableInfo{{
+			TableID:    s.tableID,
+			Players:    len(s.players),
+			MaxPlayers: seatsPerTable,
+			Started:    s.started,
+		}},
+	}
+
+	s.reply(msg, response)
 }
 
 func (s *Service) handleJoin(msg *nats.Msg) {
