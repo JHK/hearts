@@ -25,28 +25,36 @@ type Service struct {
 	nc      *nats.Conn
 	rng     *rand.Rand
 
-	players    []*playerState
-	playerByID map[string]*playerState
+	players    []*player
+	playerByID map[string]*player
 
 	started      bool
 	currentTurn  int
 	trickNumber  int
 	heartsBroken bool
-	trick        []playedCard
+	trick        []trickPlay
 	roundPoints  []int
 	totalPoints  []int
 }
 
-type playerState struct {
+type player struct {
 	ID   string
 	Name string
 	Seat int
 	Hand []game.Card
 }
 
-type playedCard struct {
+type trickPlay struct {
 	Seat int
 	Card game.Card
+}
+
+func protocolPlayerInfo(player *player) protocol.PlayerInfo {
+	return protocol.PlayerInfo{
+		PlayerID: player.ID,
+		Name:     player.Name,
+		Seat:     player.Seat,
+	}
 }
 
 func NewService(tableID string, nc *nats.Conn) *Service {
@@ -54,7 +62,7 @@ func NewService(tableID string, nc *nats.Conn) *Service {
 		tableID:    tableID,
 		nc:         nc,
 		rng:        rand.New(rand.NewSource(time.Now().UnixNano())),
-		playerByID: make(map[string]*playerState),
+		playerByID: make(map[string]*player),
 	}
 }
 
@@ -130,11 +138,7 @@ func (s *Service) handleJoin(msg *nats.Msg) {
 	}
 
 	seat := len(s.players)
-	player := &playerState{
-		ID:   req.PlayerID,
-		Name: req.Name,
-		Seat: seat,
-	}
+	player := &player{ID: req.PlayerID, Name: req.Name, Seat: seat}
 
 	s.players = append(s.players, player)
 	s.playerByID[player.ID] = player
@@ -147,7 +151,7 @@ func (s *Service) handleJoin(msg *nats.Msg) {
 	})
 
 	s.publishEvent(protocol.EventPlayerJoined, protocol.PlayerJoinedData{
-		Player: protocol.PlayerInfo{PlayerID: player.ID, Name: player.Name, Seat: player.Seat},
+		Player: protocolPlayerInfo(player),
 	})
 }
 
@@ -171,10 +175,7 @@ func (s *Service) handleStart(msg *nats.Msg) {
 		return
 	}
 
-	if len(s.players) != seatsPerTable {
-		s.reply(msg, protocol.CommandResponse{Accepted: false, Reason: "need 4 players to start"})
-		return
-	}
+	s.fillBotsLocked()
 
 	if err := s.startRound(); err != nil {
 		s.reply(msg, protocol.CommandResponse{Accepted: false, Reason: err.Error()})
@@ -211,26 +212,31 @@ func (s *Service) handlePlay(msg *nats.Msg) {
 		return
 	}
 
-	if player.Seat != s.currentTurn {
-		s.reply(msg, protocol.CommandResponse{Accepted: false, Reason: "not your turn"})
+	if err := s.playCardLocked(player, card); err != nil {
+		s.reply(msg, protocol.CommandResponse{Accepted: false, Reason: err.Error()})
 		return
 	}
 
+	s.reply(msg, protocol.CommandResponse{Accepted: true})
+}
+
+func (s *Service) playCardLocked(player *player, card game.Card) error {
+	if player.Seat != s.currentTurn {
+		return fmt.Errorf("not your turn")
+	}
+
 	if !game.ContainsCard(player.Hand, card) {
-		s.reply(msg, protocol.CommandResponse{Accepted: false, Reason: "card not in hand"})
-		return
+		return fmt.Errorf("card not in hand")
 	}
 
 	if len(s.trick) == 0 {
 		if err := game.CanLeadCard(player.Hand, card, s.heartsBroken, s.trickNumber); err != nil {
-			s.reply(msg, protocol.CommandResponse{Accepted: false, Reason: err.Error()})
-			return
+			return err
 		}
 	} else {
 		leadSuit := s.trick[0].Card.Suit
 		if err := game.CanPlayCard(player.Hand, card, leadSuit, s.trickNumber); err != nil {
-			s.reply(msg, protocol.CommandResponse{Accepted: false, Reason: err.Error()})
-			return
+			return err
 		}
 	}
 
@@ -239,18 +245,14 @@ func (s *Service) handlePlay(msg *nats.Msg) {
 		s.heartsBroken = true
 	}
 
-	s.trick = append(s.trick, playedCard{Seat: player.Seat, Card: card})
+	s.trick = append(s.trick, trickPlay{Seat: player.Seat, Card: card})
 	s.publishEvent(protocol.EventCardPlayed, protocol.CardPlayedData{PlayerID: player.ID, Card: card.String()})
 	s.publishPlayerEvent(player.ID, protocol.EventHandUpdated, protocol.HandUpdatedData{Cards: game.CardsToStrings(player.Hand)})
 
 	if len(s.trick) < seatsPerTable {
 		s.currentTurn = (s.currentTurn + 1) % seatsPerTable
-		s.publishEvent(protocol.EventTurnChanged, protocol.TurnChangedData{
-			PlayerID:    s.players[s.currentTurn].ID,
-			TrickNumber: s.trickNumber,
-		})
-		s.reply(msg, protocol.CommandResponse{Accepted: true})
-		return
+		s.publishTurnEventsLocked()
+		return nil
 	}
 
 	trickCards := make([]game.Card, 0, len(s.trick))
@@ -260,8 +262,7 @@ func (s *Service) handlePlay(msg *nats.Msg) {
 
 	winnerIdx := game.TrickWinnerIndex(trickCards[0].Suit, trickCards)
 	if winnerIdx < 0 {
-		s.reply(msg, protocol.CommandResponse{Accepted: false, Reason: "could not determine trick winner"})
-		return
+		return fmt.Errorf("could not determine trick winner")
 	}
 
 	winnerSeat := s.trick[winnerIdx].Seat
@@ -279,17 +280,29 @@ func (s *Service) handlePlay(msg *nats.Msg) {
 
 	if s.trickNumber >= cardsPerPlayer {
 		s.finishRound()
-		s.reply(msg, protocol.CommandResponse{Accepted: true})
-		return
+		return nil
 	}
 
 	s.currentTurn = winnerSeat
-	s.publishEvent(protocol.EventTurnChanged, protocol.TurnChangedData{
-		PlayerID:    s.players[s.currentTurn].ID,
-		TrickNumber: s.trickNumber,
-	})
+	s.publishTurnEventsLocked()
 
-	s.reply(msg, protocol.CommandResponse{Accepted: true})
+	return nil
+}
+
+func (s *Service) roundPointsByPlayerLocked() map[string]int {
+	points := make(map[string]int, len(s.players))
+	for _, player := range s.players {
+		points[player.ID] = s.roundPoints[player.Seat]
+	}
+	return points
+}
+
+func (s *Service) totalPointsByPlayerLocked() map[string]int {
+	points := make(map[string]int, len(s.players))
+	for _, player := range s.players {
+		points[player.ID] = s.totalPoints[player.Seat]
+	}
+	return points
 }
 
 func (s *Service) startRound() error {
@@ -331,34 +344,32 @@ func (s *Service) startRound() error {
 
 	players := make([]protocol.PlayerInfo, 0, len(s.players))
 	for _, player := range s.players {
-		players = append(players, protocol.PlayerInfo{PlayerID: player.ID, Name: player.Name, Seat: player.Seat})
+		players = append(players, protocolPlayerInfo(player))
 	}
 
 	s.publishEvent(protocol.EventGameStarted, protocol.GameStartedData{Players: players})
-	s.publishEvent(protocol.EventTurnChanged, protocol.TurnChangedData{PlayerID: s.players[s.currentTurn].ID, TrickNumber: 0})
 
 	for _, player := range s.players {
 		s.publishPlayerEvent(player.ID, protocol.EventHandUpdated, protocol.HandUpdatedData{Cards: game.CardsToStrings(player.Hand)})
 	}
+
+	s.publishTurnEventsLocked()
 
 	return nil
 }
 
 func (s *Service) finishRound() {
 	round := game.ApplyShootMoon(s.roundPoints)
-	roundByPlayer := make(map[string]int, len(s.players))
-	totalByPlayer := make(map[string]int, len(s.players))
 
 	for _, player := range s.players {
 		s.totalPoints[player.Seat] += round[player.Seat]
-		roundByPlayer[player.ID] = round[player.Seat]
-		totalByPlayer[player.ID] = s.totalPoints[player.Seat]
+		s.roundPoints[player.Seat] = round[player.Seat]
 		player.Hand = nil
 	}
 
 	s.publishEvent(protocol.EventRoundCompleted, protocol.RoundCompletedData{
-		RoundPoints: roundByPlayer,
-		TotalPoints: totalByPlayer,
+		RoundPoints: s.roundPointsByPlayerLocked(),
+		TotalPoints: s.totalPointsByPlayerLocked(),
 	})
 
 	s.started = false
@@ -366,6 +377,15 @@ func (s *Service) finishRound() {
 	s.trickNumber = 0
 	s.heartsBroken = false
 	s.roundPoints = nil
+}
+
+func (s *Service) publishTurnEventsLocked() {
+	current := s.players[s.currentTurn]
+	s.publishEvent(protocol.EventTurnChanged, protocol.TurnChangedData{
+		PlayerID:    current.ID,
+		TrickNumber: s.trickNumber,
+	})
+	s.publishPlayerEvent(current.ID, protocol.EventYourTurn, protocol.YourTurnData{TrickNumber: s.trickNumber})
 }
 
 func (s *Service) publishEvent(eventType string, payload any) {

@@ -25,3 +25,7 @@ func EventsSubject(tableID string) string {
 func PlayerEventsSubject(tableID, playerID string) string {
 	return fmt.Sprintf("hearts.table.%s.player.%s.events", tableID, playerID)
 }
+
+func PlayerEventsWildcardSubject(tableID string) string {
+	return fmt.Sprintf("hearts.table.%s.player.*.events", tableID)
+}

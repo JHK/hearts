@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/JHK/hearts/internal/bot"
 	"github.com/JHK/hearts/internal/protocol"
 	"github.com/JHK/hearts/internal/table"
 	"github.com/nats-io/nats-server/v2/server"
@@ -90,6 +91,7 @@ type localHost struct {
 	host   string
 	port   int
 	tables map[string]*table.Service
+	bots   map[string]*bot.Runtime
 }
 
 func (a *cliApp) runCommand(parts []string) bool {
@@ -231,6 +233,7 @@ func (a *cliApp) openTable(tableID, host string, port int) error {
 			host:   host,
 			port:   port,
 			tables: make(map[string]*table.Service),
+			bots:   make(map[string]*bot.Runtime),
 		}
 
 		fmt.Printf("Opened local game bus on %s\n", a.host.url)
@@ -243,7 +246,14 @@ func (a *cliApp) openTable(tableID, host string, port int) error {
 		if err := svc.Register(); err != nil {
 			return fmt.Errorf("register table service: %w", err)
 		}
+
+		botRuntime := bot.NewRuntime(a.host.nc, tableID, nil)
+		if err := botRuntime.Start(); err != nil {
+			return fmt.Errorf("start bot runtime: %w", err)
+		}
+
 		a.host.tables[tableID] = svc
+		a.host.bots[tableID] = botRuntime
 		fmt.Printf("Opened table %s\n", tableID)
 	}
 
@@ -445,6 +455,11 @@ func (a *cliApp) handleEvent(raw []byte) {
 		if decodeEventPayload(event, &data) {
 			fmt.Printf("[event] turn: %s (trick %d)\n", data.PlayerID, data.TrickNumber+1)
 		}
+	case protocol.EventYourTurn:
+		var data protocol.YourTurnData
+		if decodeEventPayload(event, &data) {
+			fmt.Printf("[event] your turn (trick %d)\n", data.TrickNumber+1)
+		}
 	case protocol.EventCardPlayed:
 		var data protocol.CardPlayedData
 		if decodeEventPayload(event, &data) {
@@ -504,6 +519,9 @@ func (a *cliApp) shutdown() {
 	}
 
 	if a.host != nil {
+		for _, runtime := range a.host.bots {
+			runtime.Stop()
+		}
 		a.host.nc.Close()
 		a.host.server.Shutdown()
 		a.host = nil
@@ -572,7 +590,7 @@ func printHelp() {
 	fmt.Println("  discover                 discover open tables on current bus")
 	fmt.Println("  join <table-id>          join discovered table")
 	fmt.Println("  connect <nats-url>       switch to another game bus")
-	fmt.Println("  start                    start the round (needs 4 players)")
+	fmt.Println("  start                    start round (missing seats become bots)")
 	fmt.Println("  play <card>              play a card, e.g. play QS")
 	fmt.Println("  hand                     show your hand")
 	fmt.Println("  status                   show current connection and table")

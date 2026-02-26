@@ -38,6 +38,8 @@ There is CLI binary. After launch, each player can either open a game locally or
    start
    ```
 
+   If fewer than 4 humans are seated, the table auto-fills with simple bots.
+
 5. Play cards:
 
    ```text
@@ -69,5 +71,6 @@ There is CLI binary. After launch, each player can either open a game locally or
 - Hearts cannot be led before broken (unless hand is all hearts)
 - Penalty cards blocked on first trick unless no alternative
 - Round scoring includes shoot-the-moon handling
+- Missing seats are auto-filled with random-play bots on `start`
 
 Passing cards and full game-to-100 flow are not implemented yet.

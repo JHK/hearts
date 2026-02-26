@@ -9,6 +9,7 @@ const (
 	EventPlayerJoined   = "player_joined"
 	EventGameStarted    = "game_started"
 	EventTurnChanged    = "turn_changed"
+	EventYourTurn       = "your_turn"
 	EventCardPlayed     = "card_played"
 	EventTrickCompleted = "trick_completed"
 	EventRoundCompleted = "round_completed"
@@ -95,6 +96,10 @@ type GameStartedData struct {
 type TurnChangedData struct {
 	PlayerID    string `json:"player_id"`
 	TrickNumber int    `json:"trick_number"`
+}
+
+type YourTurnData struct {
+	TrickNumber int `json:"trick_number"`
 }
 
 type CardPlayedData struct {
