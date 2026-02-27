@@ -181,15 +181,42 @@
     }
 
     function renderTrick(players, trickPlays) {
+      const me = players.find((player) => player.player_id === myPlayerId);
+      const trickSignature = `${me ? me.seat : '-'}|${(trickPlays || []).map((play) => `${play.player_id}:${play.card}`).join('|')}`;
+      if (trickSignature === lastTrickSignature) {
+        return;
+      }
+
+      lastTrickSignature = trickSignature;
       trickCenterEl.innerHTML = '';
       const byPlayer = new Map();
       for (const player of players) {
         byPlayer.set(player.player_id, player);
       }
 
+      function slotClassFor(player) {
+        if (!me || !player) {
+          return 'trick-slot-center';
+        }
+
+        const offset = (player.seat - me.seat + 4) % 4;
+        switch (offset) {
+          case 0:
+            return 'trick-slot-bottom';
+          case 1:
+            return 'trick-slot-left';
+          case 2:
+            return 'trick-slot-top';
+          case 3:
+            return 'trick-slot-right';
+          default:
+            return 'trick-slot-center';
+        }
+      }
+
       if (!trickPlays || trickPlays.length === 0) {
         const empty = document.createElement('div');
-        empty.className = 'muted';
+        empty.className = 'muted trick-slot-center';
         empty.textContent = 'No cards in current trick yet.';
         trickCenterEl.appendChild(empty);
         return;
@@ -202,6 +229,10 @@
           card.classList.add('is-red');
         }
 
+        const player = byPlayer.get(play.player_id);
+        const slot = document.createElement('div');
+        slot.className = `trick-slot ${slotClassFor(player)}`;
+
         const label = document.createElement('div');
         const cardInfo = decodeCard(play.card);
         const cardLabel = `${cardInfo.rank}${cardInfo.glyph}`;
@@ -209,15 +240,9 @@
         label.textContent = cardLabel;
         card.dataset.cornerTop = cardLabel;
         card.dataset.cornerBottom = cardLabel;
-
-        const who = document.createElement('div');
-        who.className = 'who';
-        const player = byPlayer.get(play.player_id);
-        who.textContent = player ? player.name : play.player_id;
-
-        card.appendChild(who);
         card.appendChild(label);
-        trickCenterEl.appendChild(card);
+        slot.appendChild(card);
+        trickCenterEl.appendChild(slot);
       }
     }
 
@@ -292,6 +317,12 @@
     const token = ensureToken();
     let ws;
     let myPlayerId = '';
+    let lastTrickSignature = '';
+    let lastPlayers = [];
+    let liveTrickPlays = [];
+    let pendingStateRefresh = 0;
+    let keepTrickVisibleUntil = 0;
+    let lastCardPlayedAt = 0;
 
     function log(line) {
       const ts = new Date().toLocaleTimeString();
@@ -304,6 +335,23 @@
         return;
       }
       ws.send(JSON.stringify(msg));
+    }
+
+    function scheduleStateRefresh(delayMs) {
+      if (pendingStateRefresh) {
+        clearTimeout(pendingStateRefresh);
+      }
+
+      if (!delayMs || delayMs <= 0) {
+        pendingStateRefresh = 0;
+        requestState();
+        return;
+      }
+
+      pendingStateRefresh = setTimeout(() => {
+        pendingStateRefresh = 0;
+        requestState();
+      }, delayMs);
     }
 
     function requestState() {
@@ -323,6 +371,7 @@
       }
 
       const players = state.players || [];
+      lastPlayers = players;
       const turnPlayer = players.find((player) => player.player_id === state.turn_player_id);
       if (state.started) {
         turnIndicatorEl.textContent = `Turn: ${turnPlayer ? turnPlayer.name : turn}`;
@@ -333,9 +382,23 @@
       const me = players.find((player) => player.player_id === myPlayerId);
       yourNameEl.textContent = me ? me.name : 'you';
       const isYourTurn = !!state.started && !!myPlayerId && state.turn_player_id === myPlayerId;
+      const serverTrickPlays = (state.trick_plays || []).slice();
+      const now = Date.now();
+      const shouldHoldCompletedTrick =
+        serverTrickPlays.length === 0 &&
+        liveTrickPlays.length === 4 &&
+        now < keepTrickVisibleUntil;
+      const shouldHoldInFlightTrick =
+        serverTrickPlays.length === 0 &&
+        liveTrickPlays.length > 0 &&
+        now - lastCardPlayedAt < 1000;
+
+      if (!shouldHoldCompletedTrick && !shouldHoldInFlightTrick) {
+        liveTrickPlays = serverTrickPlays;
+      }
 
       setSeatLabels(players, state.turn_player_id);
-      renderTrick(players, state.trick_plays || []);
+      renderTrick(players, liveTrickPlays);
       renderYourHand(state.hand || [], isYourTurn);
       renderOtherHands(players, state.hand_sizes || {});
 
@@ -351,6 +414,46 @@
         li.textContent = `seat ${player.seat}: ${player.name}${bot}${me}${turnMark}`;
         playersEl.appendChild(li);
       }
+    }
+
+    function seatElementForPlayerId(playerId) {
+      if (!playerId || !lastPlayers || lastPlayers.length === 0) {
+        return null;
+      }
+
+      const me = lastPlayers.find((player) => player.player_id === myPlayerId);
+      const winner = lastPlayers.find((player) => player.player_id === playerId);
+      if (!me || !winner) {
+        return null;
+      }
+
+      const offset = (winner.seat - me.seat + 4) % 4;
+      switch (offset) {
+        case 0:
+          return seatBottomEl;
+        case 1:
+          return seatLeftEl;
+        case 2:
+          return seatTopEl;
+        case 3:
+          return seatRightEl;
+        default:
+          return null;
+      }
+    }
+
+    function animateTrickWinner(playerId) {
+      const seatEl = seatElementForPlayerId(playerId);
+      if (!seatEl) {
+        return;
+      }
+
+      seatEl.classList.remove('trick-winner');
+      void seatEl.offsetWidth;
+      seatEl.classList.add('trick-winner');
+      seatEl.addEventListener('animationend', () => {
+        seatEl.classList.remove('trick-winner');
+      }, { once: true });
     }
 
     function connect() {
@@ -403,15 +506,37 @@
             } else {
               resultEl.textContent = msg.data && msg.data.reason ? msg.data.reason : 'rejected';
             }
-            requestState();
+            scheduleStateRefresh(0);
+            break;
+          case 'card_played':
+            if (msg.data && msg.data.player_id && msg.data.card && lastPlayers.length > 0) {
+              lastCardPlayedAt = Date.now();
+              const nextTrick = liveTrickPlays.filter((play) => play.player_id !== msg.data.player_id);
+              nextTrick.push({ player_id: msg.data.player_id, card: msg.data.card });
+              liveTrickPlays = nextTrick;
+              if (liveTrickPlays.length >= 4) {
+                keepTrickVisibleUntil = Date.now() + 900;
+              }
+              renderTrick(lastPlayers, liveTrickPlays);
+              scheduleStateRefresh(liveTrickPlays.length >= 4 ? 700 : 0);
+            } else {
+              scheduleStateRefresh(0);
+            }
             break;
           case 'add_bot_result':
             resultEl.textContent = 'bot added';
-            requestState();
+            scheduleStateRefresh(0);
+            break;
+          case 'trick_completed':
+            if (msg.data && msg.data.winner_player_id) {
+              animateTrickWinner(msg.data.winner_player_id);
+            }
+            keepTrickVisibleUntil = Date.now() + 900;
+            scheduleStateRefresh(900);
             break;
           default:
             log(`${msg.type}: ${JSON.stringify(msg.data || {})}`);
-            requestState();
+            scheduleStateRefresh(0);
             break;
         }
       };
