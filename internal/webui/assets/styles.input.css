@@ -128,7 +128,7 @@
   }
 
   .table-page main {
-    max-width: 1080px;
+    max-width: 1480px;
     padding: 16px;
     gap: 12px;
   }
@@ -139,6 +139,65 @@
     border-radius: 14px;
     padding: 12px;
     box-shadow: 0 10px 24px rgba(17, 37, 58, 0.08);
+  }
+
+  .table-game-layout {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scoreboard-section {
+    align-self: start;
+  }
+
+  .scoreboard-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .scoreboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    table-layout: auto;
+  }
+
+  .scoreboard-table th,
+  .scoreboard-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+
+  .scoreboard-table thead th {
+    font-weight: 700;
+    color: #254258;
+  }
+
+  .scoreboard-table th {
+    text-align: right;
+  }
+
+  .scoreboard-table td {
+    text-align: right;
+    color: #21384d;
+  }
+
+  .scoreboard-table th:first-child {
+    text-align: left;
+    color: #304b63;
+  }
+
+  .scoreboard-table .scoreboard-current-row {
+    background: rgba(31, 111, 95, 0.08);
+  }
+
+  .scoreboard-table .scoreboard-total-row {
+    font-weight: 700;
+    background: rgba(11, 72, 125, 0.08);
   }
 
   .table-page h1 {
@@ -204,7 +263,7 @@
     min-height: 320px;
     position: relative;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: minmax(220px, 1fr) minmax(300px, 1fr) minmax(220px, 1fr);
     grid-template-rows: auto 1fr auto;
     gap: 10px;
   }
@@ -359,6 +418,7 @@
     border-radius: 12px;
     position: relative;
     padding: 8px;
+    min-width: 300px;
     min-height: 340px;
   }
 
@@ -685,6 +745,13 @@
 
   #actionsSection.hidden {
     display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .table-game-layout {
+    grid-template-columns: minmax(860px, 1fr) minmax(300px, 360px);
+    align-items: start;
   }
 }
 

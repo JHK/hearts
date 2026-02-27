@@ -260,6 +260,88 @@ export function createRenderer({ dom, state, send }) {
     return cards.join(', ');
   }
 
+  function pointsFor(pointsByPlayer, playerID) {
+    const value = pointsByPlayer && pointsByPlayer[playerID];
+    const number = Number(value);
+    return Number.isFinite(number) ? number : 0;
+  }
+
+  function renderScoreboard(snapshot) {
+    const players = Array.isArray(snapshot.players) ? snapshot.players : [];
+    const history = Array.isArray(snapshot.round_history) ? snapshot.round_history : [];
+    const roundPoints = snapshot && snapshot.round_points ? snapshot.round_points : {};
+    const totalPoints = snapshot && snapshot.total_points ? snapshot.total_points : {};
+
+    dom.scoreboardHeadEl.innerHTML = '';
+    dom.scoreboardBodyEl.innerHTML = '';
+
+    const headerRow = document.createElement('tr');
+    const roundHeaderCell = document.createElement('th');
+    roundHeaderCell.scope = 'col';
+    roundHeaderCell.textContent = 'Round';
+    headerRow.appendChild(roundHeaderCell);
+
+    if (players.length === 0) {
+      const playersHeaderCell = document.createElement('th');
+      playersHeaderCell.scope = 'col';
+      playersHeaderCell.textContent = 'Players';
+      headerRow.appendChild(playersHeaderCell);
+
+      dom.scoreboardHeadEl.appendChild(headerRow);
+
+      const emptyRow = document.createElement('tr');
+      const emptyLabel = document.createElement('th');
+      emptyLabel.scope = 'row';
+      emptyLabel.textContent = 'Current';
+      const emptyValue = document.createElement('td');
+      emptyValue.textContent = '-';
+      emptyRow.appendChild(emptyLabel);
+      emptyRow.appendChild(emptyValue);
+      dom.scoreboardBodyEl.appendChild(emptyRow);
+      return;
+    }
+
+    for (const player of players) {
+      const playerHeaderCell = document.createElement('th');
+      playerHeaderCell.scope = 'col';
+      playerHeaderCell.textContent = player.is_bot ? `${player.name} [bot]` : player.name;
+      headerRow.appendChild(playerHeaderCell);
+    }
+    dom.scoreboardHeadEl.appendChild(headerRow);
+
+    function appendPointsRow(label, pointsByPlayer, rowClassName) {
+      const row = document.createElement('tr');
+      if (rowClassName) {
+        row.classList.add(rowClassName);
+      }
+
+      const labelCell = document.createElement('th');
+      labelCell.scope = 'row';
+      labelCell.textContent = label;
+      row.appendChild(labelCell);
+
+      for (const player of players) {
+        const valueCell = document.createElement('td');
+        valueCell.textContent = String(pointsFor(pointsByPlayer, player.player_id));
+        row.appendChild(valueCell);
+      }
+
+      dom.scoreboardBodyEl.appendChild(row);
+    }
+
+    history.forEach((entry, index) => {
+      appendPointsRow(`Round ${index + 1}`, entry, 'scoreboard-history-row');
+    });
+
+    const liveTotalPoints = {};
+    for (const player of players) {
+      liveTotalPoints[player.player_id] = pointsFor(totalPoints, player.player_id) + pointsFor(roundPoints, player.player_id);
+    }
+
+    appendPointsRow('Current', roundPoints, 'scoreboard-current-row');
+    appendPointsRow('Sum', liveTotalPoints, 'scoreboard-total-row');
+  }
+
   function renderPassPanel(snapshot) {
     const phase = snapshot && snapshot.phase ? snapshot.phase : '';
     const passSubmitted = !!(snapshot && snapshot.pass_submitted);
@@ -394,6 +476,7 @@ export function createRenderer({ dom, state, send }) {
     );
     renderOtherHands(relativePlayers, snapshot.hand_sizes || {});
     renderPassPanel(snapshot);
+    renderScoreboard(snapshot);
   }
 
   function seatElementForPlayerId(playerId) {

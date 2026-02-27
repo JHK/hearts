@@ -40,26 +40,27 @@ type TrickPlaySnapshot struct {
 }
 
 type Snapshot struct {
-	TableID            string                        `json:"table_id"`
-	Players            []PlayerSnapshot              `json:"players"`
-	Started            bool                          `json:"started"`
-	Phase              string                        `json:"phase"`
-	TrickNumber        int                           `json:"trick_number"`
-	TurnPlayerID       game.PlayerID                 `json:"turn_player_id"`
-	HeartsBroken       bool                          `json:"hearts_broken"`
-	CurrentTrick       []string                      `json:"current_trick"`
-	TrickPlays         []TrickPlaySnapshot           `json:"trick_plays"`
-	Hand               []string                      `json:"hand"`
-	HandSizes          map[game.PlayerID]int         `json:"hand_sizes"`
-	PassDirection      string                        `json:"pass_direction"`
-	PassSubmitted      bool                          `json:"pass_submitted"`
-	PassSubmittedCount int                           `json:"pass_submitted_count"`
-	PassSent           []string                      `json:"pass_sent"`
-	PassReceived       []string                      `json:"pass_received"`
-	PassReady          bool                          `json:"pass_ready"`
-	PassReadyCount     int                           `json:"pass_ready_count"`
-	RoundPoints        map[game.PlayerID]game.Points `json:"round_points"`
-	TotalPoints        map[game.PlayerID]game.Points `json:"total_points"`
+	TableID            string                          `json:"table_id"`
+	Players            []PlayerSnapshot                `json:"players"`
+	Started            bool                            `json:"started"`
+	Phase              string                          `json:"phase"`
+	TrickNumber        int                             `json:"trick_number"`
+	TurnPlayerID       game.PlayerID                   `json:"turn_player_id"`
+	HeartsBroken       bool                            `json:"hearts_broken"`
+	CurrentTrick       []string                        `json:"current_trick"`
+	TrickPlays         []TrickPlaySnapshot             `json:"trick_plays"`
+	Hand               []string                        `json:"hand"`
+	HandSizes          map[game.PlayerID]int           `json:"hand_sizes"`
+	PassDirection      string                          `json:"pass_direction"`
+	PassSubmitted      bool                            `json:"pass_submitted"`
+	PassSubmittedCount int                             `json:"pass_submitted_count"`
+	PassSent           []string                        `json:"pass_sent"`
+	PassReceived       []string                        `json:"pass_received"`
+	PassReady          bool                            `json:"pass_ready"`
+	PassReadyCount     int                             `json:"pass_ready_count"`
+	RoundPoints        map[game.PlayerID]game.Points   `json:"round_points"`
+	RoundHistory       []map[game.PlayerID]game.Points `json:"round_history"`
+	TotalPoints        map[game.PlayerID]game.Points   `json:"total_points"`
 }
 
 type roundPhase string
@@ -94,6 +95,7 @@ type tableState struct {
 	playersByToken map[string]*playerState
 	bots           map[game.PlayerID]bot.Strategy
 	totals         map[game.PlayerID]game.Points
+	roundHistory   []map[game.PlayerID]game.Points
 
 	round         *roundState
 	roundsStarted int
@@ -1105,6 +1107,7 @@ func (r *Runtime) completeRound(state *tableState) protocol.RoundCompletedData {
 	for playerID, playerPoints := range adjustedRound {
 		state.totals[playerID] += playerPoints
 	}
+	state.roundHistory = append(state.roundHistory, copyPoints(adjustedRound))
 
 	return protocol.RoundCompletedData{
 		RoundPoints: copyPoints(adjustedRound),
@@ -1127,13 +1130,14 @@ func (r *Runtime) buildSnapshot(state *tableState, forPlayer game.PlayerID) Snap
 	})
 
 	snapshot := Snapshot{
-		TableID:     r.tableID,
-		Players:     players,
-		Started:     state.round != nil,
-		Phase:       "",
-		HandSizes:   map[game.PlayerID]int{},
-		RoundPoints: map[game.PlayerID]game.Points{},
-		TotalPoints: copyPoints(state.totals),
+		TableID:      r.tableID,
+		Players:      players,
+		Started:      state.round != nil,
+		Phase:        "",
+		HandSizes:    map[game.PlayerID]int{},
+		RoundPoints:  map[game.PlayerID]game.Points{},
+		RoundHistory: copyRoundHistory(state.roundHistory),
+		TotalPoints:  copyPoints(state.totals),
 	}
 
 	for _, player := range state.players {
@@ -1219,6 +1223,15 @@ func copyPoints(source map[game.PlayerID]game.Points) map[game.PlayerID]game.Poi
 	for key, value := range source {
 		out[key] = value
 	}
+	return out
+}
+
+func copyRoundHistory(source []map[game.PlayerID]game.Points) []map[game.PlayerID]game.Points {
+	out := make([]map[game.PlayerID]game.Points, 0, len(source))
+	for _, entry := range source {
+		out = append(out, copyPoints(entry))
+	}
+
 	return out
 }
 

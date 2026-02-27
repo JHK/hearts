@@ -214,3 +214,69 @@ func TestPassDirectionCycle(t *testing.T) {
 		}
 	}
 }
+
+func TestCompleteRoundUpdatesTotalsAndHistory(t *testing.T) {
+	runtime := &Runtime{}
+	state := &tableState{
+		totals: map[game.PlayerID]game.Points{
+			"p1": 10,
+			"p2": 15,
+			"p3": 2,
+			"p4": 8,
+		},
+		round: &roundState{
+			RoundPoints: map[game.PlayerID]game.Points{
+				"p1": 5,
+				"p2": 7,
+				"p3": 3,
+				"p4": 11,
+			},
+		},
+	}
+
+	completed := runtime.completeRound(state)
+
+	if len(state.roundHistory) != 1 {
+		t.Fatalf("expected one round in history, got %d", len(state.roundHistory))
+	}
+
+	historyEntry := state.roundHistory[0]
+	if historyEntry["p1"] != 5 || historyEntry["p2"] != 7 || historyEntry["p3"] != 3 || historyEntry["p4"] != 11 {
+		t.Fatalf("unexpected history entry: %#v", historyEntry)
+	}
+
+	if state.totals["p1"] != 15 || state.totals["p2"] != 22 || state.totals["p3"] != 5 || state.totals["p4"] != 19 {
+		t.Fatalf("unexpected totals: %#v", state.totals)
+	}
+
+	if completed.RoundPoints["p1"] != 5 || completed.RoundPoints["p2"] != 7 || completed.RoundPoints["p3"] != 3 || completed.RoundPoints["p4"] != 11 {
+		t.Fatalf("unexpected round completed points: %#v", completed.RoundPoints)
+	}
+
+	if completed.TotalPoints["p1"] != 15 || completed.TotalPoints["p2"] != 22 || completed.TotalPoints["p3"] != 5 || completed.TotalPoints["p4"] != 19 {
+		t.Fatalf("unexpected completed totals: %#v", completed.TotalPoints)
+	}
+}
+
+func TestBuildSnapshotCopiesRoundHistory(t *testing.T) {
+	runtime := &Runtime{tableID: "history-copy"}
+	state := &tableState{
+		roundHistory: []map[game.PlayerID]game.Points{
+			{"p1": 1, "p2": 2, "p3": 3, "p4": 4},
+		},
+		totals: map[game.PlayerID]game.Points{"p1": 1},
+	}
+
+	snapshot := runtime.buildSnapshot(state, "")
+	if len(snapshot.RoundHistory) != 1 {
+		t.Fatalf("expected one round history entry, got %d", len(snapshot.RoundHistory))
+	}
+	if snapshot.RoundHistory[0]["p3"] != 3 {
+		t.Fatalf("unexpected snapshot round history: %#v", snapshot.RoundHistory)
+	}
+
+	state.roundHistory[0]["p3"] = 99
+	if snapshot.RoundHistory[0]["p3"] != 3 {
+		t.Fatalf("expected snapshot round history to be copied, got %#v", snapshot.RoundHistory)
+	}
+}

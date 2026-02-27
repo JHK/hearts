@@ -15,6 +15,9 @@ export function createTableDom({ tableId, eventsEnabled }) {
   const submitPassEl = document.getElementById('submitPass');
   const readyAfterPassEl = document.getElementById('readyAfterPass');
   const trickSectionEl = document.getElementById('trickSection');
+  const scoreboardSectionEl = document.getElementById('scoreboardSection');
+  const scoreboardHeadEl = document.getElementById('scoreboardHead');
+  const scoreboardBodyEl = document.getElementById('scoreboardBody');
   const trickCenterEl = document.getElementById('trickCenter');
   const trickAnimationLayerEl = document.getElementById('trickAnimationLayer');
   const seatTopEl = document.getElementById('seatTop');
@@ -51,6 +54,9 @@ export function createTableDom({ tableId, eventsEnabled }) {
     submitPassEl,
     readyAfterPassEl,
     trickSectionEl,
+    scoreboardSectionEl,
+    scoreboardHeadEl,
+    scoreboardBodyEl,
     trickCenterEl,
     trickAnimationLayerEl,
     seatTopEl,

@@ -22,48 +22,60 @@
       </div>
     </section>
 
-    <section id="trickSection">
-      <div class="table-board">
-        <div id="botControl" class="bot-control hidden">
-          <div class="bot-control-group">
-            <button id="addBotDefault" type="button" class="secondary">Add Bot</button>
-            <select id="botStrategySelect" class="bot-strategy-select" aria-label="Select bot strategy">
-              <option value="" selected>random</option>
-              <option value="first-legal">first-legal</option>
-            </select>
-          </div>
-        </div>
-        <div id="seatTop" class="seat top">
-          <div id="seatTopName" class="seat-name">-</div>
-          <div id="seatTopHand" class="seat-hand"></div>
-        </div>
-        <div id="seatLeft" class="seat left">
-          <div id="seatLeftName" class="seat-name">-</div>
-          <div id="seatLeftHand" class="seat-hand"></div>
-        </div>
-        <div id="seatRight" class="seat right">
-          <div id="seatRightName" class="seat-name">-</div>
-          <div id="seatRightHand" class="seat-hand"></div>
-        </div>
-        <div id="seatBottom" class="seat bottom">
-          <div id="seatBottomName" class="seat-name">-</div>
-          <div id="seatBottomHand" class="seat-hand"></div>
-        </div>
-        <div id="trickCenter" class="trick-center">
-          <div id="centerControls" class="trick-center-controls hidden">
-            <div id="passSummary" class="muted"></div>
-            <div id="passDetails" class="muted" style="margin-top:6px;"></div>
-            <div id="passSelection" class="muted" style="margin-top:6px;"></div>
-            <div class="row center-controls-row" style="margin-top:8px;">
-              <button id="start" class="secondary">Start</button>
-              <button id="submitPass" class="secondary">Pass 3 Cards</button>
-              <button id="readyAfterPass" class="secondary">Continue</button>
+    <div class="table-game-layout">
+      <section id="trickSection">
+        <div class="table-board">
+          <div id="botControl" class="bot-control hidden">
+            <div class="bot-control-group">
+              <button id="addBotDefault" type="button" class="secondary">Add Bot</button>
+              <select id="botStrategySelect" class="bot-strategy-select" aria-label="Select bot strategy">
+                <option value="" selected>random</option>
+                <option value="first-legal">first-legal</option>
+              </select>
             </div>
           </div>
+          <div id="seatTop" class="seat top">
+            <div id="seatTopName" class="seat-name">-</div>
+            <div id="seatTopHand" class="seat-hand"></div>
+          </div>
+          <div id="seatLeft" class="seat left">
+            <div id="seatLeftName" class="seat-name">-</div>
+            <div id="seatLeftHand" class="seat-hand"></div>
+          </div>
+          <div id="seatRight" class="seat right">
+            <div id="seatRightName" class="seat-name">-</div>
+            <div id="seatRightHand" class="seat-hand"></div>
+          </div>
+          <div id="seatBottom" class="seat bottom">
+            <div id="seatBottomName" class="seat-name">-</div>
+            <div id="seatBottomHand" class="seat-hand"></div>
+          </div>
+          <div id="trickCenter" class="trick-center">
+            <div id="centerControls" class="trick-center-controls hidden">
+              <div id="passSummary" class="muted"></div>
+              <div id="passDetails" class="muted" style="margin-top:6px;"></div>
+              <div id="passSelection" class="muted" style="margin-top:6px;"></div>
+              <div class="row center-controls-row" style="margin-top:8px;">
+                <button id="start" class="secondary">Start</button>
+                <button id="submitPass" class="secondary">Pass 3 Cards</button>
+                <button id="readyAfterPass" class="secondary">Continue</button>
+              </div>
+            </div>
+          </div>
+          <div id="trickAnimationLayer" class="trick-animation-layer"></div>
         </div>
-        <div id="trickAnimationLayer" class="trick-animation-layer"></div>
-      </div>
-    </section>
+      </section>
+
+      <section id="scoreboardSection" class="scoreboard-section">
+        <h2>Scoreboard</h2>
+        <div class="scoreboard-wrap">
+          <table class="scoreboard-table" aria-label="Scoreboard">
+            <thead id="scoreboardHead"></thead>
+            <tbody id="scoreboardBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
 
     <section id="eventsSection">
       <details>
