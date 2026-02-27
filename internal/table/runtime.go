@@ -69,7 +69,10 @@ const (
 	roundPhasePassReview roundPhase = "pass_review"
 	roundPhasePlaying    roundPhase = "playing"
 
-	passDirectionLeft = "left"
+	passDirectionLeft   = "left"
+	passDirectionRight  = "right"
+	passDirectionAcross = "across"
+	passDirectionHold   = "hold"
 )
 
 type Runtime struct {
@@ -93,6 +96,7 @@ type tableState struct {
 	totals         map[game.PlayerID]game.Points
 
 	round         *roundState
+	roundsStarted int
 	nextPlayerSeq int
 }
 
@@ -542,7 +546,12 @@ func (r *Runtime) handleStart(state *tableState, playerID game.PlayerID) protoco
 	}
 
 	hands := r.initializeRound(state)
-	r.publishRoundStart(hands)
+	r.publishRoundStart(state, hands)
+	if state.round.PassDirection == passDirectionHold {
+		r.startPlayPhase(state)
+		return protocol.CommandResponse{Accepted: true}
+	}
+
 	r.schedulePassingBots(state)
 
 	return protocol.CommandResponse{Accepted: true}
@@ -823,8 +832,27 @@ func (r *Runtime) passDirectionOffset(direction string) int {
 	switch direction {
 	case passDirectionLeft:
 		return 1
+	case passDirectionRight:
+		return game.PlayersPerTable - 1
+	case passDirectionAcross:
+		return 2
+	case passDirectionHold:
+		return 0
 	default:
 		return 1
+	}
+}
+
+func passDirectionForRound(roundIndex int) string {
+	switch roundIndex % 4 {
+	case 0:
+		return passDirectionLeft
+	case 1:
+		return passDirectionRight
+	case 2:
+		return passDirectionAcross
+	default:
+		return passDirectionHold
 	}
 }
 
@@ -892,6 +920,10 @@ func (r *Runtime) scheduleBotTurn(state *tableState, playerID game.PlayerID) {
 }
 
 func (r *Runtime) schedulePassingBots(state *tableState) {
+	if state.round == nil || state.round.Phase != roundPhasePassing {
+		return
+	}
+
 	for _, player := range state.players {
 		if !player.IsBot {
 			continue
@@ -945,6 +977,9 @@ func (r *Runtime) validateStartPreconditions(state *tableState, playerID game.Pl
 
 func (r *Runtime) initializeRound(state *tableState) map[game.PlayerID][]string {
 	hands := make(map[game.PlayerID][]string)
+	passDirection := passDirectionForRound(state.roundsStarted)
+	state.roundsStarted++
+
 	for _, player := range state.players {
 		player.Hand = player.Hand[:0]
 	}
@@ -967,7 +1002,7 @@ func (r *Runtime) initializeRound(state *tableState) map[game.PlayerID][]string 
 
 	state.round = &roundState{
 		Phase:           roundPhasePassing,
-		PassDirection:   passDirectionLeft,
+		PassDirection:   passDirection,
 		PassSubmissions: make(map[game.PlayerID][]game.Card, len(state.players)),
 		PassSent:        make(map[game.PlayerID][]game.Card, len(state.players)),
 		PassReceived:    make(map[game.PlayerID][]game.Card, len(state.players)),
@@ -989,16 +1024,19 @@ func defaultShuffledDeck() []game.Card {
 	return deck
 }
 
-func (r *Runtime) publishRoundStart(hands map[game.PlayerID][]string) {
+func (r *Runtime) publishRoundStart(state *tableState, hands map[game.PlayerID][]string) {
 	r.publishPublic(protocol.EventGameStarted, struct{}{})
 	for playerID, cards := range hands {
 		r.publishPrivate(playerID, protocol.EventHandUpdated, protocol.HandUpdatedData{Cards: cards})
 	}
-	r.publishPublic(protocol.EventPassSubmitted, protocol.PassStatusData{
-		Submitted: 0,
-		Total:     game.PlayersPerTable,
-		Direction: passDirectionLeft,
-	})
+
+	if state.round != nil && state.round.PassDirection != passDirectionHold {
+		r.publishPublic(protocol.EventPassSubmitted, protocol.PassStatusData{
+			Submitted: 0,
+			Total:     game.PlayersPerTable,
+			Direction: state.round.PassDirection,
+		})
+	}
 }
 
 func currentTrickCards(round *roundState) []game.Card {

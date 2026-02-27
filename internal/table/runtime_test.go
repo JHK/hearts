@@ -195,3 +195,22 @@ func TestPassingAndReviewFlowTransitionsToPlay(t *testing.T) {
 		t.Fatalf("expected turn player after transitioning to play")
 	}
 }
+
+func TestPassDirectionCycle(t *testing.T) {
+	tests := []struct {
+		roundIndex int
+		expected   string
+	}{
+		{roundIndex: 0, expected: passDirectionLeft},
+		{roundIndex: 1, expected: passDirectionRight},
+		{roundIndex: 2, expected: passDirectionAcross},
+		{roundIndex: 3, expected: passDirectionHold},
+		{roundIndex: 4, expected: passDirectionLeft},
+	}
+
+	for _, tc := range tests {
+		if actual := passDirectionForRound(tc.roundIndex); actual != tc.expected {
+			t.Fatalf("round %d: expected %q, got %q", tc.roundIndex, tc.expected, actual)
+		}
+	}
+}
