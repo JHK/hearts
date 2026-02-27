@@ -268,10 +268,9 @@
     width: 74px;
     aspect-ratio: 167.0869141 / 242.6669922;
     border: 0;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow:
-      0 8px 18px rgba(16, 31, 52, 0.24);
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none;
     background: transparent;
     display: flex;
     align-items: center;
@@ -284,6 +283,7 @@
     object-fit: contain;
     display: block;
     pointer-events: none;
+    filter: drop-shadow(0 5px 10px rgba(15, 36, 60, 0.26));
   }
 
   @keyframes trick-card-in-top {
@@ -361,8 +361,10 @@
 
   .hand-card {
     position: relative;
+    appearance: none;
+    -webkit-appearance: none;
     border: 0;
-    border-radius: 8px;
+    border-radius: 0;
     width: 56px;
     aspect-ratio: 167.0869141 / 242.6669922;
     padding: 0;
@@ -371,33 +373,34 @@
     font-family: "Cascadia Mono", "DejaVu Sans Mono", monospace;
     font-weight: 700;
     cursor: pointer;
-    transition: transform 120ms ease, box-shadow 120ms ease;
-    box-shadow:
-      0 4px 8px rgba(15, 36, 60, 0.2);
+    transition: transform 120ms ease;
+    box-shadow: none;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--card-ink);
-    overflow: hidden;
+    overflow: visible;
   }
 
   .hand-card-image {
-    width: 100%;
-    height: 100%;
+    width: 94%;
+    height: 94%;
     object-fit: contain;
     display: block;
     pointer-events: none;
+    filter: drop-shadow(0 4px 8px rgba(15, 36, 60, 0.22));
   }
 
   .hand-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 14px rgba(15, 36, 60, 0.28);
+  }
+
+  .hand-card:hover .hand-card-image {
+    filter: drop-shadow(0 7px 12px rgba(15, 36, 60, 0.28));
   }
 
   .hand-card.playable {
-    box-shadow:
-      0 6px 12px rgba(20, 46, 72, 0.22),
-      0 0 0 1px rgba(166, 209, 241, 0.8);
+    transform: translateY(-2px);
   }
 
   .other-hands {
