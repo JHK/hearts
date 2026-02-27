@@ -234,6 +234,123 @@ func TestTableClosesWhenLastHumanLeaves(t *testing.T) {
 	})
 }
 
+func TestPassPhaseAndReviewFlowOverWebSocket(t *testing.T) {
+	manager := table.NewManager()
+	defer manager.Close()
+
+	handler, err := NewHandler(manager)
+	if err != nil {
+		t.Fatalf("new handler: %v", err)
+	}
+
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	players := []struct {
+		name  string
+		token string
+		conn  *websocket.Conn
+	}{
+		{name: "Alice", token: "token-a"},
+		{name: "Bob", token: "token-b"},
+		{name: "Carol", token: "token-c"},
+		{name: "Dave", token: "token-d"},
+	}
+
+	for i := range players {
+		players[i].conn = mustDialTableSocket(t, srv.URL, "pass-flow")
+		defer players[i].conn.Close()
+		_ = readMessage(t, players[i].conn)
+		if err := players[i].conn.WriteJSON(wsCommand{Type: "join", Name: players[i].name, Token: players[i].token}); err != nil {
+			t.Fatalf("join write for %s: %v", players[i].name, err)
+		}
+		join := readMessageType(t, players[i].conn, "join_result")
+		var joinResp protocol.JoinResponse
+		if err := json.Unmarshal(join.Data, &joinResp); err != nil {
+			t.Fatalf("decode join response for %s: %v", players[i].name, err)
+		}
+		if !joinResp.Accepted {
+			t.Fatalf("join rejected for %s: %s", players[i].name, joinResp.Reason)
+		}
+	}
+
+	if err := players[0].conn.WriteJSON(wsCommand{Type: "start"}); err != nil {
+		t.Fatalf("start write: %v", err)
+	}
+	startMsg := readMessageType(t, players[0].conn, "start_result")
+	var startResp protocol.CommandResponse
+	if err := json.Unmarshal(startMsg.Data, &startResp); err != nil {
+		t.Fatalf("decode start response: %v", err)
+	}
+	if !startResp.Accepted {
+		t.Fatalf("expected start accepted, got %s", startResp.Reason)
+	}
+
+	passCardsByPlayer := make([][]string, len(players))
+	for i := range players {
+		var snapshot table.Snapshot
+		assertEventually(t, 2*time.Second, func() bool {
+			snapshot = requestStateSnapshot(t, players[i].conn)
+			return snapshot.Phase == "passing" && len(snapshot.Hand) == 13
+		})
+		passCardsByPlayer[i] = append([]string(nil), snapshot.Hand[:3]...)
+	}
+
+	for i := range players {
+		if err := players[i].conn.WriteJSON(wsCommand{Type: "pass", Cards: passCardsByPlayer[i]}); err != nil {
+			t.Fatalf("pass write for %s: %v", players[i].name, err)
+		}
+		passMsg := readMessageType(t, players[i].conn, "pass_result")
+		var passResp protocol.CommandResponse
+		if err := json.Unmarshal(passMsg.Data, &passResp); err != nil {
+			t.Fatalf("decode pass response for %s: %v", players[i].name, err)
+		}
+		if !passResp.Accepted {
+			t.Fatalf("pass rejected for %s: %s", players[i].name, passResp.Reason)
+		}
+	}
+
+	assertEventually(t, 2*time.Second, func() bool {
+		snapshot := requestStateSnapshot(t, players[0].conn)
+		return snapshot.Phase == "pass_review" && len(snapshot.PassReceived) == 3
+	})
+
+	for i := 0; i < len(players)-1; i++ {
+		if err := players[i].conn.WriteJSON(wsCommand{Type: "ready_after_pass"}); err != nil {
+			t.Fatalf("ready write for %s: %v", players[i].name, err)
+		}
+		readyMsg := readMessageType(t, players[i].conn, "ready_after_pass_result")
+		var readyResp protocol.CommandResponse
+		if err := json.Unmarshal(readyMsg.Data, &readyResp); err != nil {
+			t.Fatalf("decode ready response for %s: %v", players[i].name, err)
+		}
+		if !readyResp.Accepted {
+			t.Fatalf("ready rejected for %s: %s", players[i].name, readyResp.Reason)
+		}
+	}
+
+	if phase := requestStateSnapshot(t, players[0].conn).Phase; phase != "pass_review" {
+		t.Fatalf("expected still pass_review before last ready, got %q", phase)
+	}
+
+	if err := players[len(players)-1].conn.WriteJSON(wsCommand{Type: "ready_after_pass"}); err != nil {
+		t.Fatalf("last ready write: %v", err)
+	}
+	lastReady := readMessageType(t, players[len(players)-1].conn, "ready_after_pass_result")
+	var lastReadyResp protocol.CommandResponse
+	if err := json.Unmarshal(lastReady.Data, &lastReadyResp); err != nil {
+		t.Fatalf("decode last ready response: %v", err)
+	}
+	if !lastReadyResp.Accepted {
+		t.Fatalf("last ready rejected: %s", lastReadyResp.Reason)
+	}
+
+	assertEventually(t, 2*time.Second, func() bool {
+		snapshot := requestStateSnapshot(t, players[0].conn)
+		return snapshot.Phase == "playing" && snapshot.TurnPlayerID != ""
+	})
+}
+
 func mustDialTableSocket(t *testing.T, baseURL, tableID string) *websocket.Conn {
 	t.Helper()
 

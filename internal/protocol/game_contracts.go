@@ -32,6 +32,17 @@ type CardPlayedData struct {
 	Card     string        `json:"card"`
 }
 
+type PassStatusData struct {
+	Submitted int    `json:"submitted"`
+	Total     int    `json:"total"`
+	Direction string `json:"direction,omitempty"`
+}
+
+type PassReadyData struct {
+	Ready int `json:"ready"`
+	Total int `json:"total"`
+}
+
 type TrickCompletedData struct {
 	TrickNumber    int           `json:"trick_number"`
 	WinnerPlayerID game.PlayerID `json:"winner_player_id"`

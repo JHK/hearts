@@ -28,6 +28,17 @@
       <div id="result" class="muted" style="margin-top:8px;"></div>
     </section>
 
+    <section id="passSection" class="hidden">
+      <h2>Pass Cards</h2>
+      <div id="passSummary" class="muted"></div>
+      <div id="passDetails" class="muted" style="margin-top:6px;"></div>
+      <div id="passSelection" class="muted" style="margin-top:6px;"></div>
+      <div class="row" style="margin-top:8px;">
+        <button id="submitPass" class="secondary">Pass 3 Cards</button>
+        <button id="readyAfterPass" class="secondary">Continue</button>
+      </div>
+    </section>
+
     <section id="trickSection">
       <h2>Trick</h2>
       <div class="table-board">
@@ -75,6 +86,12 @@
     const logsEl = document.getElementById('logs');
     const strategyEl = document.getElementById('strategy');
     const actionsSectionEl = document.getElementById('actionsSection');
+    const passSectionEl = document.getElementById('passSection');
+    const passSummaryEl = document.getElementById('passSummary');
+    const passDetailsEl = document.getElementById('passDetails');
+    const passSelectionEl = document.getElementById('passSelection');
+    const submitPassEl = document.getElementById('submitPass');
+    const readyAfterPassEl = document.getElementById('readyAfterPass');
     const trickSectionEl = document.getElementById('trickSection');
     const yourHandSectionEl = document.getElementById('yourHandSection');
     const otherHandsSectionEl = document.getElementById('otherHandsSection');
@@ -317,9 +334,10 @@
       }
     }
 
-    function renderYourHand(cards, isYourTurn) {
+    function renderYourHand(cards, phase, isYourTurn, passSubmitted) {
       const safeCards = Array.isArray(cards) ? cards : [];
-      const handRenderKey = `${isYourTurn ? '1' : '0'}|${safeCards.join(',')}`;
+      selectedPassCards = selectedPassCards.filter((card) => safeCards.includes(card));
+      const handRenderKey = `${phase}|${isYourTurn ? '1' : '0'}|${passSubmitted ? '1' : '0'}|${selectedPassCards.join(',')}|${safeCards.join(',')}`;
       if (handRenderKey === lastHandRenderKey) {
         return;
       }
@@ -339,8 +357,14 @@
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'hand-card';
-        if (isYourTurn) {
+        if (phase === 'playing' && isYourTurn) {
           card.className += ' playable';
+        }
+        if (phase === 'passing' && !passSubmitted) {
+          card.className += ' pass-selectable';
+        }
+        if (selectedPassCards.includes(cardValue)) {
+          card.className += ' selected';
         }
 
         const imageURL = cardImageURL(cardValue);
@@ -357,7 +381,21 @@
         }
 
         card.onclick = () => {
-          send({ type: 'play', card: cardValue });
+          if (phase === 'passing' && !passSubmitted) {
+            const selected = selectedPassCards.includes(cardValue);
+            if (selected) {
+              selectedPassCards = selectedPassCards.filter((card) => card !== cardValue);
+            } else if (selectedPassCards.length < 3) {
+              selectedPassCards = [...selectedPassCards, cardValue];
+            }
+            renderYourHand(safeCards, phase, isYourTurn, passSubmitted);
+            renderPassPanel(lastSnapshot);
+            return;
+          }
+
+          if (phase === 'playing') {
+            send({ type: 'play', card: cardValue });
+          }
         };
         yourHandEl.appendChild(card);
       }
@@ -398,11 +436,64 @@
       }
     }
 
+    function formatCardList(cards) {
+      if (!Array.isArray(cards) || cards.length === 0) {
+        return '-';
+      }
+
+      return cards.join(', ');
+    }
+
+    function renderPassPanel(state) {
+      const phase = state && state.phase ? state.phase : '';
+      const passDirection = (state && state.pass_direction) || 'left';
+      const passSubmitted = !!(state && state.pass_submitted);
+      const passSubmittedCount = (state && state.pass_submitted_count) || 0;
+      const passReady = !!(state && state.pass_ready);
+      const passReadyCount = (state && state.pass_ready_count) || 0;
+      const passSent = (state && state.pass_sent) || [];
+      const passReceived = (state && state.pass_received) || [];
+
+      if (phase !== 'passing' && phase !== 'pass_review') {
+        passSectionEl.classList.add('hidden');
+        submitPassEl.hidden = true;
+        readyAfterPassEl.hidden = true;
+        return;
+      }
+
+      passSectionEl.classList.remove('hidden');
+
+      if (phase === 'passing') {
+        passSummaryEl.textContent = `Pass 3 cards to the ${passDirection}. (${passSubmittedCount}/4 submitted)`;
+        passDetailsEl.textContent = passSubmitted
+          ? 'Waiting for other players to submit cards.'
+          : 'Select exactly 3 cards from your hand.';
+        passSelectionEl.textContent = passSubmitted
+          ? `Passed: ${formatCardList(passSent)}`
+          : `Selected (${selectedPassCards.length}/3): ${formatCardList(selectedPassCards)}`;
+
+        submitPassEl.hidden = false;
+        submitPassEl.disabled = passSubmitted || selectedPassCards.length !== 3;
+        readyAfterPassEl.hidden = true;
+        return;
+      }
+
+      passSummaryEl.textContent = `Pass complete. (${passReadyCount}/4 ready)`;
+      passDetailsEl.textContent = `You passed: ${formatCardList(passSent)}`;
+      passSelectionEl.textContent = `You received: ${formatCardList(passReceived)}`;
+
+      submitPassEl.hidden = true;
+      readyAfterPassEl.hidden = false;
+      readyAfterPassEl.disabled = passReady;
+    }
+
     const token = ensureToken();
     let ws;
     let myPlayerId = '';
     let lastTrickSignature = '';
     let lastHandRenderKey = '';
+    let lastSnapshot = {};
+    let selectedPassCards = [];
     let lastPlayers = [];
     let liveTrickPlays = [];
     let pendingStateRefresh = 0;
@@ -444,7 +535,12 @@
     }
 
     function renderState(state) {
+      lastSnapshot = state || {};
       const players = state.players || [];
+      const phase = state.phase || (state.started ? 'playing' : '');
+      const isPassing = phase === 'passing';
+      const isPassReview = phase === 'pass_review';
+      const isPlaying = phase === 'playing';
       const waitingForPlayers = !state.started && players.length < 4;
       statusEl.hidden = !waitingForPlayers;
       if (waitingForPlayers) {
@@ -458,16 +554,21 @@
       }
 
       actionsSectionEl.hidden = state.started;
+      trickSectionEl.hidden = !isPlaying;
       yourHandSectionEl.hidden = !state.started;
       otherHandsSectionEl.hidden = !state.started;
 
       lastPlayers = players;
       const turnPlayer = players.find((player) => player.player_id === state.turn_player_id);
-      const isYourTurn = !!state.started && !!myPlayerId && state.turn_player_id === myPlayerId;
-      if (state.started) {
+      const isYourTurn = !!isPlaying && !!myPlayerId && state.turn_player_id === myPlayerId;
+      if (isPlaying) {
         turnIndicatorEl.textContent = isYourTurn
           ? 'waiting for you'
           : `waiting for ${turnPlayer ? turnPlayer.name : (state.turn_player_id || '-')}`;
+      } else if (isPassing) {
+        turnIndicatorEl.textContent = `pass 3 cards ${state.pass_direction ? `(${state.pass_direction})` : ''}`.trim();
+      } else if (isPassReview) {
+        turnIndicatorEl.textContent = 'waiting for players to continue';
       } else {
         turnIndicatorEl.textContent = '';
       }
@@ -491,8 +592,9 @@
 
       setSeatLabels(players, state.turn_player_id);
       renderTrick(players, liveTrickPlays);
-      renderYourHand(state.hand || [], isYourTurn);
+      renderYourHand(state.hand || [], phase, isYourTurn, !!state.pass_submitted);
       renderOtherHands(players, state.hand_sizes || {});
+      renderPassPanel(state);
 
     }
 
@@ -580,8 +682,13 @@
             break;
           case 'start_result':
           case 'play_result':
+          case 'pass_result':
+          case 'ready_after_pass_result':
             if (msg.data && msg.data.accepted) {
               resultEl.textContent = 'ok';
+              if (msg.type === 'pass_result') {
+                selectedPassCards = [];
+              }
             } else {
               resultEl.textContent = msg.data && msg.data.reason ? msg.data.reason : 'rejected';
             }
@@ -627,6 +734,17 @@
 
     document.getElementById('start').onclick = () => {
       send({ type: 'start' });
+    };
+
+    submitPassEl.onclick = () => {
+      if (selectedPassCards.length !== 3) {
+        return;
+      }
+      send({ type: 'pass', cards: selectedPassCards });
+    };
+
+    readyAfterPassEl.onclick = () => {
+      send({ type: 'ready_after_pass' });
     };
 
     connect();

@@ -30,11 +30,12 @@ type wsMessage struct {
 }
 
 type wsCommand struct {
-	Type     string `json:"type"`
-	Name     string `json:"name,omitempty"`
-	Token    string `json:"token,omitempty"`
-	Card     string `json:"card,omitempty"`
-	Strategy string `json:"strategy,omitempty"`
+	Type     string   `json:"type"`
+	Name     string   `json:"name,omitempty"`
+	Token    string   `json:"token,omitempty"`
+	Card     string   `json:"card,omitempty"`
+	Cards    []string `json:"cards,omitempty"`
+	Strategy string   `json:"strategy,omitempty"`
 }
 
 type humanPresenceTracker struct {
@@ -297,6 +298,20 @@ func handleTableWebSocket(manager *table.Manager, presence *humanPresenceTracker
 				continue
 			}
 			send(wsMessage{Type: "play_result", Data: runtime.Play(current, cmd.Card)})
+		case "pass":
+			current := getPlayerID()
+			if current == "" {
+				send(wsMessage{Type: "error", Error: "join first"})
+				continue
+			}
+			send(wsMessage{Type: "pass_result", Data: runtime.Pass(current, cmd.Cards)})
+		case "ready_after_pass":
+			current := getPlayerID()
+			if current == "" {
+				send(wsMessage{Type: "error", Error: "join first"})
+				continue
+			}
+			send(wsMessage{Type: "ready_after_pass_result", Data: runtime.ReadyAfterPass(current)})
 		case "add_bot":
 			added, err := runtime.AddBot(cmd.Strategy)
 			if err != nil {
