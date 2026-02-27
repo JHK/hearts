@@ -32,6 +32,13 @@ type PlayerSnapshot struct {
 	IsBot    bool          `json:"is_bot"`
 }
 
+type TrickPlaySnapshot struct {
+	PlayerID game.PlayerID `json:"player_id"`
+	Name     string        `json:"name"`
+	Seat     int           `json:"seat"`
+	Card     string        `json:"card"`
+}
+
 type Snapshot struct {
 	TableID      string                        `json:"table_id"`
 	Players      []PlayerSnapshot              `json:"players"`
@@ -40,7 +47,9 @@ type Snapshot struct {
 	TurnPlayerID game.PlayerID                 `json:"turn_player_id"`
 	HeartsBroken bool                          `json:"hearts_broken"`
 	CurrentTrick []string                      `json:"current_trick"`
+	TrickPlays   []TrickPlaySnapshot           `json:"trick_plays"`
 	Hand         []string                      `json:"hand"`
+	HandSizes    map[game.PlayerID]int         `json:"hand_sizes"`
 	RoundPoints  map[game.PlayerID]game.Points `json:"round_points"`
 	TotalPoints  map[game.PlayerID]game.Points `json:"total_points"`
 }
@@ -683,8 +692,13 @@ func (r *Runtime) buildSnapshot(state *tableState, forPlayer game.PlayerID) Snap
 		TableID:     r.tableID,
 		Players:     players,
 		Started:     state.round != nil,
+		HandSizes:   map[game.PlayerID]int{},
 		RoundPoints: map[game.PlayerID]game.Points{},
 		TotalPoints: copyPoints(state.totals),
+	}
+
+	for _, player := range state.players {
+		snapshot.HandSizes[player.PlayerID] = len(player.Hand)
 	}
 
 	if state.round != nil {
@@ -692,8 +706,20 @@ func (r *Runtime) buildSnapshot(state *tableState, forPlayer game.PlayerID) Snap
 		snapshot.TurnPlayerID = state.players[state.round.TurnSeat].PlayerID
 		snapshot.HeartsBroken = state.round.HeartsBroken
 		snapshot.CurrentTrick = make([]string, 0, len(state.round.Trick))
+		snapshot.TrickPlays = make([]TrickPlaySnapshot, 0, len(state.round.Trick))
 		for _, played := range state.round.Trick {
 			snapshot.CurrentTrick = append(snapshot.CurrentTrick, played.Card.String())
+			player := state.playersByID[played.PlayerID]
+			name := played.PlayerID.String()
+			if player != nil {
+				name = player.Name
+			}
+			snapshot.TrickPlays = append(snapshot.TrickPlays, TrickPlaySnapshot{
+				PlayerID: played.PlayerID,
+				Name:     name,
+				Seat:     played.Seat,
+				Card:     played.Card.String(),
+			})
 		}
 		snapshot.RoundPoints = copyPoints(state.round.RoundPoints)
 	}

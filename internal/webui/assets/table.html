@@ -6,40 +6,170 @@
   <title>Hearts Table</title>
   <style>
     :root {
-      --bg: #eef3f7;
-      --card: #ffffff;
-      --ink: #162230;
-      --muted: #52667a;
-      --line: #d4e1ec;
-      --accent: #b4412f;
-      --accent2: #1f6f5f;
+      --bg: #edf2f7;
+      --ink: #142132;
+      --muted: #54697d;
+      --panel: #ffffffee;
+      --line: #cfdae6;
+      --green: #1f6f5f;
+      --orange: #b44f26;
+      --felt: #1f5f51;
+      --card-front: #fff;
+      --card-back-a: #2b5a86;
+      --card-back-b: #22496d;
+      --danger: #9d2d2d;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      background: radial-gradient(circle at 20% 0, #fff 0, var(--bg) 45%, #dce7f1 100%);
       color: var(--ink);
       font-family: "Noto Sans", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 15% 0%, #ffffff 0%, #edf2f7 35%, #d7e1ec 100%);
     }
     main {
-      max-width: 980px;
+      max-width: 1080px;
       margin: 0 auto;
-      padding: 18px;
+      padding: 16px;
       display: grid;
       gap: 12px;
     }
     section {
-      background: var(--card);
+      background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 12px;
-      box-shadow: 0 8px 20px rgba(16, 36, 56, 0.08);
+      box-shadow: 0 10px 24px rgba(17, 37, 58, 0.08);
     }
     h1, h2 { margin: 0 0 10px 0; }
-    h1 { font-size: 1.3rem; }
+    h1 { font-size: 1.28rem; }
     h2 { font-size: 1rem; }
     .muted { color: var(--muted); }
     .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+    .table-board {
+      background: radial-gradient(circle at center, #2a7d6a 0%, var(--felt) 65%, #17493f 100%);
+      border: 1px solid #2d7e6f;
+      border-radius: 16px;
+      padding: 14px;
+      min-height: 250px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+    }
+    .seat {
+      color: #e7fff8;
+      font-size: 0.88rem;
+      opacity: 0.9;
+      border-radius: 8px;
+      padding: 4px 6px;
+    }
+    .seat.turn {
+      background: rgba(255, 243, 194, 0.18);
+      box-shadow: 0 0 0 1px rgba(255, 243, 194, 0.45) inset;
+      font-weight: 700;
+    }
+    .seat.top { grid-column: 2; grid-row: 1; text-align: center; }
+    .seat.left { grid-column: 1; grid-row: 2; align-self: center; }
+    .seat.right { grid-column: 3; grid-row: 2; align-self: center; text-align: right; }
+    .seat.bottom { grid-column: 2; grid-row: 3; text-align: center; }
+
+    .trick-center {
+      grid-column: 2;
+      grid-row: 2;
+      border: 1px dashed rgba(224, 255, 245, 0.4);
+      border-radius: 12px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(70px, 1fr));
+      gap: 8px;
+      padding: 8px;
+      align-content: center;
+      justify-items: center;
+      min-height: 130px;
+    }
+
+    .play-card {
+      background: var(--card-front);
+      border: 1px solid #d6e2ee;
+      border-radius: 8px;
+      min-width: 64px;
+      padding: 8px;
+      box-shadow: 0 4px 10px rgba(16, 31, 52, 0.2);
+      text-align: center;
+    }
+    .play-card .label {
+      font-family: "Cascadia Mono", "DejaVu Sans Mono", monospace;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .play-card .who {
+      font-size: 0.74rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 90px;
+    }
+
+    .is-red { color: var(--danger); }
+
+    .cards-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .hand-card {
+      border: 1px solid #d4dee8;
+      border-radius: 10px;
+      padding: 7px 9px;
+      min-width: 44px;
+      text-align: center;
+      background: #fff;
+      font-family: "Cascadia Mono", "DejaVu Sans Mono", monospace;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease;
+    }
+    .hand-card:hover { transform: translateY(-2px); }
+    .hand-card.playable {
+      border-color: #8cbadf;
+      box-shadow: 0 3px 8px rgba(20, 46, 72, 0.15);
+    }
+
+    .other-hands {
+      display: grid;
+      gap: 8px;
+    }
+    .other-line {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+    }
+    .back-row {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .back-card {
+      width: 18px;
+      height: 26px;
+      border-radius: 4px;
+      border: 1px solid #1f466b;
+      background:
+        repeating-linear-gradient(
+          45deg,
+          var(--card-back-a),
+          var(--card-back-a) 4px,
+          var(--card-back-b) 4px,
+          var(--card-back-b) 8px
+        );
+    }
+
     button {
       border: 0;
       border-radius: 10px;
@@ -47,9 +177,10 @@
       color: #fff;
       font-weight: 700;
       cursor: pointer;
-      background: linear-gradient(130deg, var(--accent), #d06d53);
+      background: linear-gradient(130deg, var(--orange), #d06d53);
     }
-    button.secondary { background: linear-gradient(130deg, var(--accent2), #2f9480); }
+    button.secondary { background: linear-gradient(130deg, var(--green), #2f9480); }
+
     input, select {
       border: 1px solid var(--line);
       border-radius: 10px;
@@ -57,21 +188,41 @@
       min-width: 180px;
       font-size: 1rem;
     }
+
     ul {
       margin: 0;
       padding-left: 20px;
     }
+    #players li.turn-item {
+      font-weight: 700;
+      color: var(--green);
+    }
     pre {
       margin: 0;
-      max-height: 40vh;
+      max-height: 34vh;
       overflow: auto;
       font-family: "Cascadia Mono", "DejaVu Sans Mono", monospace;
       white-space: pre-wrap;
       line-height: 1.35;
     }
-    @media (max-width: 640px) {
+
+    @media (max-width: 700px) {
+      .table-board {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto auto;
+      }
+      .seat.top, .seat.left, .seat.right, .seat.bottom, .trick-center {
+        grid-column: 1;
+      }
+      .seat.top { grid-row: 1; }
+      .trick-center { grid-row: 2; }
+      .seat.left { grid-row: 3; text-align: left; }
+      .seat.right { grid-row: 4; text-align: left; }
+      .seat.bottom { grid-row: 5; text-align: left; }
       input, select, button { width: 100%; }
     }
+
+    #actionsSection.hidden { display: none; }
   </style>
 </head>
 <body>
@@ -79,8 +230,30 @@
     <section>
       <h1 id="title">Hearts Table</h1>
       <div id="status" class="muted">connecting...</div>
+      <div id="turnIndicator" class="muted" style="margin-top:6px;">Turn: -</div>
       <div id="identity" class="muted" style="margin-top:8px;"></div>
-      <div id="hand" style="margin-top:8px; font-weight:600;"></div>
+    </section>
+
+    <section>
+      <h2>Trick</h2>
+      <div class="table-board">
+        <div id="seatTop" class="seat top">top: -</div>
+        <div id="seatLeft" class="seat left">left: -</div>
+        <div id="seatRight" class="seat right">right: -</div>
+        <div id="seatBottom" class="seat bottom">you: -</div>
+        <div id="trickCenter" class="trick-center"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Your Hand</h2>
+      <div id="yourName" class="muted" style="margin-bottom:8px;">you</div>
+      <div id="yourHand" class="cards-row"></div>
+    </section>
+
+    <section>
+      <h2>Other Players' Hands</h2>
+      <div id="otherHands" class="other-hands"></div>
     </section>
 
     <section>
@@ -88,7 +261,7 @@
       <ul id="players"></ul>
     </section>
 
-    <section>
+    <section id="actionsSection">
       <h2>Actions</h2>
       <div class="row">
         <select id="strategy">
@@ -97,10 +270,6 @@
         </select>
         <button id="addBot" class="secondary">Add Bot</button>
         <button id="start" class="secondary">Start</button>
-      </div>
-      <div class="row" style="margin-top:10px;">
-        <input id="card" placeholder="Card, e.g. QS" />
-        <button id="play">Play</button>
       </div>
       <div id="result" class="muted" style="margin-top:8px;"></div>
     </section>
@@ -122,13 +291,21 @@
     const tableId = decodeURIComponent(location.pathname.replace('/table/', ''));
     const titleEl = document.getElementById('title');
     const statusEl = document.getElementById('status');
+    const turnIndicatorEl = document.getElementById('turnIndicator');
     const identityEl = document.getElementById('identity');
-    const handEl = document.getElementById('hand');
+    const yourNameEl = document.getElementById('yourName');
     const playersEl = document.getElementById('players');
     const resultEl = document.getElementById('result');
     const logsEl = document.getElementById('logs');
-    const cardEl = document.getElementById('card');
     const strategyEl = document.getElementById('strategy');
+    const actionsSectionEl = document.getElementById('actionsSection');
+    const yourHandEl = document.getElementById('yourHand');
+    const otherHandsEl = document.getElementById('otherHands');
+    const trickCenterEl = document.getElementById('trickCenter');
+    const seatTopEl = document.getElementById('seatTop');
+    const seatLeftEl = document.getElementById('seatLeft');
+    const seatRightEl = document.getElementById('seatRight');
+    const seatBottomEl = document.getElementById('seatBottom');
 
     titleEl.textContent = `Hearts Table ${tableId}`;
 
@@ -140,10 +317,160 @@
     function ensureToken() {
       let token = localStorage.getItem(tokenKey);
       if (!token) {
-        token = (self.crypto && self.crypto.randomUUID) ? self.crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
+        token = (self.crypto && self.crypto.randomUUID)
+          ? self.crypto.randomUUID()
+          : String(Date.now()) + Math.random().toString(16).slice(2);
         localStorage.setItem(tokenKey, token);
       }
       return token;
+    }
+
+    function isRedCard(card) {
+      if (!card || card.length < 2) return false;
+      const suit = card.slice(-1);
+      return suit === 'H' || suit === 'D';
+    }
+
+    function setSeatTurnClass(el, player, turnPlayerId) {
+      if (player && turnPlayerId && player.player_id === turnPlayerId) {
+        el.classList.add('turn');
+      } else {
+        el.classList.remove('turn');
+      }
+    }
+
+    function setSeatLabels(players, turnPlayerId) {
+      const me = players.find((p) => p.player_id === myPlayerId);
+      if (!me) {
+        seatTopEl.textContent = 'top: -';
+        seatLeftEl.textContent = 'left: -';
+        seatRightEl.textContent = 'right: -';
+        seatBottomEl.textContent = 'you: -';
+        seatTopEl.classList.remove('turn');
+        seatLeftEl.classList.remove('turn');
+        seatRightEl.classList.remove('turn');
+        seatBottomEl.classList.remove('turn');
+        return;
+      }
+
+      const bySeat = new Map();
+      for (const player of players) {
+        bySeat.set(player.seat, player);
+      }
+
+      function atOffset(offset) {
+        const seat = (me.seat + offset + 4) % 4;
+        return bySeat.get(seat);
+      }
+
+      const top = atOffset(2);
+      const left = atOffset(1);
+      const right = atOffset(3);
+
+      seatTopEl.textContent = top ? `top: ${top.name}` : 'top: -';
+      seatLeftEl.textContent = left ? `left: ${left.name}` : 'left: -';
+      seatRightEl.textContent = right ? `right: ${right.name}` : 'right: -';
+      seatBottomEl.textContent = `you: ${me.name}`;
+
+      setSeatTurnClass(seatTopEl, top, turnPlayerId);
+      setSeatTurnClass(seatLeftEl, left, turnPlayerId);
+      setSeatTurnClass(seatRightEl, right, turnPlayerId);
+      setSeatTurnClass(seatBottomEl, me, turnPlayerId);
+    }
+
+    function renderTrick(players, trickPlays) {
+      trickCenterEl.innerHTML = '';
+      const byPlayer = new Map();
+      for (const player of players) {
+        byPlayer.set(player.player_id, player);
+      }
+
+      if (!trickPlays || trickPlays.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'muted';
+        empty.textContent = 'No cards in current trick yet.';
+        trickCenterEl.appendChild(empty);
+        return;
+      }
+
+      for (const play of trickPlays) {
+        const card = document.createElement('div');
+        card.className = 'play-card';
+
+        const label = document.createElement('div');
+        label.className = 'label' + (isRedCard(play.card) ? ' is-red' : '');
+        label.textContent = play.card;
+
+        const who = document.createElement('div');
+        who.className = 'who';
+        const player = byPlayer.get(play.player_id);
+        who.textContent = player ? player.name : play.player_id;
+
+        card.appendChild(who);
+        card.appendChild(label);
+        trickCenterEl.appendChild(card);
+      }
+    }
+
+    function renderYourHand(cards, isYourTurn) {
+      yourHandEl.innerHTML = '';
+
+      if (!cards || cards.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'muted';
+        empty.textContent = '(empty)';
+        yourHandEl.appendChild(empty);
+        return;
+      }
+
+      for (const cardValue of cards) {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'hand-card' + (isRedCard(cardValue) ? ' is-red' : '');
+        if (isYourTurn) {
+          card.className += ' playable';
+        }
+        card.textContent = cardValue;
+        card.onclick = () => {
+          send({ type: 'play', card: cardValue });
+        };
+        yourHandEl.appendChild(card);
+      }
+    }
+
+    function renderOtherHands(players, handSizes) {
+      otherHandsEl.innerHTML = '';
+
+      const others = (players || []).filter((player) => player.player_id !== myPlayerId);
+      if (others.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'muted';
+        empty.textContent = 'No other players yet.';
+        otherHandsEl.appendChild(empty);
+        return;
+      }
+
+      for (const player of others) {
+        const line = document.createElement('div');
+        line.className = 'other-line';
+
+        const title = document.createElement('div');
+        const bot = player.is_bot ? ' [bot]' : '';
+        const count = handSizes && handSizes[player.player_id] ? handSizes[player.player_id] : 0;
+        title.textContent = `seat ${player.seat}: ${player.name}${bot} - ${count} cards`;
+
+        const backRow = document.createElement('div');
+        backRow.className = 'back-row';
+        for (let i = 0; i < count; i += 1) {
+          const back = document.createElement('div');
+          back.className = 'back-card';
+          backRow.appendChild(back);
+        }
+
+        line.appendChild(title);
+        line.appendChild(backRow);
+        otherHandsEl.appendChild(line);
+      }
     }
 
     const token = ensureToken();
@@ -170,18 +497,42 @@
     function renderState(state) {
       const started = state.started ? 'yes' : 'no';
       const trick = state.started ? String((state.trick_number || 0) + 1) : '-';
-      statusEl.textContent = `table=${state.table_id} started=${started} turn=${state.turn_player_id || '-'} trick=${trick}`;
+      const turn = state.turn_player_id || '-';
+      statusEl.textContent = `table=${state.table_id} started=${started} turn=${turn} trick=${trick}`;
 
-      const cards = state.hand || [];
-      handEl.textContent = cards.length ? `hand: ${cards.join(' ')}` : 'hand: (empty)';
+      if (state.started) {
+        actionsSectionEl.classList.add('hidden');
+      } else {
+        actionsSectionEl.classList.remove('hidden');
+      }
 
       const players = state.players || [];
+      const turnPlayer = players.find((player) => player.player_id === state.turn_player_id);
+      if (state.started) {
+        turnIndicatorEl.textContent = `Turn: ${turnPlayer ? turnPlayer.name : turn}`;
+      } else {
+        turnIndicatorEl.textContent = 'Turn: round not started';
+      }
+
+      const me = players.find((player) => player.player_id === myPlayerId);
+      yourNameEl.textContent = me ? me.name : 'you';
+      const isYourTurn = !!state.started && !!myPlayerId && state.turn_player_id === myPlayerId;
+
+      setSeatLabels(players, state.turn_player_id);
+      renderTrick(players, state.trick_plays || []);
+      renderYourHand(state.hand || [], isYourTurn);
+      renderOtherHands(players, state.hand_sizes || {});
+
       playersEl.innerHTML = '';
       for (const player of players) {
         const li = document.createElement('li');
         const bot = player.is_bot ? ' [bot]' : '';
         const me = (player.player_id === myPlayerId) ? ' [you]' : '';
-        li.textContent = `seat ${player.seat}: ${player.name}${bot}${me}`;
+        const turnMark = (state.started && player.player_id === state.turn_player_id) ? ' [turn]' : '';
+        if (turnMark) {
+          li.classList.add('turn-item');
+        }
+        li.textContent = `seat ${player.seat}: ${player.name}${bot}${me}${turnMark}`;
         playersEl.appendChild(li);
       }
     }
@@ -257,18 +608,6 @@
     document.getElementById('start').onclick = () => {
       send({ type: 'start' });
     };
-
-    document.getElementById('play').onclick = () => {
-      const card = cardEl.value.trim().toUpperCase();
-      send({ type: 'play', card });
-      cardEl.value = '';
-    };
-
-    cardEl.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        document.getElementById('play').click();
-      }
-    });
 
     connect();
   </script>
