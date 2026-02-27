@@ -58,7 +58,7 @@
       </div>
     </section>
 
-    <section>
+    <section id="eventsSection">
       <details>
         <summary>Events</summary>
         <pre id="logs"></pre>
@@ -75,12 +75,14 @@
     const tokenKey = 'hearts.player.token';
 
     const tableId = decodeURIComponent(location.pathname.replace('/table/', ''));
+    const eventsEnabled = new URLSearchParams(location.search).get('events') === 'true';
     const titleEl = document.getElementById('title');
     const statusEl = document.getElementById('status');
     const turnIndicatorEl = document.getElementById('turnIndicator');
     const botControlEl = document.getElementById('botControl');
     const addBotDefaultEl = document.getElementById('addBotDefault');
     const botStrategySelectEl = document.getElementById('botStrategySelect');
+    const eventsSectionEl = document.getElementById('eventsSection');
     const logsEl = document.getElementById('logs');
     const startButtonEl = document.getElementById('start');
     const centerControlsEl = document.getElementById('centerControls');
@@ -105,6 +107,8 @@
     const seatBottomNameEl = document.getElementById('seatBottomName');
     const seatBottomHandEl = document.getElementById('seatBottomHand');
     const trickSlotEls = createTrickSlots();
+
+    eventsSectionEl.hidden = !eventsEnabled;
 
     titleEl.textContent = `Hearts Table ${tableId}`;
 
@@ -622,6 +626,10 @@
     }
 
     function log(line) {
+      if (!eventsEnabled) {
+        return;
+      }
+
       const ts = new Date().toLocaleTimeString();
       logsEl.textContent += `[${ts}] ${line}\n`;
       logsEl.scrollTop = logsEl.scrollHeight;
