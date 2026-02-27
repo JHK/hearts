@@ -15,20 +15,17 @@
       </div>
     </section>
 
-    <section id="actionsSection">
-      <h2>Actions</h2>
-      <div class="row">
-        <select id="strategy">
-          <option value="">random</option>
-          <option value="first-legal">first-legal</option>
-        </select>
-        <button id="addBot" class="secondary">Add Bot</button>
-      </div>
-      <div id="result" class="muted" style="margin-top:8px;"></div>
-    </section>
-
     <section id="trickSection">
       <div class="table-board">
+        <div id="botControl" class="bot-control hidden">
+          <div class="bot-control-group">
+            <button id="addBotDefault" type="button" class="secondary">Add Bot</button>
+            <select id="botStrategySelect" class="bot-strategy-select" aria-label="Select bot strategy">
+              <option value="" selected>random</option>
+              <option value="first-legal">first-legal</option>
+            </select>
+          </div>
+        </div>
         <div id="seatTop" class="seat top">
           <div id="seatTopName" class="seat-name">-</div>
           <div id="seatTopHand" class="seat-hand"></div>
@@ -80,11 +77,11 @@
     const titleEl = document.getElementById('title');
     const statusEl = document.getElementById('status');
     const turnIndicatorEl = document.getElementById('turnIndicator');
-    const resultEl = document.getElementById('result');
+    const botControlEl = document.getElementById('botControl');
+    const addBotDefaultEl = document.getElementById('addBotDefault');
+    const botStrategySelectEl = document.getElementById('botStrategySelect');
     const logsEl = document.getElementById('logs');
-    const strategyEl = document.getElementById('strategy');
     const startButtonEl = document.getElementById('start');
-    const actionsSectionEl = document.getElementById('actionsSection');
     const centerControlsEl = document.getElementById('centerControls');
     const passSummaryEl = document.getElementById('passSummary');
     const passDetailsEl = document.getElementById('passDetails');
@@ -594,14 +591,13 @@
         statusEl.textContent = '⌛';
       }
 
-      if (state.started) {
-        actionsSectionEl.classList.add('hidden');
-      } else {
-        actionsSectionEl.classList.remove('hidden');
-      }
-
-      actionsSectionEl.hidden = state.started;
       trickSectionEl.hidden = false;
+
+      const canAddBot = !state.started && players.length < 4;
+      botControlEl.classList.toggle('hidden', !canAddBot);
+      if (!canAddBot) {
+        botStrategySelectEl.value = '';
+      }
 
       const showStartControl = !state.started && players.length === 4;
       const showPassControls = isPassing || isPassReview;
@@ -720,7 +716,6 @@
         const msg = JSON.parse(event.data);
 
         if (msg.error) {
-          resultEl.textContent = `error: ${msg.error}`;
           log(`error: ${msg.error}`);
           return;
         }
@@ -732,10 +727,9 @@
           case 'join_result':
             if (msg.data && msg.data.accepted) {
               myPlayerId = msg.data.player_id;
-              resultEl.textContent = 'joined';
               log(`joined as ${myPlayerId} seat ${msg.data.seat}`);
             } else {
-              resultEl.textContent = msg.data && msg.data.reason ? msg.data.reason : 'join rejected';
+              log(`join rejected: ${msg.data && msg.data.reason ? msg.data.reason : 'join rejected'}`);
             }
             requestState();
             break;
@@ -744,12 +738,12 @@
           case 'pass_result':
           case 'ready_after_pass_result':
             if (msg.data && msg.data.accepted) {
-              resultEl.textContent = 'ok';
+              log(`${msg.type}: ok`);
               if (msg.type === 'pass_result') {
                 selectedPassCards = [];
               }
             } else {
-              resultEl.textContent = msg.data && msg.data.reason ? msg.data.reason : 'rejected';
+              log(`${msg.type}: ${msg.data && msg.data.reason ? msg.data.reason : 'rejected'}`);
             }
             scheduleStateRefresh(0);
             break;
@@ -769,7 +763,7 @@
             }
             break;
           case 'add_bot_result':
-            resultEl.textContent = 'bot added';
+            log('bot added');
             scheduleStateRefresh(0);
             break;
           case 'trick_completed':
@@ -787,8 +781,9 @@
       };
     }
 
-    document.getElementById('addBot').onclick = () => {
-      send({ type: 'add_bot', strategy: strategyEl.value });
+    addBotDefaultEl.onclick = () => {
+      send({ type: 'add_bot', strategy: botStrategySelectEl.value || '' });
+      botStrategySelectEl.value = '';
     };
 
     startButtonEl.onclick = () => {
