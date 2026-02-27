@@ -23,20 +23,8 @@
           <option value="first-legal">first-legal</option>
         </select>
         <button id="addBot" class="secondary">Add Bot</button>
-        <button id="start" class="secondary">Start</button>
       </div>
       <div id="result" class="muted" style="margin-top:8px;"></div>
-    </section>
-
-    <section id="passSection" class="hidden">
-      <h2>Pass Cards</h2>
-      <div id="passSummary" class="muted"></div>
-      <div id="passDetails" class="muted" style="margin-top:6px;"></div>
-      <div id="passSelection" class="muted" style="margin-top:6px;"></div>
-      <div class="row" style="margin-top:8px;">
-        <button id="submitPass" class="secondary">Pass 3 Cards</button>
-        <button id="readyAfterPass" class="secondary">Continue</button>
-      </div>
     </section>
 
     <section id="trickSection">
@@ -57,7 +45,18 @@
           <div id="seatBottomName" class="seat-name">-</div>
           <div id="seatBottomHand" class="seat-hand"></div>
         </div>
-        <div id="trickCenter" class="trick-center"></div>
+        <div id="trickCenter" class="trick-center">
+          <div id="centerControls" class="trick-center-controls hidden">
+            <div id="passSummary" class="muted"></div>
+            <div id="passDetails" class="muted" style="margin-top:6px;"></div>
+            <div id="passSelection" class="muted" style="margin-top:6px;"></div>
+            <div class="row center-controls-row" style="margin-top:8px;">
+              <button id="start" class="secondary">Start</button>
+              <button id="submitPass" class="secondary">Pass 3 Cards</button>
+              <button id="readyAfterPass" class="secondary">Continue</button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -84,8 +83,9 @@
     const resultEl = document.getElementById('result');
     const logsEl = document.getElementById('logs');
     const strategyEl = document.getElementById('strategy');
+    const startButtonEl = document.getElementById('start');
     const actionsSectionEl = document.getElementById('actionsSection');
-    const passSectionEl = document.getElementById('passSection');
+    const centerControlsEl = document.getElementById('centerControls');
     const passSummaryEl = document.getElementById('passSummary');
     const passDetailsEl = document.getElementById('passDetails');
     const passSelectionEl = document.getElementById('passSelection');
@@ -355,10 +355,12 @@
       }
     }
 
-    function renderYourHand(cards, phase, isYourTurn, passSubmitted) {
+    function renderYourHand(cards, phase, isYourTurn, passSubmitted, passReceived, passReady) {
       const safeCards = Array.isArray(cards) ? cards : [];
+      const safePassReceived = Array.isArray(passReceived) ? passReceived : [];
+      const receivedSet = new Set(safePassReceived);
       selectedPassCards = selectedPassCards.filter((card) => safeCards.includes(card));
-      const handRenderKey = `${phase}|${isYourTurn ? '1' : '0'}|${passSubmitted ? '1' : '0'}|${selectedPassCards.join(',')}|${safeCards.join(',')}`;
+      const handRenderKey = `${phase}|${isYourTurn ? '1' : '0'}|${passSubmitted ? '1' : '0'}|${passReady ? '1' : '0'}|${safePassReceived.join(',')}|${selectedPassCards.join(',')}|${safeCards.join(',')}`;
       if (handRenderKey === lastHandRenderKey) {
         return;
       }
@@ -385,6 +387,9 @@
           card.className += ' pass-selectable';
         }
         if (selectedPassCards.includes(cardValue)) {
+          card.className += ' selected';
+        }
+        if (phase === 'pass_review' && !passReady && receivedSet.has(cardValue)) {
           card.className += ' selected';
         }
 
@@ -459,41 +464,34 @@
 
     function renderPassPanel(state) {
       const phase = state && state.phase ? state.phase : '';
-      const passDirection = (state && state.pass_direction) || 'left';
       const passSubmitted = !!(state && state.pass_submitted);
-      const passSubmittedCount = (state && state.pass_submitted_count) || 0;
       const passReady = !!(state && state.pass_ready);
-      const passReadyCount = (state && state.pass_ready_count) || 0;
-      const passSent = (state && state.pass_sent) || [];
-      const passReceived = (state && state.pass_received) || [];
 
       if (phase !== 'passing' && phase !== 'pass_review') {
-        passSectionEl.classList.add('hidden');
+        passSummaryEl.textContent = '';
+        passDetailsEl.textContent = '';
+        passSelectionEl.textContent = '';
+        passSummaryEl.hidden = true;
+        passDetailsEl.hidden = true;
+        passSelectionEl.hidden = true;
         submitPassEl.hidden = true;
         readyAfterPassEl.hidden = true;
         return;
       }
 
-      passSectionEl.classList.remove('hidden');
+      passSummaryEl.textContent = '';
+      passDetailsEl.textContent = '';
+      passSelectionEl.textContent = '';
+      passSummaryEl.hidden = true;
+      passDetailsEl.hidden = true;
+      passSelectionEl.hidden = true;
 
       if (phase === 'passing') {
-        passSummaryEl.textContent = `Pass 3 cards to the ${passDirection}. (${passSubmittedCount}/4 submitted)`;
-        passDetailsEl.textContent = passSubmitted
-          ? 'Waiting for other players to submit cards.'
-          : 'Select exactly 3 cards from your hand.';
-        passSelectionEl.textContent = passSubmitted
-          ? `Passed: ${formatCardList(passSent)}`
-          : `Selected (${selectedPassCards.length}/3): ${formatCardList(selectedPassCards)}`;
-
         submitPassEl.hidden = false;
         submitPassEl.disabled = passSubmitted || selectedPassCards.length !== 3;
         readyAfterPassEl.hidden = true;
         return;
       }
-
-      passSummaryEl.textContent = `Pass complete. (${passReadyCount}/4 ready)`;
-      passDetailsEl.textContent = `You passed: ${formatCardList(passSent)}`;
-      passSelectionEl.textContent = `You received: ${formatCardList(passReceived)}`;
 
       submitPassEl.hidden = true;
       readyAfterPassEl.hidden = false;
@@ -512,6 +510,10 @@
     let pendingStateRefresh = 0;
     let keepTrickVisibleUntil = 0;
     let lastCardPlayedAt = 0;
+    let lastPhase = '';
+    let lastPassSubmittedCount = -1;
+    let lastPassReadyCount = -1;
+    let loggedPassReviewKey = '';
 
     function log(line) {
       const ts = new Date().toLocaleTimeString();
@@ -554,6 +556,38 @@
       const isPassing = phase === 'passing';
       const isPassReview = phase === 'pass_review';
       const isPlaying = phase === 'playing';
+      const passSubmittedCount = (state && state.pass_submitted_count) || 0;
+      const passReadyCount = (state && state.pass_ready_count) || 0;
+      const totalPoints = (state && state.total_points) || {};
+
+      if (phase !== lastPhase) {
+        if (phase === 'passing') {
+          log(`pass phase started (${(state && state.pass_direction) || 'left'})`);
+        } else if (phase === 'pass_review') {
+          log('pass complete');
+        }
+      }
+      if (isPassing && passSubmittedCount !== lastPassSubmittedCount) {
+        log(`pass submissions: ${passSubmittedCount}/4`);
+      }
+      if (isPassReview && passReadyCount !== lastPassReadyCount) {
+        log(`ready after pass: ${passReadyCount}/4`);
+      }
+      if (isPassReview) {
+        const reviewKey = `${formatCardList(state.pass_sent || [])}|${formatCardList(state.pass_received || [])}`;
+        if (reviewKey !== loggedPassReviewKey) {
+          log(`you passed: ${formatCardList(state.pass_sent || [])}`);
+          log(`you received: ${formatCardList(state.pass_received || [])}`);
+          loggedPassReviewKey = reviewKey;
+        }
+      }
+      if (!isPassReview) {
+        loggedPassReviewKey = '';
+      }
+      lastPhase = phase;
+      lastPassSubmittedCount = passSubmittedCount;
+      lastPassReadyCount = passReadyCount;
+
       const waitingForPlayers = !state.started && players.length < 4;
       statusEl.hidden = !waitingForPlayers;
       if (waitingForPlayers) {
@@ -568,6 +602,14 @@
 
       actionsSectionEl.hidden = state.started;
       trickSectionEl.hidden = false;
+
+      const showStartControl = !state.started && players.length === 4;
+      const showPassControls = isPassing || isPassReview;
+      centerControlsEl.classList.toggle('hidden', !showStartControl && !showPassControls);
+      startButtonEl.hidden = !showStartControl;
+      startButtonEl.disabled = !showStartControl;
+      const hasCompletedRound = Object.values(totalPoints).some((points) => Number(points) > 0);
+      startButtonEl.textContent = hasCompletedRound ? 'Continue' : 'Start';
 
       lastPlayers = players;
       const relativePlayers = relativeSeatPlayers(players);
@@ -602,7 +644,14 @@
 
       setSeatLabels(relativePlayers, state.turn_player_id);
       renderTrick(players, liveTrickPlays);
-      renderYourHand(state.hand || [], phase, isYourTurn, !!state.pass_submitted);
+      renderYourHand(
+        state.hand || [],
+        phase,
+        isYourTurn,
+        !!state.pass_submitted,
+        state.pass_received || [],
+        !!state.pass_ready
+      );
       renderOtherHands(relativePlayers, state.hand_sizes || {});
       renderPassPanel(state);
 
@@ -742,7 +791,7 @@
       send({ type: 'add_bot', strategy: strategyEl.value });
     };
 
-    document.getElementById('start').onclick = () => {
+    startButtonEl.onclick = () => {
       send({ type: 'start' });
     };
 

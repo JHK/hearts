@@ -251,6 +251,24 @@
     min-height: 340px;
   }
 
+  .trick-center-controls {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 7;
+    width: min(92%, 520px);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: rgba(12, 40, 34, 0.66);
+    box-shadow: 0 10px 24px rgba(4, 14, 25, 0.3);
+    backdrop-filter: blur(2px);
+  }
+
+  .center-controls-row {
+    justify-content: center;
+  }
+
   .trick-slot {
     position: absolute;
     display: flex;
