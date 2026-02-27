@@ -31,10 +31,10 @@
     <section id="trickSection">
       <h2>Trick</h2>
       <div class="table-board">
-        <div id="seatTop" class="seat top">top: -</div>
-        <div id="seatLeft" class="seat left">left: -</div>
-        <div id="seatRight" class="seat right">right: -</div>
-        <div id="seatBottom" class="seat bottom">you: -</div>
+        <div id="seatTop" class="seat top">-</div>
+        <div id="seatLeft" class="seat left">-</div>
+        <div id="seatRight" class="seat right">-</div>
+        <div id="seatBottom" class="seat bottom">-</div>
         <div id="trickCenter" class="trick-center"></div>
       </div>
     </section>
@@ -143,10 +143,10 @@
     function setSeatLabels(players, turnPlayerId) {
       const me = players.find((p) => p.player_id === myPlayerId);
       if (!me) {
-        seatTopEl.textContent = 'top: -';
-        seatLeftEl.textContent = 'left: -';
-        seatRightEl.textContent = 'right: -';
-        seatBottomEl.textContent = 'you: -';
+        seatTopEl.textContent = '-';
+        seatLeftEl.textContent = '-';
+        seatRightEl.textContent = '-';
+        seatBottomEl.textContent = '-';
         seatTopEl.classList.remove('turn');
         seatLeftEl.classList.remove('turn');
         seatRightEl.classList.remove('turn');
@@ -168,10 +168,10 @@
       const left = atOffset(1);
       const right = atOffset(3);
 
-      seatTopEl.textContent = top ? `top: ${top.name}` : 'top: -';
-      seatLeftEl.textContent = left ? `left: ${left.name}` : 'left: -';
-      seatRightEl.textContent = right ? `right: ${right.name}` : 'right: -';
-      seatBottomEl.textContent = `you: ${me.name}`;
+      seatTopEl.textContent = top ? top.name : '-';
+      seatLeftEl.textContent = left ? left.name : '-';
+      seatRightEl.textContent = right ? right.name : '-';
+      seatBottomEl.textContent = me.name;
 
       setSeatTurnClass(seatTopEl, top, turnPlayerId);
       setSeatTurnClass(seatLeftEl, left, turnPlayerId);
