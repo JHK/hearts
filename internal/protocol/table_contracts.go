@@ -9,16 +9,6 @@ type TableInfo struct {
 	Started    bool   `json:"started"`
 }
 
-type DiscoverRequest struct{}
-
-type DiscoverResponse struct {
-	Tables []TableInfo `json:"tables"`
-}
-
-type JoinRequest struct {
-	Name string `json:"name"`
-}
-
 type JoinResponse struct {
 	Accepted bool          `json:"accepted"`
 	Reason   string        `json:"reason,omitempty"`

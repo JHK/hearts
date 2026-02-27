@@ -2,15 +2,6 @@ package protocol
 
 import "github.com/JHK/hearts/internal/game"
 
-type StartRequest struct {
-	PlayerID game.PlayerID `json:"player_id"`
-}
-
-type PlayCardRequest struct {
-	PlayerID game.PlayerID `json:"player_id"`
-	Card     string        `json:"card"`
-}
-
 type CommandResponse struct {
 	Accepted bool   `json:"accepted"`
 	Reason   string `json:"reason,omitempty"`

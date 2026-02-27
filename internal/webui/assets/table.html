@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hearts Table</title>
+  <style>
+    :root {
+      --bg: #eef3f7;
+      --card: #ffffff;
+      --ink: #162230;
+      --muted: #52667a;
+      --line: #d4e1ec;
+      --accent: #b4412f;
+      --accent2: #1f6f5f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 20% 0, #fff 0, var(--bg) 45%, #dce7f1 100%);
+      color: var(--ink);
+      font-family: "Noto Sans", "Segoe UI", sans-serif;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+    }
+    section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(16, 36, 56, 0.08);
+    }
+    h1, h2 { margin: 0 0 10px 0; }
+    h1 { font-size: 1.3rem; }
+    h2 { font-size: 1rem; }
+    .muted { color: var(--muted); }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 13px;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(130deg, var(--accent), #d06d53);
+    }
+    button.secondary { background: linear-gradient(130deg, var(--accent2), #2f9480); }
+    input, select {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 12px;
+      min-width: 180px;
+      font-size: 1rem;
+    }
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    pre {
+      margin: 0;
+      max-height: 40vh;
+      overflow: auto;
+      font-family: "Cascadia Mono", "DejaVu Sans Mono", monospace;
+      white-space: pre-wrap;
+      line-height: 1.35;
+    }
+    @media (max-width: 640px) {
+      input, select, button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section>
+      <h1 id="title">Hearts Table</h1>
+      <div id="status" class="muted">connecting...</div>
+      <div id="identity" class="muted" style="margin-top:8px;"></div>
+      <div id="hand" style="margin-top:8px; font-weight:600;"></div>
+    </section>
+
+    <section>
+      <h2>Players</h2>
+      <ul id="players"></ul>
+    </section>
+
+    <section>
+      <h2>Actions</h2>
+      <div class="row">
+        <select id="strategy">
+          <option value="">random</option>
+          <option value="first-legal">first-legal</option>
+        </select>
+        <button id="addBot" class="secondary">Add Bot</button>
+        <button id="start" class="secondary">Start</button>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <input id="card" placeholder="Card, e.g. QS" />
+        <button id="play">Play</button>
+      </div>
+      <div id="result" class="muted" style="margin-top:8px;"></div>
+    </section>
+
+    <section>
+      <h2>Events</h2>
+      <pre id="logs"></pre>
+    </section>
+
+    <section>
+      <a href="/">Back to lobby</a>
+    </section>
+  </main>
+
+  <script>
+    const nameKey = 'hearts.player.name';
+    const tokenKey = 'hearts.player.token';
+
+    const tableId = decodeURIComponent(location.pathname.replace('/table/', ''));
+    const titleEl = document.getElementById('title');
+    const statusEl = document.getElementById('status');
+    const identityEl = document.getElementById('identity');
+    const handEl = document.getElementById('hand');
+    const playersEl = document.getElementById('players');
+    const resultEl = document.getElementById('result');
+    const logsEl = document.getElementById('logs');
+    const cardEl = document.getElementById('card');
+    const strategyEl = document.getElementById('strategy');
+
+    titleEl.textContent = `Hearts Table ${tableId}`;
+
+    function playerName() {
+      const stored = (localStorage.getItem(nameKey) || '').trim();
+      return stored || 'Player';
+    }
+
+    function ensureToken() {
+      let token = localStorage.getItem(tokenKey);
+      if (!token) {
+        token = (self.crypto && self.crypto.randomUUID) ? self.crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
+        localStorage.setItem(tokenKey, token);
+      }
+      return token;
+    }
+
+    const token = ensureToken();
+    let ws;
+    let myPlayerId = '';
+
+    function log(line) {
+      const ts = new Date().toLocaleTimeString();
+      logsEl.textContent += `[${ts}] ${line}\n`;
+      logsEl.scrollTop = logsEl.scrollHeight;
+    }
+
+    function send(msg) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      ws.send(JSON.stringify(msg));
+    }
+
+    function requestState() {
+      send({ type: 'state' });
+    }
+
+    function renderState(state) {
+      const started = state.started ? 'yes' : 'no';
+      const trick = state.started ? String((state.trick_number || 0) + 1) : '-';
+      statusEl.textContent = `table=${state.table_id} started=${started} turn=${state.turn_player_id || '-'} trick=${trick}`;
+
+      const cards = state.hand || [];
+      handEl.textContent = cards.length ? `hand: ${cards.join(' ')}` : 'hand: (empty)';
+
+      const players = state.players || [];
+      playersEl.innerHTML = '';
+      for (const player of players) {
+        const li = document.createElement('li');
+        const bot = player.is_bot ? ' [bot]' : '';
+        const me = (player.player_id === myPlayerId) ? ' [you]' : '';
+        li.textContent = `seat ${player.seat}: ${player.name}${bot}${me}`;
+        playersEl.appendChild(li);
+      }
+    }
+
+    function connect() {
+      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${protocol}://${location.host}/ws/table/${encodeURIComponent(tableId)}`);
+
+      ws.onopen = () => {
+        log('connected');
+        send({ type: 'join', name: playerName(), token });
+        requestState();
+      };
+
+      ws.onclose = () => {
+        log('disconnected, retrying...');
+        setTimeout(connect, 1000);
+      };
+
+      ws.onerror = () => {
+        log('websocket error');
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        if (msg.error) {
+          resultEl.textContent = `error: ${msg.error}`;
+          log(`error: ${msg.error}`);
+          return;
+        }
+
+        switch (msg.type) {
+          case 'table_state':
+            renderState(msg.data || {});
+            break;
+          case 'join_result':
+            if (msg.data && msg.data.accepted) {
+              myPlayerId = msg.data.player_id;
+              identityEl.textContent = `name=${playerName()} player_id=${myPlayerId} seat=${msg.data.seat}`;
+              resultEl.textContent = 'joined';
+              log(`joined as ${myPlayerId} seat ${msg.data.seat}`);
+            } else {
+              resultEl.textContent = msg.data && msg.data.reason ? msg.data.reason : 'join rejected';
+            }
+            requestState();
+            break;
+          case 'start_result':
+          case 'play_result':
+            if (msg.data && msg.data.accepted) {
+              resultEl.textContent = 'ok';
+            } else {
+              resultEl.textContent = msg.data && msg.data.reason ? msg.data.reason : 'rejected';
+            }
+            requestState();
+            break;
+          case 'add_bot_result':
+            resultEl.textContent = 'bot added';
+            requestState();
+            break;
+          default:
+            log(`${msg.type}: ${JSON.stringify(msg.data || {})}`);
+            requestState();
+            break;
+        }
+      };
+    }
+
+    document.getElementById('addBot').onclick = () => {
+      send({ type: 'add_bot', strategy: strategyEl.value });
+    };
+
+    document.getElementById('start').onclick = () => {
+      send({ type: 'start' });
+    };
+
+    document.getElementById('play').onclick = () => {
+      const card = cardEl.value.trim().toUpperCase();
+      send({ type: 'play', card });
+      cardEl.value = '';
+    };
+
+    cardEl.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        document.getElementById('play').click();
+      }
+    });
+
+    connect();
+  </script>
+</body>
+</html>
