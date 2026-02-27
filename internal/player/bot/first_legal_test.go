@@ -67,6 +67,32 @@ func TestFirstLegalChoosePlayNoLegalCards(t *testing.T) {
 	}
 }
 
+func TestFirstLegalChoosePassUsesFirstThreeInOrder(t *testing.T) {
+	hand := parseCards(t, []string{"KC", "3D", "2S", "AH"})
+
+	cards, err := NewFirstLegalBot().ChoosePass(PassInput{Hand: hand, Direction: "left"})
+	if err != nil {
+		t.Fatalf("expected pass cards, got %v", err)
+	}
+
+	if len(cards) != 3 {
+		t.Fatalf("expected 3 pass cards, got %d", len(cards))
+	}
+
+	if cards[0].String() != "KC" || cards[1].String() != "3D" || cards[2].String() != "2S" {
+		t.Fatalf("expected first three cards KC,3D,2S got %s,%s,%s", cards[0], cards[1], cards[2])
+	}
+}
+
+func TestFirstLegalChoosePassRequiresThreeCards(t *testing.T) {
+	hand := parseCards(t, []string{"KC", "3D"})
+
+	_, err := NewFirstLegalBot().ChoosePass(PassInput{Hand: hand})
+	if err == nil {
+		t.Fatalf("expected not enough cards error")
+	}
+}
+
 func parseCards(t *testing.T, raw []string) []game.Card {
 	t.Helper()
 

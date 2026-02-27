@@ -28,3 +28,17 @@ func (r *Random) ChoosePlay(input TurnInput) (game.Card, error) {
 
 	return legal[r.rng.Intn(len(legal))], nil
 }
+
+func (r *Random) ChoosePass(input PassInput) ([]game.Card, error) {
+	if len(input.Hand) < 3 {
+		return nil, fmt.Errorf("not enough cards to pass")
+	}
+
+	perm := r.rng.Perm(len(input.Hand))
+	selected := make([]game.Card, 0, 3)
+	for i := 0; i < 3; i++ {
+		selected = append(selected, input.Hand[perm[i]])
+	}
+
+	return selected, nil
+}

@@ -28,3 +28,11 @@ func (f *FirstLegal) ChoosePlay(input TurnInput) (game.Card, error) {
 
 	return game.Card{}, fmt.Errorf("no legal plays")
 }
+
+func (f *FirstLegal) ChoosePass(input PassInput) ([]game.Card, error) {
+	if len(input.Hand) < 3 {
+		return nil, fmt.Errorf("not enough cards to pass")
+	}
+
+	return append([]game.Card(nil), input.Hand[:3]...), nil
+}

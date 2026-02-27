@@ -405,8 +405,9 @@ func (r *Runtime) handleLeave(state *tableState, playerID game.PlayerID) {
 		switch state.round.Phase {
 		case roundPhasePassing:
 			if _, submitted := state.round.PassSubmissions[playerID]; !submitted {
-				cards := game.CardStrings(r.selectBotPassCards(player.Hand))
-				_ = r.handlePass(state, playerID, cards)
+				if cards, err := r.chooseBotPassCardStrings(state, playerID, player.Hand); err == nil {
+					_ = r.handlePass(state, playerID, cards)
+				}
 			}
 		case roundPhasePassReview:
 			if !state.round.PassReady[playerID] {
@@ -897,7 +898,12 @@ func (r *Runtime) handleBotPass(state *tableState, playerID game.PlayerID) {
 		return
 	}
 
-	_ = r.handlePass(state, playerID, game.CardStrings(r.selectBotPassCards(player.Hand)))
+	cards, err := r.chooseBotPassCardStrings(state, playerID, player.Hand)
+	if err != nil {
+		return
+	}
+
+	_ = r.handlePass(state, playerID, cards)
 }
 
 func (r *Runtime) scheduleBotTurn(state *tableState, playerID game.PlayerID) {
@@ -951,12 +957,21 @@ func (r *Runtime) scheduleBotPass(state *tableState, playerID game.PlayerID) {
 	}()
 }
 
-func (r *Runtime) selectBotPassCards(hand []game.Card) []game.Card {
-	if len(hand) <= 3 {
-		return append([]game.Card(nil), hand...)
+func (r *Runtime) chooseBotPassCardStrings(state *tableState, playerID game.PlayerID, hand []game.Card) ([]string, error) {
+	strategy := state.bots[playerID]
+	if strategy == nil {
+		return nil, fmt.Errorf("bot strategy is not available")
 	}
 
-	return append([]game.Card(nil), hand[:3]...)
+	cards, err := strategy.ChoosePass(bot.PassInput{
+		Hand:      append([]game.Card(nil), hand...),
+		Direction: state.round.PassDirection,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return game.CardStrings(cards), nil
 }
 
 func (r *Runtime) validateStartPreconditions(state *tableState, playerID game.PlayerID) string {
