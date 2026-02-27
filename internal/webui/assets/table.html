@@ -9,9 +9,16 @@
 <body class="table-page">
   <main>
     <section>
-      <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
-        <h1><span id="title">Hearts Table</span> <span id="status" class="muted" title="waiting for players" aria-label="waiting for players">⌛</span></h1>
-        <span id="turnIndicator" class="muted"></span>
+      <div class="table-header">
+        <div class="table-header-main">
+          <h1><span id="title">Hearts Table</span> <span id="status" class="muted" title="waiting for players" aria-label="waiting for players">⌛</span></h1>
+          <span id="turnIndicator" class="muted"></span>
+        </div>
+        <a href="/" class="table-header-back" aria-label="Back to lobby" title="Back to lobby">
+          <svg class="table-header-back-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M14.78 18.72a.75.75 0 0 1-1.06 0l-6.19-6.19a.75.75 0 0 1 0-1.06l6.19-6.19a.75.75 0 1 1 1.06 1.06L9.12 12l5.66 5.66a.75.75 0 0 1 0 1.06Z" />
+          </svg>
+        </a>
       </div>
     </section>
 
@@ -65,9 +72,6 @@
       </details>
     </section>
 
-    <section>
-      <a href="/">Back to lobby</a>
-    </section>
   </main>
 
   <script>
