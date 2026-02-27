@@ -2,6 +2,7 @@ package webui
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -16,6 +17,50 @@ type testWSMessage struct {
 	Type  string          `json:"type"`
 	Data  json.RawMessage `json:"data,omitempty"`
 	Error string          `json:"error,omitempty"`
+}
+
+func TestServesExtractedScripts(t *testing.T) {
+	manager := table.NewManager()
+	defer manager.Close()
+
+	handler, err := NewHandler(manager)
+	if err != nil {
+		t.Fatalf("new handler: %v", err)
+	}
+
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	for _, path := range []string{
+		"/assets/js/lobby/main.js",
+		"/assets/js/table/main.js",
+		"/assets/js/table/dom.js",
+		"/assets/js/table/render.js",
+		"/assets/js/table/cards.js",
+	} {
+		resp, err := srv.Client().Get(srv.URL + path)
+		if err != nil {
+			t.Fatalf("get %s: %v", path, err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			_ = resp.Body.Close()
+			t.Fatalf("expected status 200 for %s, got %d", path, resp.StatusCode)
+		}
+		if contentType := resp.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "text/javascript") {
+			_ = resp.Body.Close()
+			t.Fatalf("expected JavaScript content type for %s, got %q", path, contentType)
+		}
+		_ = resp.Body.Close()
+	}
+
+	missing, err := srv.Client().Get(srv.URL + "/assets/js/unknown/main.js")
+	if err != nil {
+		t.Fatalf("get missing script: %v", err)
+	}
+	defer missing.Body.Close()
+	if missing.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404 for unknown script, got %d", missing.StatusCode)
+	}
 }
 
 func TestWebSocketJoinAndStateFlow(t *testing.T) {

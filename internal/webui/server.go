@@ -16,7 +16,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-//go:embed assets/index.html assets/table.html assets/cards/*.svg
+//go:embed assets/index.html assets/table.html assets/cards/*.svg assets/js
 var assetsFS embed.FS
 
 type Config struct {
@@ -134,6 +134,25 @@ func NewHandler(manager *table.Manager) (http.Handler, error) {
 
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		_, _ = w.Write(styles)
+	})
+
+	mux.HandleFunc("/assets/js/", func(w http.ResponseWriter, r *http.Request) {
+		scriptFile := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/assets/js/"))
+		if scriptFile == "" || strings.HasPrefix(scriptFile, "/") || strings.Contains(scriptFile, "..") || !strings.HasSuffix(scriptFile, ".js") {
+			http.NotFound(w, r)
+			return
+		}
+
+		scriptPath := "assets/js/" + scriptFile
+
+		script, err := assetsFS.ReadFile(scriptPath)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		_, _ = w.Write(script)
 	})
 
 	mux.HandleFunc("/assets/cards/", func(w http.ResponseWriter, r *http.Request) {
