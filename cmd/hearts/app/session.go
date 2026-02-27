@@ -19,14 +19,14 @@ type Status struct {
 	PlayerID    game.PlayerID
 	PlayerName  string
 	Connected   bool
-	ConnectedTo string
+	Server      string
 	TableID     string
 	LocalBusURL string
 }
 
 type Session struct {
-	name       string
-	defaultURL string
+	name          string
+	defaultServer string
 
 	clientNC *nats.Conn
 	host     *server.Local
@@ -49,8 +49,8 @@ type ephemeralBot struct {
 	runtime *bot.Runtime
 }
 
-func NewSession(name, defaultURL string) *Session {
-	return &Session{name: name, defaultURL: defaultURL}
+func NewSession(name, defaultServer string) *Session {
+	return &Session{name: name, defaultServer: defaultServer}
 }
 
 func (s *Session) Connect(url string) error {
@@ -93,6 +93,28 @@ func (s *Session) OpenTable(tableID, host string, port int, handlers natswire.Pa
 	}
 
 	return s.JoinTable(tableID, handlers)
+}
+
+func (s *Session) HostTable(tableID, host string, port int) error {
+	if tableID == "" {
+		return fmt.Errorf("table id is required")
+	}
+
+	if s.host == nil {
+		local, err := server.Open(host, port)
+		if err != nil {
+			return err
+		}
+		s.host = local
+	} else if s.host.Host() != host || s.host.Port() != port {
+		return fmt.Errorf("local bus already running on %s", s.host.URL())
+	}
+
+	if err := s.host.EnsureTable(tableID); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Session) DiscoverTables() ([]protocol.TableInfo, error) {
@@ -247,7 +269,7 @@ func (s *Session) Status() Status {
 
 	if s.clientNC != nil {
 		status.Connected = true
-		status.ConnectedTo = s.clientNC.ConnectedUrl()
+		status.Server = s.clientNC.ConnectedUrl()
 	}
 
 	if s.host != nil {
@@ -266,11 +288,11 @@ func (s *Session) ensureClientConnection() error {
 		return s.Connect(s.host.URL())
 	}
 
-	if s.defaultURL == "" {
+	if s.defaultServer == "" {
 		return fmt.Errorf("not connected; use open or connect")
 	}
 
-	if err := s.Connect(s.defaultURL); err != nil {
+	if err := s.Connect(s.defaultServer); err != nil {
 		return fmt.Errorf("not connected; use open or connect: %w", err)
 	}
 

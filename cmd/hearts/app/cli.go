@@ -2,39 +2,90 @@ package app
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/JHK/hearts/internal/game"
 	"github.com/JHK/hearts/internal/protocol"
 	natswire "github.com/JHK/hearts/internal/transport/nats"
+	"github.com/alecthomas/kong"
 )
 
-const defaultTableID = "default"
+type commandLine struct {
+	CLI  cliCommand  `cmd:"" help:"Run interactive terminal CLI."`
+	Host hostCommand `cmd:"" help:"Start a local host for a table."`
+	Web  webCommand  `cmd:"" help:"Start a web UI to play a table."`
+}
+
+type cliCommand struct {
+	Name   string `help:"Display name." default:"Player"`
+	Server string `help:"Default server for discover/join." default:"nats://127.0.0.1:4222"`
+}
+
+type hostCommand struct {
+	TableID string `name:"table" help:"Table ID to host." default:"default"`
+	Host    string `help:"Host interface for embedded NATS." default:"127.0.0.1"`
+	Port    int    `help:"Port for embedded NATS." default:"4222"`
+}
+
+type webCommand struct {
+	Name        string `help:"Display name." default:"Player"`
+	Server      string `help:"Server for reconnect/join." default:"nats://127.0.0.1:4222"`
+	TableID     string `name:"table" help:"Table ID to join." default:"default"`
+	Addr        string `help:"Web listen address." default:"127.0.0.1:8080"`
+	OpenBrowser bool   `help:"Open browser after server starts." default:"true"`
+}
 
 func Run() {
-	var (
-		defaultURL = flag.String("url", "nats://127.0.0.1:4222", "default NATS URL for discover/join")
-		name       = flag.String("name", "", "display name")
+	args := commandLine{}
+	parser, err := kong.New(
+		&args,
+		kong.Name("hearts"),
+		kong.Description("Play Hearts via terminal, host mode, or simple web UI."),
 	)
-	flag.Parse()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "parse setup failed: %v\n", err)
+		os.Exit(1)
+	}
 
-	if *name == "" {
-		*name = "Player"
+	argv := os.Args[1:]
+	if len(argv) == 0 {
+		argv = append([]string{"cli"}, argv...)
+	} else if strings.HasPrefix(argv[0], "-") && argv[0] != "--help" && argv[0] != "-h" {
+		argv = append([]string{"cli"}, argv...)
+	}
+
+	ctx, err := parser.Parse(argv)
+	parser.FatalIfErrorf(err)
+
+	switch ctx.Command() {
+	case "cli":
+		runInteractiveCLI(args.CLI.Name, args.CLI.Server)
+	case "host":
+		runHostMode(args.Host)
+	case "web":
+		runWebMode(args.Web)
+	}
+}
+
+func runInteractiveCLI(name, defaultServer string) {
+	if strings.TrimSpace(name) == "" {
+		name = "Player"
 	}
 
 	app := &cliApp{
-		session: NewSession(*name, *defaultURL),
-		name:    *name,
+		session: NewSession(name, defaultServer),
+		name:    name,
 	}
 	defer app.session.Shutdown()
 
 	fmt.Printf("hearts cli - player %s\n", app.name)
-	if err := app.session.Connect(*defaultURL); err != nil {
-		fmt.Printf("No game bus at %s yet. Use 'open' to host or 'connect <url>' to join another bus.\n", *defaultURL)
+	if err := app.session.Connect(defaultServer); err != nil {
+		fmt.Printf("No game bus at %s yet. Use 'open' to host or 'connect <server>' to join another bus.\n", defaultServer)
 	}
 	printHelp()
 
@@ -62,13 +113,35 @@ type cliApp struct {
 	name    string
 }
 
+func runHostMode(cfg hostCommand) {
+	session := NewSession("host", "")
+	defer session.Shutdown()
+
+	if err := session.HostTable(cfg.TableID, cfg.Host, cfg.Port); err != nil {
+		fmt.Printf("host failed: %v\n", err)
+		return
+	}
+
+	status := session.Status()
+	fmt.Printf("Hosting table %s on %s\n", cfg.TableID, status.LocalBusURL)
+	fmt.Println("Press Ctrl+C to stop.")
+	waitForInterrupt()
+}
+
+func waitForInterrupt() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	<-sigCh
+	signal.Stop(sigCh)
+}
+
 func (a *cliApp) runCommand(parts []string) bool {
 	switch strings.ToLower(parts[0]) {
 	case "help":
 		printHelp()
 	case "connect":
 		if len(parts) != 2 {
-			fmt.Println("usage: connect <nats-url>")
+			fmt.Println("usage: connect <server>")
 			return true
 		}
 		if err := a.session.Connect(parts[1]); err != nil {
@@ -76,9 +149,9 @@ func (a *cliApp) runCommand(parts []string) bool {
 			return true
 		}
 		status := a.session.Status()
-		fmt.Printf("Connected to %s\n", status.ConnectedTo)
+		fmt.Printf("Connected to %s\n", status.Server)
 	case "open":
-		tableID := defaultTableID
+		tableID := "default"
 		port := 4222
 		if len(parts) >= 2 {
 			tableID = parts[1]
@@ -126,7 +199,7 @@ func (a *cliApp) runCommand(parts []string) bool {
 			fmt.Println("usage: join [table-id]")
 			return true
 		}
-		tableID := defaultTableID
+		tableID := "default"
 		if len(parts) == 2 {
 			tableID = parts[1]
 		}
@@ -241,8 +314,8 @@ func (a *cliApp) printStatus() {
 		fmt.Printf("player: %s (%s)\n", status.PlayerName, status.PlayerID)
 	}
 	fmt.Printf("connected: %s", boolLabel(status.Connected))
-	if status.ConnectedTo != "" {
-		fmt.Printf(" (%s)", status.ConnectedTo)
+	if status.Server != "" {
+		fmt.Printf(" (%s)", status.Server)
 	}
 	fmt.Println()
 
@@ -269,7 +342,7 @@ func printHelp() {
 	fmt.Println("  open [table-id] [port]   open local game and join it")
 	fmt.Println("  discover                 discover open tables on current bus")
 	fmt.Println("  join [table-id]          join table (default: default)")
-	fmt.Println("  connect <nats-url>       switch to another game bus")
+	fmt.Println("  connect <server>         switch to another game bus")
 	fmt.Println("  addbot [strategy]        add one bot seat (default: random)")
 	fmt.Println("  start                    start round (requires 4 players)")
 	fmt.Println("  play <card>              play a card, e.g. play QS")

@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/alecthomas/kong v1.10.0 // indirect
 	github.com/antithesishq/antithesis-sdk-go v0.5.0-default-no-op // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/klauspost/compress v1.18.3 // indirect
