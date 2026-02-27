@@ -2,8 +2,8 @@ package table
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
+	"math/big"
 	"sort"
 	"strings"
 	"sync"
@@ -42,7 +42,7 @@ func (m *Manager) Create(tableID string) (*Runtime, bool, error) {
 	defer m.mu.Unlock()
 
 	if id == "" {
-		for {
+		for attempts := 0; attempts < 3; attempts++ {
 			candidate, candidateErr := randomTableID()
 			if candidateErr != nil {
 				return nil, false, candidateErr
@@ -51,6 +51,10 @@ func (m *Manager) Create(tableID string) (*Runtime, bool, error) {
 				id = candidate
 				break
 			}
+		}
+
+		if id == "" {
+			return nil, false, fmt.Errorf("could not create unique table after 3 attempts")
 		}
 	}
 
@@ -139,9 +143,75 @@ func normalizeTableID(raw string) (string, error) {
 }
 
 func randomTableID() (string, error) {
-	buf := make([]byte, 4)
-	if _, err := rand.Read(buf); err != nil {
+	first, err := randomItem(tableIDAdjectives)
+	if err != nil {
 		return "", err
 	}
-	return "table-" + hex.EncodeToString(buf), nil
+
+	second, err := randomItem(tableIDNouns)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s-%s", first, second), nil
+}
+
+var tableIDAdjectives = []string{
+	"amber",
+	"brisk",
+	"cedar",
+	"clear",
+	"coral",
+	"dawn",
+	"ember",
+	"gold",
+	"honey",
+	"ivory",
+	"jade",
+	"lucky",
+	"maple",
+	"merry",
+	"misty",
+	"opal",
+	"pearl",
+	"river",
+	"silver",
+	"sunny",
+}
+
+var tableIDNouns = []string{
+	"acorn",
+	"anchor",
+	"brook",
+	"cabin",
+	"canyon",
+	"comet",
+	"field",
+	"forest",
+	"harbor",
+	"island",
+	"lantern",
+	"meadow",
+	"orchard",
+	"pavilion",
+	"summit",
+	"tavern",
+	"thicket",
+	"valley",
+	"willow",
+	"windmill",
+}
+
+func randomItem(items []string) (string, error) {
+	if len(items) == 0 {
+		return "", fmt.Errorf("random source has no items")
+	}
+
+	limit := big.NewInt(int64(len(items)))
+	index, err := rand.Int(rand.Reader, limit)
+	if err != nil {
+		return "", err
+	}
+
+	return items[index.Int64()], nil
 }

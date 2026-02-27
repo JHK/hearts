@@ -364,10 +364,7 @@
     }
 
     function renderState(state) {
-      const started = state.started ? 'yes' : 'no';
-      const trick = state.started ? String((state.trick_number || 0) + 1) : '-';
-      const turn = state.turn_player_id || '-';
-      statusEl.textContent = `table=${state.table_id} started=${started} turn=${turn} trick=${trick}`;
+      statusEl.textContent = state.started ? 'round in progress' : 'waiting for players';
 
       if (state.started) {
         actionsSectionEl.classList.add('hidden');
@@ -500,7 +497,7 @@
           case 'join_result':
             if (msg.data && msg.data.accepted) {
               myPlayerId = msg.data.player_id;
-              identityEl.textContent = `name=${playerName()} player_id=${myPlayerId} seat=${msg.data.seat}`;
+              identityEl.textContent = `playing as ${playerName()}`;
               resultEl.textContent = 'joined';
               log(`joined as ${myPlayerId} seat ${msg.data.seat}`);
             } else {
