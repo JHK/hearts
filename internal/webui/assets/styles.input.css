@@ -294,6 +294,7 @@
 
   .seat.bottom .seat-hand {
     width: 100%;
+    min-height: 100px;
   }
 
   .seat.left .seat-hand {
@@ -693,6 +694,10 @@
   .seat.right .seat-hand,
   .seat.bottom .seat-hand {
     justify-content: flex-start;
+  }
+
+  .seat.bottom .seat-hand {
+    min-height: 90px;
   }
 
   .seat-hand .hand-card + .hand-card {

@@ -368,10 +368,6 @@
       seatBottomHandEl.innerHTML = '';
 
       if (safeCards.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'muted';
-        empty.textContent = '(empty)';
-        seatBottomHandEl.appendChild(empty);
         return;
       }
 
