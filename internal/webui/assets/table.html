@@ -40,25 +40,25 @@
     </section>
 
     <section id="trickSection">
-      <h2>Trick</h2>
       <div class="table-board">
-        <div id="seatTop" class="seat top">-</div>
-        <div id="seatLeft" class="seat left">-</div>
-        <div id="seatRight" class="seat right">-</div>
-        <div id="seatBottom" class="seat bottom">-</div>
+        <div id="seatTop" class="seat top">
+          <div id="seatTopName" class="seat-name">-</div>
+          <div id="seatTopHand" class="seat-hand"></div>
+        </div>
+        <div id="seatLeft" class="seat left">
+          <div id="seatLeftName" class="seat-name">-</div>
+          <div id="seatLeftHand" class="seat-hand"></div>
+        </div>
+        <div id="seatRight" class="seat right">
+          <div id="seatRightName" class="seat-name">-</div>
+          <div id="seatRightHand" class="seat-hand"></div>
+        </div>
+        <div id="seatBottom" class="seat bottom">
+          <div id="seatBottomName" class="seat-name">-</div>
+          <div id="seatBottomHand" class="seat-hand"></div>
+        </div>
         <div id="trickCenter" class="trick-center"></div>
       </div>
-    </section>
-
-    <section id="yourHandSection">
-      <h2>Your Hand</h2>
-      <div id="yourName" class="muted" style="margin-bottom:8px;">you</div>
-      <div id="yourHand" class="cards-row"></div>
-    </section>
-
-    <section id="otherHandsSection">
-      <h2>Other Players' Hands</h2>
-      <div id="otherHands" class="other-hands"></div>
     </section>
 
     <section>
@@ -81,7 +81,6 @@
     const titleEl = document.getElementById('title');
     const statusEl = document.getElementById('status');
     const turnIndicatorEl = document.getElementById('turnIndicator');
-    const yourNameEl = document.getElementById('yourName');
     const resultEl = document.getElementById('result');
     const logsEl = document.getElementById('logs');
     const strategyEl = document.getElementById('strategy');
@@ -93,15 +92,19 @@
     const submitPassEl = document.getElementById('submitPass');
     const readyAfterPassEl = document.getElementById('readyAfterPass');
     const trickSectionEl = document.getElementById('trickSection');
-    const yourHandSectionEl = document.getElementById('yourHandSection');
-    const otherHandsSectionEl = document.getElementById('otherHandsSection');
-    const yourHandEl = document.getElementById('yourHand');
-    const otherHandsEl = document.getElementById('otherHands');
     const trickCenterEl = document.getElementById('trickCenter');
     const seatTopEl = document.getElementById('seatTop');
+    const seatTopNameEl = document.getElementById('seatTopName');
+    const seatTopHandEl = document.getElementById('seatTopHand');
     const seatLeftEl = document.getElementById('seatLeft');
+    const seatLeftNameEl = document.getElementById('seatLeftName');
+    const seatLeftHandEl = document.getElementById('seatLeftHand');
     const seatRightEl = document.getElementById('seatRight');
+    const seatRightNameEl = document.getElementById('seatRightName');
+    const seatRightHandEl = document.getElementById('seatRightHand');
     const seatBottomEl = document.getElementById('seatBottom');
+    const seatBottomNameEl = document.getElementById('seatBottomName');
+    const seatBottomHandEl = document.getElementById('seatBottomHand');
     const trickSlotEls = createTrickSlots();
 
     titleEl.textContent = `Hearts Table ${tableId}`;
@@ -185,18 +188,10 @@
       }
     }
 
-    function setSeatLabels(players, turnPlayerId) {
+    function relativeSeatPlayers(players) {
       const me = players.find((p) => p.player_id === myPlayerId);
       if (!me) {
-        seatTopEl.textContent = '-';
-        seatLeftEl.textContent = '-';
-        seatRightEl.textContent = '-';
-        seatBottomEl.textContent = '-';
-        seatTopEl.classList.remove('turn');
-        seatLeftEl.classList.remove('turn');
-        seatRightEl.classList.remove('turn');
-        seatBottomEl.classList.remove('turn');
-        return;
+        return { me: null, top: null, left: null, right: null };
       }
 
       const bySeat = new Map();
@@ -209,19 +204,45 @@
         return bySeat.get(seat);
       }
 
-      const top = atOffset(2);
-      const left = atOffset(1);
-      const right = atOffset(3);
+      return {
+        me,
+        top: atOffset(2),
+        left: atOffset(1),
+        right: atOffset(3)
+      };
+    }
 
-      seatTopEl.textContent = top ? top.name : '-';
-      seatLeftEl.textContent = left ? left.name : '-';
-      seatRightEl.textContent = right ? right.name : '-';
-      seatBottomEl.textContent = me.name;
+    function setSeatLabels(relativePlayers, turnPlayerId) {
+      function displayName(player) {
+        if (!player) {
+          return '-';
+        }
 
-      setSeatTurnClass(seatTopEl, top, turnPlayerId);
-      setSeatTurnClass(seatLeftEl, left, turnPlayerId);
-      setSeatTurnClass(seatRightEl, right, turnPlayerId);
-      setSeatTurnClass(seatBottomEl, me, turnPlayerId);
+        return player.is_bot ? `${player.name} [bot]` : player.name;
+      }
+
+      if (!relativePlayers.me) {
+        seatTopNameEl.textContent = '-';
+        seatLeftNameEl.textContent = '-';
+        seatRightNameEl.textContent = '-';
+        seatBottomNameEl.textContent = '-';
+
+        seatTopEl.classList.remove('turn');
+        seatLeftEl.classList.remove('turn');
+        seatRightEl.classList.remove('turn');
+        seatBottomEl.classList.remove('turn');
+        return;
+      }
+
+      seatTopNameEl.textContent = displayName(relativePlayers.top);
+      seatLeftNameEl.textContent = displayName(relativePlayers.left);
+      seatRightNameEl.textContent = displayName(relativePlayers.right);
+      seatBottomNameEl.textContent = displayName(relativePlayers.me);
+
+      setSeatTurnClass(seatTopEl, relativePlayers.top, turnPlayerId);
+      setSeatTurnClass(seatLeftEl, relativePlayers.left, turnPlayerId);
+      setSeatTurnClass(seatRightEl, relativePlayers.right, turnPlayerId);
+      setSeatTurnClass(seatBottomEl, relativePlayers.me, turnPlayerId);
     }
 
     function createTrickSlots() {
@@ -343,13 +364,13 @@
       }
 
       lastHandRenderKey = handRenderKey;
-      yourHandEl.innerHTML = '';
+      seatBottomHandEl.innerHTML = '';
 
       if (safeCards.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'muted';
         empty.textContent = '(empty)';
-        yourHandEl.appendChild(empty);
+        seatBottomHandEl.appendChild(empty);
         return;
       }
 
@@ -397,42 +418,34 @@
             send({ type: 'play', card: cardValue });
           }
         };
-        yourHandEl.appendChild(card);
+        seatBottomHandEl.appendChild(card);
       }
     }
 
-    function renderOtherHands(players, handSizes) {
-      otherHandsEl.innerHTML = '';
-
-      const others = (players || []).filter((player) => player.player_id !== myPlayerId);
-      if (others.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'muted';
-        empty.textContent = 'No other players yet.';
-        otherHandsEl.appendChild(empty);
-        return;
+    function renderSeatBackHand(container, count) {
+      container.innerHTML = '';
+      for (let i = 0; i < count; i += 1) {
+        const back = document.createElement('div');
+        back.className = 'back-card';
+        container.appendChild(back);
       }
+    }
 
-      for (const player of others) {
-        const line = document.createElement('div');
-        line.className = 'other-line';
+    function renderOtherHands(relativePlayers, handSizes) {
+      const seats = [
+        { player: relativePlayers.top, container: seatTopHandEl },
+        { player: relativePlayers.left, container: seatLeftHandEl },
+        { player: relativePlayers.right, container: seatRightHandEl }
+      ];
 
-        const title = document.createElement('div');
-        const bot = player.is_bot ? ' [bot]' : '';
-        const count = handSizes && handSizes[player.player_id] ? handSizes[player.player_id] : 0;
-        title.textContent = `seat ${player.seat}: ${player.name}${bot} - ${count} cards`;
-
-        const backRow = document.createElement('div');
-        backRow.className = 'back-row';
-        for (let i = 0; i < count; i += 1) {
-          const back = document.createElement('div');
-          back.className = 'back-card';
-          backRow.appendChild(back);
+      for (const seat of seats) {
+        if (!seat.player) {
+          seat.container.innerHTML = '';
+          continue;
         }
 
-        line.appendChild(title);
-        line.appendChild(backRow);
-        otherHandsEl.appendChild(line);
+        const count = handSizes && handSizes[seat.player.player_id] ? handSizes[seat.player.player_id] : 0;
+        renderSeatBackHand(seat.container, count);
       }
     }
 
@@ -554,11 +567,10 @@
       }
 
       actionsSectionEl.hidden = state.started;
-      trickSectionEl.hidden = !isPlaying;
-      yourHandSectionEl.hidden = !state.started;
-      otherHandsSectionEl.hidden = !state.started;
+      trickSectionEl.hidden = false;
 
       lastPlayers = players;
+      const relativePlayers = relativeSeatPlayers(players);
       const turnPlayer = players.find((player) => player.player_id === state.turn_player_id);
       const isYourTurn = !!isPlaying && !!myPlayerId && state.turn_player_id === myPlayerId;
       if (isPlaying) {
@@ -573,8 +585,6 @@
         turnIndicatorEl.textContent = '';
       }
 
-      const me = players.find((player) => player.player_id === myPlayerId);
-      yourNameEl.textContent = me ? me.name : 'you';
       const serverTrickPlays = (state.trick_plays || []).slice();
       const now = Date.now();
       const shouldHoldCompletedTrick =
@@ -590,10 +600,10 @@
         liveTrickPlays = serverTrickPlays;
       }
 
-      setSeatLabels(players, state.turn_player_id);
+      setSeatLabels(relativePlayers, state.turn_player_id);
       renderTrick(players, liveTrickPlays);
       renderYourHand(state.hand || [], phase, isYourTurn, !!state.pass_submitted);
-      renderOtherHands(players, state.hand_sizes || {});
+      renderOtherHands(relativePlayers, state.hand_sizes || {});
       renderPassPanel(state);
 
     }
