@@ -318,9 +318,16 @@
     }
 
     function renderYourHand(cards, isYourTurn) {
+      const safeCards = Array.isArray(cards) ? cards : [];
+      const handRenderKey = `${isYourTurn ? '1' : '0'}|${safeCards.join(',')}`;
+      if (handRenderKey === lastHandRenderKey) {
+        return;
+      }
+
+      lastHandRenderKey = handRenderKey;
       yourHandEl.innerHTML = '';
 
-      if (!cards || cards.length === 0) {
+      if (safeCards.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'muted';
         empty.textContent = '(empty)';
@@ -328,7 +335,7 @@
         return;
       }
 
-      for (const cardValue of cards) {
+      for (const cardValue of safeCards) {
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'hand-card';
@@ -395,6 +402,7 @@
     let ws;
     let myPlayerId = '';
     let lastTrickSignature = '';
+    let lastHandRenderKey = '';
     let lastPlayers = [];
     let liveTrickPlays = [];
     let pendingStateRefresh = 0;
