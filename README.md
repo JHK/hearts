@@ -2,7 +2,9 @@
 
 Multiplayer Hearts in Go using embedded NATS.
 
-There is CLI binary. After launch, each player can either open a game locally or discover and join a game bus.
+The CLI is an orchestration surface for running and joining tables.
+
+Architecture, boundaries, and concurrency model are documented in `architecture.md`.
 
 ## Quick start
 
@@ -32,45 +34,32 @@ There is CLI binary. After launch, each player can either open a game locally or
    join demo
    ```
 
-4. From any player at the table, start the round:
+4. Fill seats, then start the round:
+
+   ```text
+   addbot
+   addbot
+   addbot
+   ```
+
+   Add as many bots as needed until the table has 4 players.
+   Each `addbot` spawns an ephemeral local bot player in that CLI process.
+
+5. From any seated player, start the round:
 
    ```text
    start
    ```
 
-   If fewer than 4 humans are seated, the table auto-fills with simple bots.
-
-5. Play cards:
+6. Play cards:
 
    ```text
    play 2C
    play QS
    ```
 
-## Project structure
+## Target interaction model
 
-- `cmd/hearts`: unified CLI (open, discover, join, play)
-- `internal/game`: card model, rule checks, trick/scoring logic
-- `internal/protocol`: NATS subjects + wire messages
-- `internal/table`: authoritative table state machine
+The intended CLI flow is: start server, connect, discover table, join table, add bot, start game, play moves, and inspect table stats.
 
-## NATS subjects
-
-- `hearts.discovery`: request/reply table discovery
-- `hearts.table.<id>.join`: request/reply join seat
-- `hearts.table.<id>.start`: request/reply start round
-- `hearts.table.<id>.play`: request/reply play card
-- `hearts.table.<id>.events`: broadcast table events
-- `hearts.table.<id>.player.<player_id>.events`: private player events (hand updates)
-
-## Current rules coverage
-
-- 4 players, 52-card deal, 13 tricks
-- First trick must start with `2C`
-- Follow suit is enforced
-- Hearts cannot be led before broken (unless hand is all hearts)
-- Penalty cards blocked on first trick unless no alternative
-- Round scoring includes shoot-the-moon handling
-- Missing seats are auto-filled with random-play bots on `start`
-
-Passing cards and full game-to-100 flow are not implemented yet.
+For role ownership (CLI/server/table/player), interface abstractions, and agent-based concurrency details, see `architecture.md`.

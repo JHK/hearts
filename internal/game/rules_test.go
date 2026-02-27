@@ -2,48 +2,69 @@ package game
 
 import "testing"
 
-func TestFirstTrickMustLeadTwoOfClubs(t *testing.T) {
-	hand := []Card{{Suit: Clubs, Rank: 2}, {Suit: Hearts, Rank: 14}}
+func TestValidatePlayFirstTrickLeadMustBeTwoClubs(t *testing.T) {
+	hand := []Card{{Suit: SuitClubs, Rank: 2}, {Suit: SuitHearts, Rank: 5}}
 
-	err := CanLeadCard(hand, Card{Suit: Hearts, Rank: 14}, false, 0)
+	err := ValidatePlay(ValidatePlayInput{
+		Hand:       hand,
+		Card:       Card{Suit: SuitHearts, Rank: 5},
+		FirstTrick: true,
+	})
 	if err == nil {
-		t.Fatalf("expected first trick lead validation error")
+		t.Fatalf("expected 5H lead to be rejected on first trick")
 	}
 
-	err = CanLeadCard(hand, Card{Suit: Clubs, Rank: 2}, false, 0)
+	err = ValidatePlay(ValidatePlayInput{
+		Hand:       hand,
+		Card:       Card{Suit: SuitClubs, Rank: 2},
+		FirstTrick: true,
+	})
 	if err != nil {
-		t.Fatalf("expected 2C to be valid lead, got %v", err)
+		t.Fatalf("expected 2C lead to be accepted, got %v", err)
 	}
 }
 
-func TestCannotLeadHeartsBeforeBroken(t *testing.T) {
-	hand := []Card{{Suit: Hearts, Rank: 10}, {Suit: Clubs, Rank: 4}}
+func TestValidatePlayMustFollowSuit(t *testing.T) {
+	hand := []Card{{Suit: SuitClubs, Rank: 10}, {Suit: SuitHearts, Rank: 4}}
 
-	err := CanLeadCard(hand, Card{Suit: Hearts, Rank: 10}, false, 2)
+	err := ValidatePlay(ValidatePlayInput{
+		Hand:       hand,
+		Card:       Card{Suit: SuitHearts, Rank: 4},
+		Trick:      []Card{{Suit: SuitClubs, Rank: 2}},
+		FirstTrick: false,
+	})
 	if err == nil {
-		t.Fatalf("expected hearts lead to be blocked before hearts are broken")
+		t.Fatalf("expected follow-suit validation error")
 	}
 }
 
-func TestCanLeadHeartsWithHeartsOnly(t *testing.T) {
-	hand := []Card{{Suit: Hearts, Rank: 10}, {Suit: Hearts, Rank: 4}}
-
-	err := CanLeadCard(hand, Card{Suit: Hearts, Rank: 10}, false, 2)
+func TestTrickWinnerAndPoints(t *testing.T) {
+	winner, points, err := TrickWinner([]Play{
+		{PlayerID: "p1", Card: Card{Suit: SuitSpades, Rank: 10}},
+		{PlayerID: "p2", Card: Card{Suit: SuitSpades, Rank: 14}},
+		{PlayerID: "p3", Card: Card{Suit: SuitHearts, Rank: 2}},
+		{PlayerID: "p4", Card: Card{Suit: SuitSpades, Rank: 12}},
+	})
 	if err != nil {
-		t.Fatalf("expected hearts lead to be allowed when hand is only hearts, got %v", err)
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if winner != "p2" {
+		t.Fatalf("expected p2 to win, got %s", winner)
+	}
+	if points != 14 {
+		t.Fatalf("expected 14 points, got %d", points)
 	}
 }
 
-func TestMustFollowSuitWhenPossible(t *testing.T) {
-	hand := []Card{{Suit: Clubs, Rank: 10}, {Suit: Hearts, Rank: 4}}
+func TestApplyShootTheMoon(t *testing.T) {
+	adjusted := ApplyShootTheMoon(map[PlayerID]Points{
+		"p1": 26,
+		"p2": 0,
+		"p3": 0,
+		"p4": 0,
+	})
 
-	err := CanPlayCard(hand, Card{Suit: Hearts, Rank: 4}, Clubs, 4)
-	if err == nil {
-		t.Fatalf("expected follow-suit error")
-	}
-
-	err = CanPlayCard(hand, Card{Suit: Clubs, Rank: 10}, Clubs, 4)
-	if err != nil {
-		t.Fatalf("expected follow-suit play to be valid, got %v", err)
+	if adjusted["p1"] != 0 || adjusted["p2"] != 26 || adjusted["p3"] != 26 || adjusted["p4"] != 26 {
+		t.Fatalf("unexpected adjusted scores: %v", adjusted)
 	}
 }

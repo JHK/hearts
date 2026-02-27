@@ -1,72 +1,129 @@
 # Architecture
 
-This project is a multiplayer Hearts system built around NATS, with each participant modeled as an independent agent.
+This project follows an agent-oriented architecture with strict separation of concerns.
 
-## High-level design
+## Core principles
 
-- `internal/game` contains Hearts domain types and logic, reusable by both players and table agents.
-- Players and table are separate agents that only communicate through NATS messages/events.
-- Each agent owns its own state and processes messages in its own loop (actor-style boundary).
-- `internal/protocol` defines subjects and wire message/event contracts between agents.
-- Bots are players with automated decision-making, not a special protocol role.
+- The CLI only steers high-level actions and does not own game rules or state.
+- The table is the single authoritative owner of Hearts rules, game loop, events, and scoring.
+- A player is an entity that interacts solely with a table through commands/events.
+- Human and bot players use the same transport command/event contract.
+- Concurrency is handled through agents (actor-style goroutines), not shared mutable state.
+- NATS parallelism and protocol marshalling are isolated in transport/protocol layers.
 
-## Agent roles
+## Responsibilities
+
+### CLI
+
+- Starts a server.
+- Connects to a server.
+- Discovers tables.
+- Joins a table.
+- Adds bots to a table.
+- Starts a game.
+- Performs moves.
+- Requests table stats.
+
+The CLI is orchestration-only and remains intentionally thin.
+Ephemeral bots are local player agents spawned by a CLI process and live for that process lifetime.
+
+### Server
+
+- Hosts NATS connectivity and table lifecycles.
+- Routes discovery and table-level command traffic.
+- Does not contain Hearts rule decisions.
+- Does not own bot control APIs.
+
+### Table (authoritative agent)
+
+- Owns full table and round state.
+- Enforces legal actions and turn progression.
+- Assigns canonical player IDs when players join.
+- Runs the game loop and scoring.
+- Publishes public table events and private player events.
+- Computes and serves table/game stats.
+
+The table is the source of truth. No other component may finalize rule outcomes.
 
 ### Player agent
 
-- Represents a human or bot participant.
-- Provides a display name on join and receives a canonical player ID from the table.
-- Subscribes to table/public events and player-private events.
-- Maintains local state (hand, turn context, table info).
-- Uses `internal/game` to validate/candidate-check local moves before publishing `play` commands.
+Players (human or bot) follow the same table command/event contract and remain table-type agnostic.
 
-### Table agent
+### Bot
 
-- Owns authoritative table and round state.
-- Handles join/start/play command subjects.
-- Owns player identity allocation by assigning and returning canonical IDs on join.
-- Validates all incoming plays using `internal/game`.
-- Emits table-wide events (turn changes, cards played, trick/round completion).
-- Emits private player events (for example hand updates and your-turn notifications).
+- Implements the same player contract as humans.
+- Contains strategy-only logic.
+- Never bypasses table authority.
 
-### Bot player agent
+## Concurrency model (agents pattern)
 
-- Uses the same subjects and event flow as any other player.
-- Consumes the same player/private events and table/public events.
-- Chooses moves automatically (for now random strategy).
-- Uses `internal/game` rules locally to filter to valid moves before sending a play.
+- Each table runs in its own goroutine and processes messages sequentially.
+- Each player runs in its own goroutine and processes its own incoming events/turn prompts.
+- Agents communicate through command/event messages.
+- Mutable game state stays inside the owning agent loop.
+- This avoids shared-state races and keeps synchronization localized.
 
-## Shared domain and protocol
+## Separation of concerns
 
-### Game domain (`internal/game`)
+### Orchestration layer (`cmd/hearts`, `cmd/hearts/app`)
 
-- Card model and utilities (parse/format/deck/sort).
-- Rules for legal leads/plays and first-trick constraints.
-- Trick winner and points calculation.
-- Round scoring including shoot-the-moon handling.
+- Owns CLI parsing and high-level user flows (connect/discover/join/addbot/start/play/stats).
+- Keeps only client/session-facing state.
+- Does not implement Hearts rules, table state transitions, or transport internals.
 
-### Protocol (`internal/protocol`)
+### Server hosting layer (`internal/server`)
 
-- Subject builders for discovery, commands, and events.
-- Request/response types for commands.
-- Event envelope and typed payloads.
+- Owns embedded NATS lifecycle and hosted table runtime lifecycle.
+- Owns hosted table runtimes.
+- Does not decide game outcomes or card legality.
 
-## Message topology
+### Table authority layer (`internal/server` table runtime)
 
-- Discovery: `hearts.discovery` (request/reply)
-- Commands:
-  - `hearts.table.<id>.join`
-  - `hearts.table.<id>.start`
-  - `hearts.table.<id>.play`
-- Public events: `hearts.table.<id>.events`
-- Private events: `hearts.table.<id>.player.<player_id>.events`
+- Owns authoritative mutable state for table, trick, round, and totals.
+- Enforces legal actions using `internal/game` and emits resulting events.
+- Stays player-type agnostic (no human/bot branching in table rules).
+- Is the only component allowed to commit game outcomes.
 
-## Round lifecycle
+### Player automation layer (`internal/player/bot`)
 
-1. Player agents discover and join a table.
-2. On join, table assigns canonical player IDs and returns them to joining players.
-3. At round start, players execute the passing phase and receive updated hands.
-4. Table agent sets first turn and distributes per-player hand updates for trick play.
-5. Active player agent sends play command; table validates/applies and broadcasts outcomes.
-6. After each trick, table computes winner/points and emits updates.
-7. After 13 tricks, table publishes round totals and resets round state.
+- Defines bot strategies and bot runtime behavior.
+- Reacts to table events and submits commands through transport clients.
+- Ephemeral bot runtimes are spawned locally by CLI and join as normal players.
+- Never bypasses table authority.
+
+### Transport layer (`internal/transport/nats`)
+
+- Owns NATS request/reply, subscriptions, event fan-out, and callback safety.
+- Provides participant/table transport endpoints and codec helpers.
+- Contains no Hearts rule logic or authoritative game state.
+
+### Protocol layer (`internal/protocol`)
+
+- Owns subject naming and wire contracts, split by lobby/table concerns and gameplay concerns.
+- Defines serialization boundary between components.
+- Contains no runtime game decisions.
+
+### Domain layer (`internal/game`)
+
+- Owns pure Hearts domain logic (cards, legal plays, trick winner, scoring).
+- Owns game-level constants such as players-per-table.
+- Reused by authoritative table logic and bot decision support.
+- Contains no networking, goroutine orchestration, or transport concerns.
+
+## Interaction flow
+
+1. CLI starts or connects to a server.
+2. CLI discovers available tables.
+3. Player joins a table.
+4. Optional bots are added by local CLI bot agents that join as normal players.
+5. CLI starts the game only after the table has 4 players.
+6. Players submit moves.
+7. Table validates, applies, and emits outcomes.
+8. CLI requests table stats at any time.
+
+## Authority rules
+
+- Only the table validates and commits game actions.
+- Only the table allocates canonical `player_id` values.
+- Players may pre-validate locally for UX, but table validation is final.
+- Transport/protocol errors are handled outside domain logic boundaries.
