@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"math/rand"
 	"sort"
 	"sync"
 	"time"
@@ -35,6 +36,12 @@ type Session struct {
 	participant     *natswire.ParticipantClient
 	hand            handState
 	bots            []*ephemeralBot
+}
+
+type AddedBot struct {
+	JoinResponse protocol.JoinResponse
+	Name         string
+	Strategy     string
 }
 
 type ephemeralBot struct {
@@ -125,31 +132,59 @@ func (s *Session) StartRound() error {
 	return s.participant.StartRound()
 }
 
-func (s *Session) AddBot() (protocol.JoinResponse, error) {
+func (s *Session) AddBot(strategyName string) (AddedBot, error) {
 	if err := s.ensureJoinedTable(); err != nil {
-		return protocol.JoinResponse{}, err
+		return AddedBot{}, err
 	}
+
+	strategyKind, err := bot.ParseStrategyKind(strategyName)
+	if err != nil {
+		return AddedBot{}, err
+	}
+	strategy := strategyKind.New()
+	strategyName = string(strategyKind)
+	name := randomBotName()
 
 	botConn, err := nats.Connect(s.clientNC.ConnectedUrl())
 	if err != nil {
-		return protocol.JoinResponse{}, err
+		return AddedBot{}, err
 	}
 
-	joinResp, err := joinPlayer(botConn, s.currentTable, "Bot")
+	joinResp, err := joinPlayer(botConn, s.currentTable, name)
 	if err != nil {
 		botConn.Close()
-		return protocol.JoinResponse{}, err
+		return AddedBot{}, err
 	}
 
-	runtime := bot.NewRuntime(botConn, s.currentTable, joinResp.PlayerID, nil)
+	runtime := bot.NewRuntime(botConn, s.currentTable, joinResp.PlayerID, strategy)
 	if err := runtime.Start(); err != nil {
 		botConn.Close()
-		return protocol.JoinResponse{}, fmt.Errorf("start bot runtime: %w", err)
+		return AddedBot{}, fmt.Errorf("start bot runtime: %w", err)
 	}
 
 	s.bots = append(s.bots, &ephemeralBot{conn: botConn, runtime: runtime})
 
-	return joinResp, nil
+	return AddedBot{JoinResponse: joinResp, Name: name, Strategy: strategyName}, nil
+}
+
+var defaultBotNames = []string{
+	"Ada",
+	"Linus",
+	"Grace",
+	"Ken",
+	"Dennis",
+	"Margaret",
+	"Alan",
+	"Radia",
+	"Barbara",
+	"Edsger",
+	"Anita",
+	"Claude",
+}
+
+func randomBotName() string {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return defaultBotNames[rng.Intn(len(defaultBotNames))]
 }
 
 func (s *Session) TableStats() (protocol.TableInfo, error) {

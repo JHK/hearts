@@ -131,12 +131,22 @@ func (a *cliApp) runCommand(parts []string) bool {
 		}
 		fmt.Printf("Joined table %s as %s (seat %d)\n", joinResp.TableID, a.name, joinResp.Seat)
 	case "addbot":
-		joinResp, err := a.session.AddBot()
+		if len(parts) > 2 {
+			fmt.Println("usage: addbot [strategy]")
+			return true
+		}
+
+		strategyName := ""
+		if len(parts) >= 2 {
+			strategyName = parts[1]
+		}
+
+		added, err := a.session.AddBot(strategyName)
 		if err != nil {
 			fmt.Printf("addbot failed: %v\n", err)
 			return true
 		}
-		fmt.Printf("Added bot %s at seat %d\n", joinResp.PlayerID, joinResp.Seat)
+		fmt.Printf("Added bot %s (%s, strategy=%s) at seat %d\n", added.JoinResponse.PlayerID, added.Name, added.Strategy, added.JoinResponse.Seat)
 	case "start":
 		if err := a.session.StartRound(); err != nil {
 			fmt.Printf("start rejected: %v\n", err)
@@ -254,7 +264,7 @@ func printHelp() {
 	fmt.Println("  discover                 discover open tables on current bus")
 	fmt.Println("  join <table-id>          join discovered table")
 	fmt.Println("  connect <nats-url>       switch to another game bus")
-	fmt.Println("  addbot                   add one bot seat to current table")
+	fmt.Println("  addbot [strategy]        add one bot seat (default: random)")
 	fmt.Println("  start                    start round (requires 4 players)")
 	fmt.Println("  play <card>              play a card, e.g. play QS")
 	fmt.Println("  hand                     show your hand")

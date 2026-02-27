@@ -38,12 +38,12 @@ Architecture, boundaries, and concurrency model are documented in `architecture.
 
    ```text
    addbot
-   addbot
-   addbot
+   addbot first-legal
    ```
 
    Add as many bots as needed until the table has 4 players.
-   Each `addbot` spawns an ephemeral local bot player in that CLI process.
+   `addbot` accepts an optional `[strategy]` argument.
+   Strategies: `random` (default), `first-legal`.
 
 5. From any seated player, start the round:
 
