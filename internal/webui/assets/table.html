@@ -54,6 +54,7 @@
             </div>
           </div>
         </div>
+        <div id="trickAnimationLayer" class="trick-animation-layer"></div>
       </div>
     </section>
 
@@ -90,6 +91,7 @@
     const readyAfterPassEl = document.getElementById('readyAfterPass');
     const trickSectionEl = document.getElementById('trickSection');
     const trickCenterEl = document.getElementById('trickCenter');
+    const trickAnimationLayerEl = document.getElementById('trickAnimationLayer');
     const seatTopEl = document.getElementById('seatTop');
     const seatTopNameEl = document.getElementById('seatTopName');
     const seatTopHandEl = document.getElementById('seatTopHand');
@@ -496,6 +498,8 @@
     }
 
     const token = ensureToken();
+    const trickCardInDurationMs = 520;
+    const trickCardInBufferMs = 80;
     let ws;
     let myPlayerId = '';
     let lastTrickSignature = '';
@@ -504,13 +508,122 @@
     let selectedPassCards = [];
     let lastPlayers = [];
     let liveTrickPlays = [];
+    let trickEventQueue = [];
+    let processingTrickEventQueue = false;
     let pendingStateRefresh = 0;
-    let keepTrickVisibleUntil = 0;
-    let lastCardPlayedAt = 0;
     let lastPhase = '';
     let lastPassSubmittedCount = -1;
     let lastPassReadyCount = -1;
     let loggedPassReviewKey = '';
+
+    function waitMs(durationMs) {
+      if (!durationMs || durationMs <= 0) {
+        return Promise.resolve();
+      }
+
+      return new Promise((resolve) => {
+        window.setTimeout(resolve, durationMs);
+      });
+    }
+
+    function prefersReducedMotion() {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    function trickRenderPlayers() {
+      if (Array.isArray(lastPlayers) && lastPlayers.length > 0) {
+        return lastPlayers;
+      }
+      if (lastSnapshot && Array.isArray(lastSnapshot.players)) {
+        return lastSnapshot.players;
+      }
+
+      return [];
+    }
+
+    function syncTrickFromLatestSnapshot() {
+      if (processingTrickEventQueue || trickEventQueue.length > 0) {
+        return;
+      }
+
+      const players = trickRenderPlayers();
+      if (players.length === 0) {
+        return;
+      }
+
+      const snapshotTrickPlays = Array.isArray(lastSnapshot && lastSnapshot.trick_plays)
+        ? lastSnapshot.trick_plays.slice()
+        : [];
+      liveTrickPlays = snapshotTrickPlays;
+      renderTrick(players, liveTrickPlays);
+    }
+
+    function enqueueTrickEvent(type, data) {
+      trickEventQueue.push({ type, data: data || {} });
+      void processTrickEventQueue();
+    }
+
+    async function processQueuedCardPlayed(data) {
+      if (!data || !data.player_id || !data.card) {
+        return;
+      }
+
+      const players = trickRenderPlayers();
+      if (players.length === 0) {
+        return;
+      }
+
+      const nextTrick = liveTrickPlays.filter((play) => play.player_id !== data.player_id);
+      nextTrick.push({ player_id: data.player_id, card: data.card });
+      liveTrickPlays = nextTrick;
+      renderTrick(players, liveTrickPlays);
+
+      if (!prefersReducedMotion()) {
+        await waitMs(trickCardInDurationMs + trickCardInBufferMs);
+      }
+    }
+
+    async function processQueuedTrickCompleted(data) {
+      if (data && data.winner_player_id) {
+        await animateTrickCardsToWinner(data.winner_player_id);
+      }
+
+      liveTrickPlays = [];
+      lastTrickSignature = '';
+
+      const players = trickRenderPlayers();
+      if (players.length > 0) {
+        renderTrick(players, liveTrickPlays);
+      }
+    }
+
+    async function processTrickEventQueue() {
+      if (processingTrickEventQueue) {
+        return;
+      }
+
+      processingTrickEventQueue = true;
+      try {
+        while (trickEventQueue.length > 0) {
+          const queued = trickEventQueue.shift();
+          if (!queued) {
+            continue;
+          }
+
+          if (queued.type === 'card_played') {
+            await processQueuedCardPlayed(queued.data);
+            continue;
+          }
+
+          if (queued.type === 'trick_completed') {
+            await processQueuedTrickCompleted(queued.data);
+          }
+        }
+      } finally {
+        processingTrickEventQueue = false;
+        syncTrickFromLatestSnapshot();
+      }
+    }
 
     function log(line) {
       const ts = new Date().toLocaleTimeString();
@@ -612,9 +725,13 @@
       const turnPlayer = players.find((player) => player.player_id === state.turn_player_id);
       const isYourTurn = !!isPlaying && !!myPlayerId && state.turn_player_id === myPlayerId;
       if (isPlaying) {
-        turnIndicatorEl.textContent = isYourTurn
-          ? 'waiting for you'
-          : `waiting for ${turnPlayer ? turnPlayer.name : (state.turn_player_id || '-')}`;
+        if (!state.turn_player_id) {
+          turnIndicatorEl.textContent = 'collecting trick';
+        } else {
+          turnIndicatorEl.textContent = isYourTurn
+            ? 'waiting for you'
+            : `waiting for ${turnPlayer ? turnPlayer.name : state.turn_player_id}`;
+        }
       } else if (isPassing) {
         turnIndicatorEl.textContent = `pass 3 cards ${state.pass_direction ? `(${state.pass_direction})` : ''}`.trim();
       } else if (isPassReview) {
@@ -624,17 +741,7 @@
       }
 
       const serverTrickPlays = (state.trick_plays || []).slice();
-      const now = Date.now();
-      const shouldHoldCompletedTrick =
-        serverTrickPlays.length === 0 &&
-        liveTrickPlays.length === 4 &&
-        now < keepTrickVisibleUntil;
-      const shouldHoldInFlightTrick =
-        serverTrickPlays.length === 0 &&
-        liveTrickPlays.length > 0 &&
-        now - lastCardPlayedAt < 1000;
-
-      if (!shouldHoldCompletedTrick && !shouldHoldInFlightTrick) {
+      if (!processingTrickEventQueue && trickEventQueue.length === 0) {
         liveTrickPlays = serverTrickPlays;
       }
 
@@ -679,6 +786,54 @@
       }
     }
 
+    function seatNameElementForPlayerId(playerId) {
+      if (!playerId || !lastPlayers || lastPlayers.length === 0) {
+        return null;
+      }
+
+      const me = lastPlayers.find((player) => player.player_id === myPlayerId);
+      const winner = lastPlayers.find((player) => player.player_id === playerId);
+      if (!me || !winner) {
+        return null;
+      }
+
+      const offset = (winner.seat - me.seat + 4) % 4;
+      switch (offset) {
+        case 0:
+          return seatBottomNameEl;
+        case 1:
+          return seatLeftNameEl;
+        case 2:
+          return seatTopNameEl;
+        case 3:
+          return seatRightNameEl;
+        default:
+          return null;
+      }
+    }
+
+    function textVisualRect(el) {
+      if (!el) {
+        return null;
+      }
+
+      const text = (el.textContent || '').trim();
+      if (!text) {
+        return el.getBoundingClientRect();
+      }
+
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const rect = range.getBoundingClientRect();
+      range.detach?.();
+
+      if (!rect || rect.width === 0 || rect.height === 0) {
+        return el.getBoundingClientRect();
+      }
+
+      return rect;
+    }
+
     function animateTrickWinner(playerId) {
       const seatEl = seatElementForPlayerId(playerId);
       if (!seatEl) {
@@ -691,6 +846,90 @@
       seatEl.addEventListener('animationend', () => {
         seatEl.classList.remove('trick-winner');
       }, { once: true });
+    }
+
+    function animateTrickCardsToWinner(playerId) {
+      return new Promise((resolve) => {
+        const seatEl = seatElementForPlayerId(playerId);
+        const seatNameEl = seatNameElementForPlayerId(playerId);
+        if (!seatEl || !seatNameEl || !trickAnimationLayerEl) {
+          animateTrickWinner(playerId);
+          resolve();
+          return;
+        }
+        const nameRect = seatNameEl.getBoundingClientRect();
+        const textRect = textVisualRect(seatNameEl) || nameRect;
+        const targetCenterX = textRect.left + (textRect.width / 2);
+        const targetCenterY = textRect.top + (textRect.height / 2);
+        const reduceMotion = prefersReducedMotion();
+
+        const animatedCards = [];
+        const slotEntries = Object.entries(trickSlotEls);
+        for (const [slotKey, slotEl] of slotEntries) {
+          const cardEl = slotEl.querySelector('.play-card');
+          if (!cardEl) {
+            continue;
+          }
+
+          const cardRect = cardEl.getBoundingClientRect();
+          const clone = cardEl.cloneNode(true);
+          clone.classList.add('trick-capture-card');
+          clone.style.left = `${cardRect.left}px`;
+          clone.style.top = `${cardRect.top}px`;
+          clone.style.width = `${cardRect.width}px`;
+          clone.style.height = `${cardRect.height}px`;
+          trickAnimationLayerEl.appendChild(clone);
+
+          animatedCards.push({
+            el: clone,
+            slotKey,
+            centerX: cardRect.left + (cardRect.width / 2),
+            centerY: cardRect.top + (cardRect.height / 2)
+          });
+
+          slotEl.replaceChildren();
+          slotEl.dataset.playSignature = '';
+        }
+
+        if (animatedCards.length === 0) {
+          animateTrickWinner(playerId);
+          resolve();
+          return;
+        }
+
+        if (reduceMotion) {
+          for (const card of animatedCards) {
+            card.el.remove();
+          }
+          animateTrickWinner(playerId);
+          resolve();
+          return;
+        }
+
+        const durationMs = 1400;
+        const staggerMs = 90;
+        const sortPriorityBySlot = { top: 0, left: 1, right: 2, bottom: 3 };
+        animatedCards.sort((a, b) => (sortPriorityBySlot[a.slotKey] || 0) - (sortPriorityBySlot[b.slotKey] || 0));
+
+        requestAnimationFrame(() => {
+          animatedCards.forEach((card, index) => {
+            const deltaX = targetCenterX - card.centerX;
+            const deltaY = targetCenterY - card.centerY;
+            const angle = (index - ((animatedCards.length - 1) / 2)) * 7;
+            card.el.style.transitionDelay = `${index * staggerMs}ms`;
+            card.el.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.56) rotate(${angle}deg)`;
+            card.el.style.opacity = '0';
+          });
+        });
+
+        window.setTimeout(() => {
+          for (const card of animatedCards) {
+            card.el.remove();
+          }
+          animateTrickWinner(playerId);
+          resolve();
+        }, durationMs + (animatedCards.length - 1) * staggerMs + 80);
+      });
     }
 
     function connect() {
@@ -748,30 +987,16 @@
             scheduleStateRefresh(0);
             break;
           case 'card_played':
-            if (msg.data && msg.data.player_id && msg.data.card && lastPlayers.length > 0) {
-              lastCardPlayedAt = Date.now();
-              const nextTrick = liveTrickPlays.filter((play) => play.player_id !== msg.data.player_id);
-              nextTrick.push({ player_id: msg.data.player_id, card: msg.data.card });
-              liveTrickPlays = nextTrick;
-              if (liveTrickPlays.length >= 4) {
-                keepTrickVisibleUntil = Date.now() + 900;
-              }
-              renderTrick(lastPlayers, liveTrickPlays);
-              scheduleStateRefresh(liveTrickPlays.length >= 4 ? 700 : 0);
-            } else {
-              scheduleStateRefresh(0);
-            }
+            enqueueTrickEvent('card_played', msg.data || {});
+            scheduleStateRefresh(0);
             break;
           case 'add_bot_result':
             log('bot added');
             scheduleStateRefresh(0);
             break;
           case 'trick_completed':
-            if (msg.data && msg.data.winner_player_id) {
-              animateTrickWinner(msg.data.winner_player_id);
-            }
-            keepTrickVisibleUntil = Date.now() + 900;
-            scheduleStateRefresh(900);
+            enqueueTrickEvent('trick_completed', msg.data || {});
+            scheduleStateRefresh(0);
             break;
           default:
             log(`${msg.type}: ${JSON.stringify(msg.data || {})}`);
