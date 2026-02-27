@@ -4,9 +4,7 @@
 
   const nameEl = document.getElementById('name');
   const newTableIdEl = document.getElementById('newTableId');
-  const joinTableIdEl = document.getElementById('joinTableId');
   const createResultEl = document.getElementById('createResult');
-  const joinResultEl = document.getElementById('joinResult');
   const tablesEl = document.getElementById('tables');
 
   function ensureToken() {
@@ -29,10 +27,6 @@
   }
 
   function openTable(tableId) {
-    if (!tableId) {
-      joinResultEl.textContent = 'table id is required';
-      return;
-    }
     storeIdentity();
     window.location.href = '/table/' + encodeURIComponent(tableId);
   }
@@ -81,7 +75,6 @@
   }
 
   document.getElementById('createTable').onclick = createTable;
-  document.getElementById('joinTable').onclick = () => openTable(joinTableIdEl.value.trim());
 
   nameEl.value = localStorage.getItem(nameKey) || 'Player';
   ensureToken();
