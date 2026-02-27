@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -65,6 +67,8 @@ func NewHandler(manager *table.Manager) (http.Handler, error) {
 
 	mux := http.NewServeMux()
 
+	stylesPath := filepath.Join("internal", "webui", "assets", "styles.css")
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
@@ -88,6 +92,17 @@ func NewHandler(manager *table.Manager) (http.Handler, error) {
 
 	mux.HandleFunc("/api/tables", func(w http.ResponseWriter, r *http.Request) {
 		handleTablesAPI(manager, w, r)
+	})
+
+	mux.HandleFunc("/assets/styles.css", func(w http.ResponseWriter, r *http.Request) {
+		styles, err := os.ReadFile(stylesPath)
+		if err != nil {
+			http.Error(w, "styles not built: run `npm run build:css`", http.StatusServiceUnavailable)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		_, _ = w.Write(styles)
 	})
 
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}

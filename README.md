@@ -6,23 +6,29 @@ Architecture, boundaries, and concurrency model are documented in `architecture.
 
 ## Quick start
 
-1. Start the web server:
+1. Install project dependencies (Node + Go modules):
 
    ```bash
-   go run ./cmd/hearts
+   make setup
    ```
 
-2. Open the lobby in your browser:
+2. Start the web server:
+
+   ```bash
+   make run
+   ```
+
+3. Open the lobby in your browser:
 
    `http://127.0.0.1:8080/`
 
-3. In `/`:
+4. In `/`:
 
    - choose player name
    - create a table or join an existing table
    - navigate to `/table/<table_id>`
 
-4. In `/table/<table_id>`:
+5. In `/table/<table_id>`:
 
    - join as this browser player
    - add bots until 4 seats are filled
@@ -45,3 +51,8 @@ Architecture, boundaries, and concurrency model are documented in `architecture.
 
 - In-memory only.
 - Server restart clears tables, players, and game progress.
+
+## Frontend styling workflow
+
+- Build CSS once: `npm run build:css`
+- Rebuild on changes: `npm run watch:css`

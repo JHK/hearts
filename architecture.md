@@ -31,7 +31,7 @@ Each browser instance represents one player identity for a table.
 ### Web app (`cmd/hearts`, `internal/webui`)
 
 - Starts the HTTP server.
-- Serves embedded HTML/CSS/JS assets.
+- Serves embedded HTML assets and generated CSS/JS assets.
 - Hosts lobby and table routes.
 - Manages WebSocket lifecycle and message IO.
 - Does not decide card legality or game outcomes.

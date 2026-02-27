@@ -4,84 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hearts Lobby</title>
-  <style>
-    :root {
-      --bg: #edf3f8;
-      --panel: #ffffff;
-      --ink: #1c2b3a;
-      --line: #d4e1ec;
-      --muted: #5b6f83;
-      --accent: #116466;
-      --accent2: #d97b32;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: radial-gradient(circle at top, #ffffff, var(--bg));
-      color: var(--ink);
-      font-family: "Noto Sans", "Segoe UI", sans-serif;
-    }
-    main {
-      max-width: 920px;
-      margin: 0 auto;
-      padding: 20px;
-      display: grid;
-      gap: 14px;
-    }
-    section {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 14px;
-      box-shadow: 0 6px 18px rgba(15, 34, 56, 0.08);
-    }
-    h1, h2 { margin: 0 0 10px; }
-    h1 { font-size: 1.4rem; }
-    h2 { font-size: 1.05rem; }
-    .muted { color: var(--muted); }
-    .row { display: flex; gap: 10px; flex-wrap: wrap; }
-    input {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px 12px;
-      min-width: 220px;
-      font-size: 1rem;
-    }
-    button {
-      border: 0;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-weight: 700;
-      color: #fff;
-      cursor: pointer;
-      background: linear-gradient(130deg, var(--accent), #1b8d8f);
-    }
-    button.alt {
-      background: linear-gradient(130deg, var(--accent2), #e7a162);
-    }
-    ul {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: 8px;
-    }
-    li {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    @media (max-width: 640px) {
-      input, button { width: 100%; }
-      li { align-items: stretch; flex-direction: column; }
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/styles.css" />
 </head>
-<body>
+<body class="lobby-page">
   <main>
     <section>
       <h1>Hearts Lobby</h1>
