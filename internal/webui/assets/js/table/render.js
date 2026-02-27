@@ -428,7 +428,7 @@ export function createRenderer({ dom, state, send }) {
     const canAddBot = !snapshot.started && players.length < 4;
     dom.botControlEl.classList.toggle('hidden', !canAddBot);
     if (!canAddBot) {
-      dom.botStrategySelectEl.value = '';
+      dom.botStrategySelectEl.value = 'smart';
     }
 
     const showStartControl = !snapshot.started && players.length === 4;

@@ -9,6 +9,7 @@ func TestParseStrategyKind(t *testing.T) {
 		want    StrategyKind
 		wantErr bool
 	}{
+		{name: "smart", raw: "smart", want: StrategySmart},
 		{name: "empty defaults to random", raw: "", want: StrategyRandom},
 		{name: "random", raw: "random", want: StrategyRandom},
 		{name: "first legal", raw: "first-legal", want: StrategyFirstLegal},
@@ -36,7 +37,12 @@ func TestParseStrategyKind(t *testing.T) {
 }
 
 func TestStrategyKindNew(t *testing.T) {
-	strategy := StrategyRandom.New()
+	strategy := StrategySmart.New()
+	if _, ok := strategy.(*Smart); !ok {
+		t.Fatalf("expected Smart strategy")
+	}
+
+	strategy = StrategyRandom.New()
 	if _, ok := strategy.(*Random); !ok {
 		t.Fatalf("expected Random strategy")
 	}

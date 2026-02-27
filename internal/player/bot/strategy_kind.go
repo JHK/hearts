@@ -8,6 +8,7 @@ import (
 type StrategyKind string
 
 const (
+	StrategySmart      StrategyKind = "smart"
 	StrategyRandom     StrategyKind = "random"
 	StrategyFirstLegal StrategyKind = "first-legal"
 )
@@ -20,7 +21,7 @@ func ParseStrategyKind(raw string) (StrategyKind, error) {
 
 	kind := StrategyKind(name)
 	if !kind.Valid() {
-		return "", fmt.Errorf("unknown strategy %q (available: %s, %s)", raw, StrategyRandom, StrategyFirstLegal)
+		return "", fmt.Errorf("unknown strategy %q (available: %s, %s, %s)", raw, StrategySmart, StrategyRandom, StrategyFirstLegal)
 	}
 
 	return kind, nil
@@ -30,6 +31,8 @@ func (k StrategyKind) Valid() bool {
 	switch k {
 	case StrategyRandom, StrategyFirstLegal:
 		return true
+	case StrategySmart:
+		return true
 	default:
 		return false
 	}
@@ -37,6 +40,8 @@ func (k StrategyKind) Valid() bool {
 
 func (k StrategyKind) New() Strategy {
 	switch k {
+	case StrategySmart:
+		return NewSmartBot()
 	case StrategyFirstLegal:
 		return NewFirstLegalBot()
 	case StrategyRandom:

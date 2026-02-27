@@ -35,7 +35,7 @@ const token = ensureToken();
 
 dom.addBotDefaultEl.onclick = () => {
   send({ type: 'add_bot', strategy: dom.botStrategySelectEl.value || '' });
-  dom.botStrategySelectEl.value = '';
+  dom.botStrategySelectEl.value = 'smart';
 };
 
 dom.startButtonEl.onclick = () => {
