@@ -112,6 +112,27 @@
       return suit === 'H' || suit === 'D';
     }
 
+    function decodeCard(card) {
+      if (!card || card.length < 2) {
+        return { rank: '', suit: '', glyph: '' };
+      }
+
+      const rank = card.slice(0, -1);
+      const suit = card.slice(-1);
+      const glyphBySuit = {
+        S: '\u2660',
+        H: '\u2665',
+        D: '\u2666',
+        C: '\u2663'
+      };
+
+      return {
+        rank,
+        suit,
+        glyph: glyphBySuit[suit] || suit
+      };
+    }
+
     function setSeatTurnClass(el, player, turnPlayerId) {
       if (player && turnPlayerId && player.player_id === turnPlayerId) {
         el.classList.add('turn');
@@ -177,10 +198,17 @@
       for (const play of trickPlays) {
         const card = document.createElement('div');
         card.className = 'play-card';
+        if (isRedCard(play.card)) {
+          card.classList.add('is-red');
+        }
 
         const label = document.createElement('div');
+        const cardInfo = decodeCard(play.card);
+        const cardLabel = `${cardInfo.rank}${cardInfo.glyph}`;
         label.className = 'label' + (isRedCard(play.card) ? ' is-red' : '');
-        label.textContent = play.card;
+        label.textContent = cardLabel;
+        card.dataset.cornerTop = cardLabel;
+        card.dataset.cornerBottom = cardLabel;
 
         const who = document.createElement('div');
         who.className = 'who';
@@ -208,10 +236,17 @@
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'hand-card' + (isRedCard(cardValue) ? ' is-red' : '');
+        const cardInfo = decodeCard(cardValue);
+        const cardLabel = `${cardInfo.rank}${cardInfo.glyph}`;
+        card.dataset.cornerTop = cardLabel;
+        card.dataset.cornerBottom = cardLabel;
         if (isYourTurn) {
           card.className += ' playable';
         }
-        card.textContent = cardValue;
+        const value = document.createElement('span');
+        value.className = 'card-value';
+        value.textContent = cardLabel;
+        card.appendChild(value);
         card.onclick = () => {
           send({ type: 'play', card: cardValue });
         };
