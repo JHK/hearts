@@ -219,7 +219,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 82px;
+    width: 76px;
     height: 110px;
   }
 
@@ -265,60 +265,25 @@
 
   .play-card {
     position: relative;
-    background: var(--card-front);
-    border: 1px solid var(--card-edge);
-    border-radius: 10px;
     width: 74px;
-    aspect-ratio: 5 / 7;
-    padding: 6px;
+    aspect-ratio: 167.0869141 / 242.6669922;
+    border: 0;
+    border-radius: 8px;
+    overflow: hidden;
     box-shadow:
-      0 8px 18px rgba(16, 31, 52, 0.24),
-      0 1px 0 rgba(255, 255, 255, 0.95) inset,
-      0 0 0 1px rgba(255, 255, 255, 0.45) inset;
-    background: #fff;
-    text-align: center;
+      0 8px 18px rgba(16, 31, 52, 0.24);
+    background: transparent;
     display: flex;
-    flex-direction: column;
+    align-items: center;
     justify-content: center;
   }
 
-  .play-card::before,
-  .play-card::after {
-    position: absolute;
-    font-family: "Cascadia Mono", "DejaVu Sans Mono", monospace;
-    font-weight: 700;
-    font-size: 0.58rem;
-    line-height: 1;
-    letter-spacing: 0.02em;
-    color: var(--card-ink);
-    content: attr(data-corner-top);
-    opacity: 0.9;
+  .play-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
     pointer-events: none;
-  }
-
-  .play-card::before {
-    top: 5px;
-    left: 6px;
-  }
-
-  .play-card::after {
-    right: 6px;
-    bottom: 5px;
-    transform: rotate(180deg);
-    content: attr(data-corner-bottom);
-  }
-
-  .play-card .label {
-    font-family: "Cascadia Mono", "DejaVu Sans Mono", monospace;
-    font-size: 1.42rem;
-    font-weight: 700;
-    margin-top: 2px;
-    color: var(--card-ink);
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
-  }
-
-  .play-card .label.is-red {
-    color: #b42323;
   }
 
   @keyframes trick-card-in-top {
@@ -396,80 +361,43 @@
 
   .hand-card {
     position: relative;
-    border: 1px solid var(--card-edge);
-    border-radius: 10px;
+    border: 0;
+    border-radius: 8px;
     width: 56px;
-    aspect-ratio: 5 / 7;
-    padding: 5px;
+    aspect-ratio: 167.0869141 / 242.6669922;
+    padding: 0;
     text-align: center;
-    background: #fff;
+    background: transparent;
     font-family: "Cascadia Mono", "DejaVu Sans Mono", monospace;
     font-weight: 700;
     cursor: pointer;
     transition: transform 120ms ease, box-shadow 120ms ease;
     box-shadow:
-      0 4px 8px rgba(15, 36, 60, 0.2),
-      0 1px 0 rgba(255, 255, 255, 0.95) inset,
-      0 0 0 1px rgba(255, 255, 255, 0.45) inset;
+      0 4px 8px rgba(15, 36, 60, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--card-ink);
+    overflow: hidden;
   }
 
-  .hand-card::before,
-  .hand-card::after {
-    position: absolute;
-    font-family: "Cascadia Mono", "DejaVu Sans Mono", monospace;
-    font-weight: 700;
-    font-size: 0.58rem;
-    line-height: 1;
-    letter-spacing: 0.02em;
-    color: var(--card-ink);
-    opacity: 0.9;
+  .hand-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
     pointer-events: none;
-  }
-
-  .hand-card::before {
-    top: 5px;
-    left: 6px;
-    content: attr(data-corner-top);
-  }
-
-  .hand-card::after {
-    right: 6px;
-    bottom: 5px;
-    transform: rotate(180deg);
-    content: attr(data-corner-bottom);
-  }
-
-  .hand-card .card-value {
-    font-size: 1.3rem;
-    line-height: 1;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
-  }
-
-  .hand-card.is-red::before,
-  .hand-card.is-red::after,
-  .play-card.is-red::before,
-  .play-card.is-red::after {
-    color: #b42323;
   }
 
   .hand-card:hover {
     transform: translateY(-3px);
-    box-shadow:
-      0 8px 14px rgba(15, 36, 60, 0.28),
-      0 1px 0 rgba(255, 255, 255, 0.95) inset,
-      0 0 0 1px rgba(255, 255, 255, 0.45) inset;
+    box-shadow: 0 8px 14px rgba(15, 36, 60, 0.28);
   }
 
   .hand-card.playable {
-    border-color: #9ec7e8;
     box-shadow:
       0 6px 12px rgba(20, 46, 72, 0.22),
-      0 0 0 1px rgba(166, 209, 241, 0.6) inset,
-      0 1px 0 rgba(255, 255, 255, 0.95) inset;
+      0 0 0 1px rgba(166, 209, 241, 0.8);
   }
 
   .other-hands {

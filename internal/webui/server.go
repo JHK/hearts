@@ -16,7 +16,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-//go:embed assets/index.html assets/table.html
+//go:embed assets/index.html assets/table.html assets/cards/*.svg
 var assetsFS embed.FS
 
 type Config struct {
@@ -133,6 +133,24 @@ func NewHandler(manager *table.Manager) (http.Handler, error) {
 
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 		_, _ = w.Write(styles)
+	})
+
+	mux.HandleFunc("/assets/cards/", func(w http.ResponseWriter, r *http.Request) {
+		cardFile := strings.TrimPrefix(r.URL.Path, "/assets/cards/")
+		cardFile = strings.TrimSpace(cardFile)
+		if cardFile == "" || strings.Contains(cardFile, "/") || !strings.HasSuffix(cardFile, ".svg") {
+			http.NotFound(w, r)
+			return
+		}
+
+		content, err := assetsFS.ReadFile("assets/cards/" + cardFile)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		w.Header().Set("Content-Type", "image/svg+xml")
+		_, _ = w.Write(content)
 	})
 
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}

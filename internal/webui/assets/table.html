@@ -105,31 +105,59 @@
       return token;
     }
 
-    function isRedCard(card) {
-      if (!card || card.length < 2) return false;
-      const suit = card.slice(-1);
-      return suit === 'H' || suit === 'D';
+    const rankNameByCode = {
+      A: 'ace',
+      K: 'king',
+      Q: 'queen',
+      J: 'jack',
+      T: '10',
+      '9': '9',
+      '8': '8',
+      '7': '7',
+      '6': '6',
+      '5': '5',
+      '4': '4',
+      '3': '3',
+      '2': '2'
+    };
+
+    const suitNameByCode = {
+      S: 'spades',
+      H: 'hearts',
+      D: 'diamonds',
+      C: 'clubs'
+    };
+
+    function cardParts(cardValue) {
+      if (!cardValue || cardValue.length < 2) {
+        return { rank: '', suit: '' };
+      }
+      return {
+        rank: cardValue.slice(0, -1),
+        suit: cardValue.slice(-1)
+      };
     }
 
-    function decodeCard(card) {
-      if (!card || card.length < 2) {
-        return { rank: '', suit: '', glyph: '' };
+    function cardImageURL(cardValue) {
+      const parts = cardParts(cardValue);
+      const rank = rankNameByCode[parts.rank];
+      const suit = suitNameByCode[parts.suit];
+      if (!rank || !suit) {
+        return '';
       }
 
-      const rank = card.slice(0, -1);
-      const suit = card.slice(-1);
-      const glyphBySuit = {
-        S: '\u2660',
-        H: '\u2665',
-        D: '\u2666',
-        C: '\u2663'
-      };
+      return `/assets/cards/${rank}_of_${suit}.svg`;
+    }
 
-      return {
-        rank,
-        suit,
-        glyph: glyphBySuit[suit] || suit
-      };
+    function cardAltText(cardValue) {
+      const parts = cardParts(cardValue);
+      const rank = rankNameByCode[parts.rank] || parts.rank;
+      const suit = suitNameByCode[parts.suit] || parts.suit;
+      if (!rank || !suit) {
+        return cardValue;
+      }
+
+      return `${rank} of ${suit}`;
     }
 
     function setSeatTurnClass(el, player, turnPlayerId) {
@@ -221,18 +249,19 @@
     function buildTrickCard(cardValue) {
       const card = document.createElement('div');
       card.className = 'play-card';
-      if (isRedCard(cardValue)) {
-        card.classList.add('is-red');
+      const imageURL = cardImageURL(cardValue);
+      if (!imageURL) {
+        card.textContent = cardValue;
+        return card;
       }
 
-      const label = document.createElement('div');
-      const cardInfo = decodeCard(cardValue);
-      const cardLabel = `${cardInfo.rank}${cardInfo.glyph}`;
-      label.className = 'label' + (isRedCard(cardValue) ? ' is-red' : '');
-      label.textContent = cardLabel;
-      card.dataset.cornerTop = cardLabel;
-      card.dataset.cornerBottom = cardLabel;
-      card.appendChild(label);
+      const image = document.createElement('img');
+      image.className = 'play-card-image';
+      image.src = imageURL;
+      image.alt = cardAltText(cardValue);
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      card.appendChild(image);
 
       return card;
     }
@@ -302,18 +331,24 @@
       for (const cardValue of cards) {
         const card = document.createElement('button');
         card.type = 'button';
-        card.className = 'hand-card' + (isRedCard(cardValue) ? ' is-red' : '');
-        const cardInfo = decodeCard(cardValue);
-        const cardLabel = `${cardInfo.rank}${cardInfo.glyph}`;
-        card.dataset.cornerTop = cardLabel;
-        card.dataset.cornerBottom = cardLabel;
+        card.className = 'hand-card';
         if (isYourTurn) {
           card.className += ' playable';
         }
-        const value = document.createElement('span');
-        value.className = 'card-value';
-        value.textContent = cardLabel;
-        card.appendChild(value);
+
+        const imageURL = cardImageURL(cardValue);
+        if (imageURL) {
+          const image = document.createElement('img');
+          image.className = 'hand-card-image';
+          image.src = imageURL;
+          image.alt = cardAltText(cardValue);
+          image.loading = 'lazy';
+          image.decoding = 'async';
+          card.appendChild(image);
+        } else {
+          card.textContent = cardValue;
+        }
+
         card.onclick = () => {
           send({ type: 'play', card: cardValue });
         };
