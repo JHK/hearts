@@ -9,10 +9,10 @@
 <body class="table-page">
   <main>
     <section>
-      <h1 id="title">Hearts Table</h1>
-      <div id="status" class="muted">connecting...</div>
-      <div id="turnIndicator" class="muted" style="margin-top:6px;">Turn: -</div>
-      <div id="identity" class="muted" style="margin-top:8px;"></div>
+      <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+        <h1><span id="title">Hearts Table</span> <span id="status" class="muted" title="waiting for players" aria-label="waiting for players">⌛</span></h1>
+        <span id="turnIndicator" class="muted"></span>
+      </div>
     </section>
 
     <section id="actionsSection">
@@ -51,11 +51,6 @@
     </section>
 
     <section>
-      <h2>Players</h2>
-      <ul id="players"></ul>
-    </section>
-
-    <section>
       <details>
         <summary>Events</summary>
         <pre id="logs"></pre>
@@ -75,9 +70,7 @@
     const titleEl = document.getElementById('title');
     const statusEl = document.getElementById('status');
     const turnIndicatorEl = document.getElementById('turnIndicator');
-    const identityEl = document.getElementById('identity');
     const yourNameEl = document.getElementById('yourName');
-    const playersEl = document.getElementById('players');
     const resultEl = document.getElementById('result');
     const logsEl = document.getElementById('logs');
     const strategyEl = document.getElementById('strategy');
@@ -364,7 +357,12 @@
     }
 
     function renderState(state) {
-      statusEl.textContent = state.started ? 'round in progress' : 'waiting for players';
+      const players = state.players || [];
+      const waitingForPlayers = !state.started && players.length < 4;
+      statusEl.hidden = !waitingForPlayers;
+      if (waitingForPlayers) {
+        statusEl.textContent = '⌛';
+      }
 
       if (state.started) {
         actionsSectionEl.classList.add('hidden');
@@ -376,18 +374,19 @@
       yourHandSectionEl.hidden = !state.started;
       otherHandsSectionEl.hidden = !state.started;
 
-      const players = state.players || [];
       lastPlayers = players;
       const turnPlayer = players.find((player) => player.player_id === state.turn_player_id);
+      const isYourTurn = !!state.started && !!myPlayerId && state.turn_player_id === myPlayerId;
       if (state.started) {
-        turnIndicatorEl.textContent = `Turn: ${turnPlayer ? turnPlayer.name : turn}`;
+        turnIndicatorEl.textContent = isYourTurn
+          ? 'waiting for you'
+          : `waiting for ${turnPlayer ? turnPlayer.name : (state.turn_player_id || '-')}`;
       } else {
-        turnIndicatorEl.textContent = 'Turn: round not started';
+        turnIndicatorEl.textContent = '';
       }
 
       const me = players.find((player) => player.player_id === myPlayerId);
       yourNameEl.textContent = me ? me.name : 'you';
-      const isYourTurn = !!state.started && !!myPlayerId && state.turn_player_id === myPlayerId;
       const serverTrickPlays = (state.trick_plays || []).slice();
       const now = Date.now();
       const shouldHoldCompletedTrick =
@@ -408,18 +407,6 @@
       renderYourHand(state.hand || [], isYourTurn);
       renderOtherHands(players, state.hand_sizes || {});
 
-      playersEl.innerHTML = '';
-      for (const player of players) {
-        const li = document.createElement('li');
-        const bot = player.is_bot ? ' [bot]' : '';
-        const me = (player.player_id === myPlayerId) ? ' [you]' : '';
-        const turnMark = (state.started && player.player_id === state.turn_player_id) ? ' [turn]' : '';
-        if (turnMark) {
-          li.classList.add('turn-item');
-        }
-        li.textContent = `seat ${player.seat}: ${player.name}${bot}${me}${turnMark}`;
-        playersEl.appendChild(li);
-      }
     }
 
     function seatElementForPlayerId(playerId) {
@@ -497,7 +484,6 @@
           case 'join_result':
             if (msg.data && msg.data.accepted) {
               myPlayerId = msg.data.player_id;
-              identityEl.textContent = `playing as ${playerName()}`;
               resultEl.textContent = 'joined';
               log(`joined as ${myPlayerId} seat ${msg.data.seat}`);
             } else {
