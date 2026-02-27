@@ -25,7 +25,7 @@ Architecture, boundaries, and concurrency model are documented in `architecture.
 4. In `/`:
 
    - choose player name
-   - create a table or join an existing table
+   - create a table or pick one from Open Tables
    - navigate to `/table/<table_id>`
 
 5. In `/table/<table_id>`:
@@ -56,3 +56,26 @@ Architecture, boundaries, and concurrency model are documented in `architecture.
 
 - Build CSS once: `npm run build:css`
 - Rebuild on changes: `npm run watch:css`
+
+## Distroless image with ko
+
+1. Install `ko`:
+
+   ```bash
+   go install github.com/google/ko@latest
+   ```
+
+2. Build a local distroless image (loaded into your Docker daemon):
+
+   ```fish
+   set -x IMAGE (ko build --local ./cmd/hearts)
+   ```
+
+3. Push an image to a registry:
+
+   ```fish
+   podman tag $IMAGE ghcr.io/julianknocke/hearts:latest
+   podman push ghcr.io/julianknocke/hearts:latest
+   ```
+
+The ko config is in `.ko.yaml` and uses a distroless base image.

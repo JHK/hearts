@@ -16,7 +16,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-//go:embed assets/index.html assets/table.html assets/cards/*.svg assets/js
+//go:embed assets/index.html assets/table.html assets/styles.css assets/cards/*.svg assets/js
 var assetsFS embed.FS
 
 type Config struct {
@@ -95,6 +95,11 @@ func NewHandler(manager *table.Manager) (http.Handler, error) {
 		return nil, fmt.Errorf("read embedded table html: %w", err)
 	}
 
+	embeddedStyles, err := assetsFS.ReadFile("assets/styles.css")
+	if err != nil {
+		return nil, fmt.Errorf("read embedded styles css: %w", err)
+	}
+
 	mux := http.NewServeMux()
 	presence := newHumanPresenceTracker()
 
@@ -128,8 +133,7 @@ func NewHandler(manager *table.Manager) (http.Handler, error) {
 	mux.HandleFunc("/assets/styles.css", func(w http.ResponseWriter, r *http.Request) {
 		styles, err := os.ReadFile(stylesPath)
 		if err != nil {
-			http.Error(w, "styles not built: run `npm run build:css`", http.StatusServiceUnavailable)
-			return
+			styles = embeddedStyles
 		}
 
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
