@@ -24,10 +24,11 @@ type Runtime struct {
 
 type runtimeState struct {
 	started      bool
+	isYourTurn   bool
 	heartsBroken bool
 	trickNumber  int
 	trickCards   []game.Card
-	playInFlight bool
+	lastPlayed   int
 	hand         []game.Card
 }
 
@@ -50,8 +51,6 @@ type handUpdatedEvent struct {
 }
 
 type yourTurnEvent struct{}
-
-type playFinishedEvent struct{}
 
 func NewRuntime(nc *nats.Conn, tableID string, playerID game.PlayerID, strategy Strategy) *Runtime {
 	if strategy == nil {
@@ -137,12 +136,17 @@ func (r *Runtime) run() {
 			switch typed := event.(type) {
 			case gameStartedEvent:
 				state.started = true
+				state.isYourTurn = false
 				state.heartsBroken = false
 				state.trickNumber = 0
 				state.trickCards = nil
-				state.playInFlight = false
+				state.lastPlayed = -1
 			case turnChangedEvent:
 				state.trickNumber = typed.payload.TrickNumber
+				state.isYourTurn = typed.payload.PlayerID == r.playerID
+				if state.isYourTurn {
+					r.triggerPlay(&state)
+				}
 			case cardPlayedEvent:
 				card, err := game.ParseCard(typed.payload.Card)
 				if err != nil {
@@ -156,8 +160,9 @@ func (r *Runtime) run() {
 				state.trickCards = nil
 			case roundCompletedEvent:
 				state.started = false
+				state.isYourTurn = false
 				state.trickCards = nil
-				state.playInFlight = false
+				state.lastPlayed = -1
 				state.hand = nil
 			case handUpdatedEvent:
 				hand, err := game.ParseCards(typed.payload.Cards)
@@ -165,10 +170,10 @@ func (r *Runtime) run() {
 					continue
 				}
 				state.hand = hand
-			case yourTurnEvent:
 				r.triggerPlay(&state)
-			case playFinishedEvent:
-				state.playInFlight = false
+			case yourTurnEvent:
+				state.isYourTurn = true
+				r.triggerPlay(&state)
 			}
 		}
 	}
@@ -181,7 +186,7 @@ func (r *Runtime) markDone() {
 }
 
 func (r *Runtime) triggerPlay(state *runtimeState) {
-	if !state.started || state.playInFlight {
+	if !state.started || !state.isYourTurn || state.lastPlayed == state.trickNumber {
 		return
 	}
 
@@ -190,8 +195,6 @@ func (r *Runtime) triggerPlay(state *runtimeState) {
 		return
 	}
 
-	state.playInFlight = true
-
 	input := TurnInput{
 		Hand:         hand,
 		Trick:        append([]game.Card(nil), state.trickCards...),
@@ -199,16 +202,17 @@ func (r *Runtime) triggerPlay(state *runtimeState) {
 		FirstTrick:   state.trickNumber == 0,
 	}
 
-	go r.playTurn(input)
+	if r.playTurn(input) {
+		state.lastPlayed = state.trickNumber
+	}
 }
 
-func (r *Runtime) playTurn(input TurnInput) {
-	defer r.enqueue(playFinishedEvent{})
-
+func (r *Runtime) playTurn(input TurnInput) bool {
 	card, err := r.strategy.ChoosePlay(input)
 	if err != nil {
-		return
+		return false
 	}
 
-	_ = r.participant.PlayRequest(protocol.PlayCardRequest{PlayerID: r.playerID, Card: card.String()})
+	err = r.participant.PlayRequest(protocol.PlayCardRequest{PlayerID: r.playerID, Card: card.String()})
+	return err == nil
 }

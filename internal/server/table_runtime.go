@@ -16,6 +16,7 @@ import (
 type tableRuntime struct {
 	tableID   string
 	endpoint  *natswire.TableEndpoint
+	drawDeck  func() []game.Card
 	commands  chan any
 	stop      chan struct{}
 	stopOnce  sync.Once
@@ -78,8 +79,17 @@ type playUpdate struct {
 }
 
 func newTableRuntime(tableID string, nc *nats.Conn) *tableRuntime {
+	return newTableRuntimeWithDeck(tableID, nc, nil)
+}
+
+func newTableRuntimeWithDeck(tableID string, nc *nats.Conn, drawDeck func() []game.Card) *tableRuntime {
+	if drawDeck == nil {
+		drawDeck = defaultShuffledDeck
+	}
+
 	t := &tableRuntime{
 		tableID:   tableID,
+		drawDeck:  drawDeck,
 		commands:  make(chan any),
 		stop:      make(chan struct{}),
 		stoppedCh: make(chan struct{}),
@@ -95,6 +105,13 @@ func newTableRuntime(tableID string, nc *nats.Conn) *tableRuntime {
 	go t.run()
 
 	return t
+}
+
+func defaultShuffledDeck() []game.Card {
+	deck := game.BuildDeck()
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	game.Shuffle(deck, rng)
+	return deck
 }
 
 func (t *tableRuntime) register() error {
@@ -347,9 +364,7 @@ func (t *tableRuntime) initializeRound(state *tableState) (map[game.PlayerID][]s
 		player.Hand = player.Hand[:0]
 	}
 
-	deck := game.BuildDeck()
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	game.Shuffle(deck, rng)
+	deck := t.drawDeck()
 
 	for i, card := range deck {
 		seat := i % game.PlayersPerTable
