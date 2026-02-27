@@ -37,6 +37,35 @@ type wsCommand struct {
 	Strategy string `json:"strategy,omitempty"`
 }
 
+type humanPresenceTracker struct {
+	mu     sync.Mutex
+	counts map[string]int
+}
+
+func newHumanPresenceTracker() *humanPresenceTracker {
+	return &humanPresenceTracker{counts: make(map[string]int)}
+}
+
+func (t *humanPresenceTracker) Join(tableID string) {
+	t.mu.Lock()
+	t.counts[tableID]++
+	t.mu.Unlock()
+}
+
+func (t *humanPresenceTracker) Leave(tableID string) int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	remaining := t.counts[tableID] - 1
+	if remaining <= 0 {
+		delete(t.counts, tableID)
+		return 0
+	}
+
+	t.counts[tableID] = remaining
+	return remaining
+}
+
 func Run(cfg Config) error {
 	if strings.TrimSpace(cfg.Addr) == "" {
 		cfg.Addr = "127.0.0.1:8080"
@@ -66,6 +95,7 @@ func NewHandler(manager *table.Manager) (http.Handler, error) {
 	}
 
 	mux := http.NewServeMux()
+	presence := newHumanPresenceTracker()
 
 	stylesPath := filepath.Join("internal", "webui", "assets", "styles.css")
 
@@ -107,7 +137,7 @@ func NewHandler(manager *table.Manager) (http.Handler, error) {
 
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	mux.HandleFunc("/ws/table/", func(w http.ResponseWriter, r *http.Request) {
-		handleTableWebSocket(manager, upgrader, w, r)
+		handleTableWebSocket(manager, presence, upgrader, w, r)
 	})
 
 	return mux, nil
@@ -139,7 +169,7 @@ func handleTablesAPI(manager *table.Manager, w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func handleTableWebSocket(manager *table.Manager, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
+func handleTableWebSocket(manager *table.Manager, presence *humanPresenceTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
 	tableID := strings.TrimPrefix(r.URL.Path, "/ws/table/")
 	tableID = strings.TrimSpace(tableID)
 	if tableID == "" || strings.Contains(tableID, "/") {
@@ -147,9 +177,9 @@ func handleTableWebSocket(manager *table.Manager, upgrader websocket.Upgrader, w
 		return
 	}
 
-	runtime, ok := manager.Get(tableID)
-	if !ok {
-		http.Error(w, "table not found", http.StatusNotFound)
+	runtime, _, err := manager.Create(tableID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -160,13 +190,12 @@ func handleTableWebSocket(manager *table.Manager, upgrader websocket.Upgrader, w
 	defer conn.Close()
 
 	events, unsubscribe := runtime.Subscribe()
-	defer unsubscribe()
 
 	out := make(chan wsMessage, 256)
-	defer close(out)
 
 	var playerMu sync.RWMutex
 	var playerID game.PlayerID
+	humanJoined := false
 
 	setPlayerID := func(id game.PlayerID) {
 		playerMu.Lock()
@@ -228,6 +257,10 @@ func handleTableWebSocket(manager *table.Manager, upgrader websocket.Upgrader, w
 			send(wsMessage{Type: "join_result", Data: joinResp})
 			if joinResp.Accepted {
 				setPlayerID(joinResp.PlayerID)
+				if !humanJoined {
+					humanJoined = true
+					presence.Join(runtime.ID())
+				}
 				send(wsMessage{Type: "table_state", Data: runtime.Snapshot(joinResp.PlayerID)})
 			}
 		case "state":
@@ -259,8 +292,18 @@ func handleTableWebSocket(manager *table.Manager, upgrader websocket.Upgrader, w
 	}
 
 	_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "bye"), time.Now().Add(2*time.Second))
+	unsubscribe()
 	<-eventsDone
+	close(out)
 	<-writerDone
+
+	if humanJoined {
+		runtime.Leave(getPlayerID())
+	}
+
+	if humanJoined && presence.Leave(runtime.ID()) == 0 {
+		manager.CloseTable(runtime.ID())
+	}
 }
 
 func writeJSON(w http.ResponseWriter, value any) {

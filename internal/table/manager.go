@@ -97,6 +97,29 @@ func (m *Manager) Close() {
 	}
 }
 
+func (m *Manager) CloseTable(tableID string) bool {
+	id, err := normalizeTableID(tableID)
+	if err != nil || id == "" {
+		return false
+	}
+
+	var toClose *Runtime
+
+	m.mu.Lock()
+	if current, ok := m.tables[id]; ok {
+		delete(m.tables, id)
+		toClose = current
+	}
+	m.mu.Unlock()
+
+	if toClose == nil {
+		return false
+	}
+
+	toClose.Close()
+	return true
+}
+
 func normalizeTableID(raw string) (string, error) {
 	id := strings.ToLower(strings.TrimSpace(raw))
 	if id == "" {

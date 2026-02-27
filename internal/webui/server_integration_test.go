@@ -1,9 +1,7 @@
 package webui
 
 import (
-	"bytes"
 	"encoding/json"
-	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -31,8 +29,6 @@ func TestWebSocketJoinAndStateFlow(t *testing.T) {
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
-
-	createTable(t, srv.URL, "demo")
 
 	ws := mustDialTableSocket(t, srv.URL, "demo")
 	defer ws.Close()
@@ -106,9 +102,8 @@ func TestWebSocketJoinReusesPlayerByToken(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	createTable(t, srv.URL, "rejoin")
-
 	first := mustDialTableSocket(t, srv.URL, "rejoin")
+	defer first.Close()
 	_ = readMessage(t, first)
 	if err := first.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "stable-token"}); err != nil {
 		t.Fatalf("first join write: %v", err)
@@ -121,7 +116,9 @@ func TestWebSocketJoinReusesPlayerByToken(t *testing.T) {
 	if !firstResp.Accepted {
 		t.Fatalf("first join rejected: %s", firstResp.Reason)
 	}
-	_ = first.Close()
+	if err := first.Close(); err != nil {
+		t.Fatalf("close first websocket: %v", err)
+	}
 
 	second := mustDialTableSocket(t, srv.URL, "rejoin")
 	defer second.Close()
@@ -146,23 +143,95 @@ func TestWebSocketJoinReusesPlayerByToken(t *testing.T) {
 	}
 }
 
-func createTable(t *testing.T, baseURL, tableID string) {
-	t.Helper()
+func TestDisconnectLeavesTableBeforeRoundStart(t *testing.T) {
+	manager := table.NewManager()
+	defer manager.Close()
 
-	body, err := json.Marshal(map[string]string{"table_id": tableID})
+	handler, err := NewHandler(manager)
 	if err != nil {
-		t.Fatalf("marshal table create payload: %v", err)
+		t.Fatalf("new handler: %v", err)
 	}
 
-	resp, err := http.Post(baseURL+"/api/tables", "application/json", bytes.NewReader(body))
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	alice := mustDialTableSocket(t, srv.URL, "leave-before-start")
+	defer alice.Close()
+	_ = readMessage(t, alice)
+	if err := alice.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "alice-token"}); err != nil {
+		t.Fatalf("alice join write: %v", err)
+	}
+	_ = readMessageType(t, alice, "join_result")
+
+	bob := mustDialTableSocket(t, srv.URL, "leave-before-start")
+	defer bob.Close()
+	_ = readMessage(t, bob)
+	if err := bob.WriteJSON(wsCommand{Type: "join", Name: "Bob", Token: "bob-token"}); err != nil {
+		t.Fatalf("bob join write: %v", err)
+	}
+	_ = readMessageType(t, bob, "join_result")
+
+	if err := alice.Close(); err != nil {
+		t.Fatalf("close alice websocket: %v", err)
+	}
+
+	assertEventually(t, 2*time.Second, func() bool {
+		snapshot := requestStateSnapshot(t, bob)
+		if len(snapshot.Players) != 1 {
+			return false
+		}
+		return snapshot.Players[0].Name == "Bob"
+	})
+}
+
+func TestWebSocketAutoCreatesTable(t *testing.T) {
+	manager := table.NewManager()
+	defer manager.Close()
+
+	handler, err := NewHandler(manager)
 	if err != nil {
-		t.Fatalf("create table request: %v", err)
+		t.Fatalf("new handler: %v", err)
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("unexpected create table status: %d", resp.StatusCode)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	ws := mustDialTableSocket(t, srv.URL, "auto-create")
+	defer ws.Close()
+
+	_ = readMessage(t, ws)
+
+	if _, ok := manager.Get("auto-create"); !ok {
+		t.Fatalf("expected table to be created when websocket connected")
 	}
+}
+
+func TestTableClosesWhenLastHumanLeaves(t *testing.T) {
+	manager := table.NewManager()
+	defer manager.Close()
+
+	handler, err := NewHandler(manager)
+	if err != nil {
+		t.Fatalf("new handler: %v", err)
+	}
+
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	ws := mustDialTableSocket(t, srv.URL, "close-on-empty")
+	_ = readMessage(t, ws)
+	if err := ws.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "alice-token"}); err != nil {
+		t.Fatalf("join write: %v", err)
+	}
+	_ = readMessageType(t, ws, "join_result")
+	if err := ws.Close(); err != nil {
+		t.Fatalf("close websocket: %v", err)
+	}
+
+	assertEventually(t, 2*time.Second, func() bool {
+		_, ok := manager.Get("close-on-empty")
+		return !ok
+	})
 }
 
 func mustDialTableSocket(t *testing.T, baseURL, tableID string) *websocket.Conn {
@@ -203,4 +272,34 @@ func readMessage(t *testing.T, conn *websocket.Conn) testWSMessage {
 		t.Fatalf("read websocket message: %v", err)
 	}
 	return message
+}
+
+func assertEventually(t *testing.T, timeout time.Duration, predicate func() bool) {
+	t.Helper()
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if predicate() {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	t.Fatalf("condition was not met within %s", timeout)
+}
+
+func requestStateSnapshot(t *testing.T, conn *websocket.Conn) table.Snapshot {
+	t.Helper()
+
+	if err := conn.WriteJSON(wsCommand{Type: "state"}); err != nil {
+		t.Fatalf("state write: %v", err)
+	}
+
+	stateMsg := readMessageType(t, conn, "table_state")
+	var snapshot table.Snapshot
+	if err := json.Unmarshal(stateMsg.Data, &snapshot); err != nil {
+		t.Fatalf("decode table state: %v", err)
+	}
+
+	return snapshot
 }

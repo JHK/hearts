@@ -139,6 +139,11 @@ type snapshotCommand struct {
 	reply     chan Snapshot
 }
 
+type leaveCommand struct {
+	playerID game.PlayerID
+	reply    chan struct{}
+}
+
 type infoCommand struct {
 	reply chan protocol.TableInfo
 }
@@ -240,6 +245,18 @@ func (r *Runtime) Snapshot(forPlayer game.PlayerID) Snapshot {
 	return <-reply
 }
 
+func (r *Runtime) Leave(playerID game.PlayerID) {
+	if playerID == "" {
+		return
+	}
+
+	reply := make(chan struct{}, 1)
+	if !r.submit(leaveCommand{playerID: playerID, reply: reply}) {
+		return
+	}
+	<-reply
+}
+
 func (r *Runtime) Info() protocol.TableInfo {
 	reply := make(chan protocol.TableInfo, 1)
 	if !r.submit(infoCommand{reply: reply}) {
@@ -284,6 +301,9 @@ func (r *Runtime) run() {
 				cmd.reply <- addBotResult{added: added, err: err}
 			case snapshotCommand:
 				cmd.reply <- r.buildSnapshot(state, cmd.forPlayer)
+			case leaveCommand:
+				r.handleLeave(state, cmd.playerID)
+				cmd.reply <- struct{}{}
 			case infoCommand:
 				cmd.reply <- protocol.TableInfo{
 					TableID:    r.tableID,
@@ -295,6 +315,50 @@ func (r *Runtime) run() {
 				r.handleBotTurn(state, cmd.playerID)
 			}
 		}
+	}
+}
+
+func (r *Runtime) handleLeave(state *tableState, playerID game.PlayerID) {
+	player := state.playersByID[playerID]
+	if player == nil {
+		return
+	}
+
+	if state.round != nil {
+		if player.Token != "" {
+			delete(state.playersByToken, player.Token)
+			player.Token = ""
+		}
+		if !player.IsBot {
+			player.IsBot = true
+		}
+		if state.bots[playerID] == nil {
+			state.bots[playerID] = bot.StrategyRandom.New()
+		}
+
+		if player.Seat == state.round.TurnSeat {
+			r.scheduleBotTurn(state, playerID)
+		}
+		return
+	}
+
+	delete(state.playersByID, playerID)
+	if player.Token != "" {
+		delete(state.playersByToken, player.Token)
+	}
+	delete(state.bots, playerID)
+	delete(state.totals, playerID)
+
+	for index, seated := range state.players {
+		if seated.PlayerID != playerID {
+			continue
+		}
+
+		state.players = append(state.players[:index], state.players[index+1:]...)
+		for seat, updated := range state.players {
+			updated.Seat = seat
+		}
+		return
 	}
 }
 
