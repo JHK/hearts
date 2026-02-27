@@ -17,7 +17,7 @@ Architecture, boundaries, and concurrency model are documented in `architecture.
 2. In one terminal, open a table (this starts embedded NATS + table authority):
 
    ```text
-   open demo
+   open
    ```
 
 3. In other terminals, connect and discover/join:
@@ -29,10 +29,12 @@ Architecture, boundaries, and concurrency model are documented in `architecture.
    Then inside the CLI:
 
    ```text
-   connect nats://127.0.0.1:4222
-   discover
-   join demo
+   connect
+   join
    ```
+
+   `discover` lists available tables and their IDs.
+   `join` defaults to the `default` table. Use `join <table-id>` to join a specific table.
 
 4. Fill seats, then start the round:
 

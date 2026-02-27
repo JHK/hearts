@@ -13,6 +13,8 @@ import (
 	natswire "github.com/JHK/hearts/internal/transport/nats"
 )
 
+const defaultTableID = "default"
+
 func Run() {
 	var (
 		defaultURL = flag.String("url", "nats://127.0.0.1:4222", "default NATS URL for discover/join")
@@ -76,7 +78,7 @@ func (a *cliApp) runCommand(parts []string) bool {
 		status := a.session.Status()
 		fmt.Printf("Connected to %s\n", status.ConnectedTo)
 	case "open":
-		tableID := "default"
+		tableID := defaultTableID
 		port := 4222
 		if len(parts) >= 2 {
 			tableID = parts[1]
@@ -120,11 +122,15 @@ func (a *cliApp) runCommand(parts []string) bool {
 			fmt.Printf("  - %s (%d/%d, %s)\n", info.TableID, info.Players, info.MaxPlayers, state)
 		}
 	case "join":
-		if len(parts) != 2 {
-			fmt.Println("usage: join <table-id>")
+		if len(parts) > 2 {
+			fmt.Println("usage: join [table-id]")
 			return true
 		}
-		joinResp, err := a.session.JoinTable(parts[1], a.eventHandlers())
+		tableID := defaultTableID
+		if len(parts) == 2 {
+			tableID = parts[1]
+		}
+		joinResp, err := a.session.JoinTable(tableID, a.eventHandlers())
 		if err != nil {
 			fmt.Printf("join failed: %v\n", err)
 			return true
@@ -262,7 +268,7 @@ func printHelp() {
 	fmt.Println("commands:")
 	fmt.Println("  open [table-id] [port]   open local game and join it")
 	fmt.Println("  discover                 discover open tables on current bus")
-	fmt.Println("  join <table-id>          join discovered table")
+	fmt.Println("  join [table-id]          join table (default: default)")
 	fmt.Println("  connect <nats-url>       switch to another game bus")
 	fmt.Println("  addbot [strategy]        add one bot seat (default: random)")
 	fmt.Println("  start                    start round (requires 4 players)")
