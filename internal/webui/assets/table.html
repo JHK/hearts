@@ -85,6 +85,7 @@
     const seatLeftEl = document.getElementById('seatLeft');
     const seatRightEl = document.getElementById('seatRight');
     const seatBottomEl = document.getElementById('seatBottom');
+    const trickSlotEls = createTrickSlots();
 
     titleEl.textContent = `Hearts Table ${tableId}`;
 
@@ -178,6 +179,64 @@
       setSeatTurnClass(seatBottomEl, me, turnPlayerId);
     }
 
+    function createTrickSlots() {
+      const slots = {};
+      const slotSpecs = [
+        { key: 'top', className: 'trick-slot trick-slot-top' },
+        { key: 'left', className: 'trick-slot trick-slot-left' },
+        { key: 'right', className: 'trick-slot trick-slot-right' },
+        { key: 'bottom', className: 'trick-slot trick-slot-bottom' }
+      ];
+
+      for (const spec of slotSpecs) {
+        const slot = document.createElement('div');
+        slot.className = spec.className;
+        slot.dataset.slotKey = spec.key;
+        trickCenterEl.appendChild(slot);
+        slots[spec.key] = slot;
+      }
+      return slots;
+    }
+
+    function slotKeyFor(player, me) {
+      if (!me || !player) {
+        return '';
+      }
+
+      const offset = (player.seat - me.seat + 4) % 4;
+      switch (offset) {
+        case 0:
+          return 'bottom';
+        case 1:
+          return 'left';
+        case 2:
+          return 'top';
+        case 3:
+          return 'right';
+        default:
+          return '';
+      }
+    }
+
+    function buildTrickCard(cardValue) {
+      const card = document.createElement('div');
+      card.className = 'play-card';
+      if (isRedCard(cardValue)) {
+        card.classList.add('is-red');
+      }
+
+      const label = document.createElement('div');
+      const cardInfo = decodeCard(cardValue);
+      const cardLabel = `${cardInfo.rank}${cardInfo.glyph}`;
+      label.className = 'label' + (isRedCard(cardValue) ? ' is-red' : '');
+      label.textContent = cardLabel;
+      card.dataset.cornerTop = cardLabel;
+      card.dataset.cornerBottom = cardLabel;
+      card.appendChild(label);
+
+      return card;
+    }
+
     function renderTrick(players, trickPlays) {
       const me = players.find((player) => player.player_id === myPlayerId);
       const trickSignature = `${me ? me.seat : '-'}|${(trickPlays || []).map((play) => `${play.player_id}:${play.card}`).join('|')}`;
@@ -186,61 +245,46 @@
       }
 
       lastTrickSignature = trickSignature;
-      trickCenterEl.innerHTML = '';
       const byPlayer = new Map();
       for (const player of players) {
         byPlayer.set(player.player_id, player);
       }
 
-      function slotClassFor(player) {
-        if (!me || !player) {
-          return 'trick-slot-center';
-        }
+      const desiredBySlot = {
+        top: { signature: '', card: '' },
+        left: { signature: '', card: '' },
+        right: { signature: '', card: '' },
+        bottom: { signature: '', card: '' }
+      };
 
-        const offset = (player.seat - me.seat + 4) % 4;
-        switch (offset) {
-          case 0:
-            return 'trick-slot-bottom';
-          case 1:
-            return 'trick-slot-left';
-          case 2:
-            return 'trick-slot-top';
-          case 3:
-            return 'trick-slot-right';
-          default:
-            return 'trick-slot-center';
-        }
-      }
-
-      if (!trickPlays || trickPlays.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'muted trick-slot-center';
-        empty.textContent = 'No cards in current trick yet.';
-        trickCenterEl.appendChild(empty);
-        return;
-      }
-
-      for (const play of trickPlays) {
-        const card = document.createElement('div');
-        card.className = 'play-card';
-        if (isRedCard(play.card)) {
-          card.classList.add('is-red');
-        }
-
+      for (const play of trickPlays || []) {
         const player = byPlayer.get(play.player_id);
-        const slot = document.createElement('div');
-        slot.className = `trick-slot ${slotClassFor(player)}`;
+        const slotKey = slotKeyFor(player, me);
+        if (!slotKey) {
+          continue;
+        }
 
-        const label = document.createElement('div');
-        const cardInfo = decodeCard(play.card);
-        const cardLabel = `${cardInfo.rank}${cardInfo.glyph}`;
-        label.className = 'label' + (isRedCard(play.card) ? ' is-red' : '');
-        label.textContent = cardLabel;
-        card.dataset.cornerTop = cardLabel;
-        card.dataset.cornerBottom = cardLabel;
-        card.appendChild(label);
-        slot.appendChild(card);
-        trickCenterEl.appendChild(slot);
+        desiredBySlot[slotKey] = {
+          signature: `${play.player_id}:${play.card}`,
+          card: play.card
+        };
+      }
+
+      for (const slotKey of Object.keys(trickSlotEls)) {
+        const slotEl = trickSlotEls[slotKey];
+        const next = desiredBySlot[slotKey];
+        const currentSignature = slotEl.dataset.playSignature || '';
+        if (currentSignature === next.signature) {
+          continue;
+        }
+
+        slotEl.dataset.playSignature = next.signature;
+        slotEl.replaceChildren();
+        if (!next.signature) {
+          continue;
+        }
+
+        slotEl.appendChild(buildTrickCard(next.card));
       }
     }
 
