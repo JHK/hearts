@@ -1,3 +1,22 @@
 [tools]
 go = "latest"
 node = "lts"
+
+[tasks.setup]
+run = ["npm install", "go mod download"]
+
+[tasks.fmt]
+run = "gofmt -w cmd internal"
+
+[tasks.test]
+run = "go test ./..."
+
+[tasks.css]
+run = "npm run build:css"
+
+[tasks."css-watch"]
+run = "npm run watch:css"
+
+[tasks.run]
+depends = ["css"]
+run = "go run ./cmd/hearts"

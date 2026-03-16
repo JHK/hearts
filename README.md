@@ -9,13 +9,13 @@ Architecture, boundaries, and concurrency model are documented in `architecture.
 1. Install project dependencies (Node + Go modules):
 
    ```bash
-   make setup
+   mise run setup
    ```
 
 2. Start the web server:
 
    ```bash
-   make run
+   mise run run
    ```
 
 3. Open the lobby in your browser:
@@ -54,8 +54,8 @@ Architecture, boundaries, and concurrency model are documented in `architecture.
 
 ## Frontend styling workflow
 
-- Build CSS once: `npm run build:css`
-- Rebuild on changes: `npm run watch:css`
+- Build CSS once: `mise run css`
+- Rebuild on changes: `mise run css-watch`
 
 ## Distroless image with ko
 
