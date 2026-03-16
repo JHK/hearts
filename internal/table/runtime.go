@@ -1079,6 +1079,7 @@ func (r *Runtime) applyValidatedPlay(round *roundState, player *playerState, car
 	}
 	player.Hand = updatedHand
 
+	breaksHearts := card.Suit == game.SuitHearts && !round.HeartsBroken
 	if card.Suit == game.SuitHearts {
 		round.HeartsBroken = true
 	}
@@ -1087,7 +1088,7 @@ func (r *Runtime) applyValidatedPlay(round *roundState, player *playerState, car
 
 	return playUpdate{
 		playerID:    player.PlayerID,
-		cardPlayed:  protocol.CardPlayedData{PlayerID: player.PlayerID, Card: card.String()},
+		cardPlayed:  protocol.CardPlayedData{PlayerID: player.PlayerID, Card: card.String(), BreaksHearts: breaksHearts},
 		handUpdated: protocol.HandUpdatedData{Cards: game.CardStrings(player.Hand)},
 	}, nil
 }

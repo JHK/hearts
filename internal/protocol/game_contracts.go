@@ -28,8 +28,9 @@ type YourTurnData struct {
 }
 
 type CardPlayedData struct {
-	PlayerID game.PlayerID `json:"player_id"`
-	Card     string        `json:"card"`
+	PlayerID     game.PlayerID `json:"player_id"`
+	Card         string        `json:"card"`
+	BreaksHearts bool          `json:"breaks_hearts,omitempty"`
 }
 
 type PassStatusData struct {

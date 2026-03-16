@@ -1,5 +1,6 @@
 import { createTableDom } from './dom.js';
 import { createRenderer } from './render.js';
+import { playHeartsBreaking, playQueenOfSpades } from './audio.js';
 
 const nameKey = 'hearts.player.name';
 const tokenKey = 'hearts.player.token';
@@ -160,6 +161,13 @@ async function processQueuedCardPlayed(data) {
   nextTrick.push({ player_id: data.player_id, card: data.card });
   state.liveTrickPlays = nextTrick;
   renderer.renderTrick(players, state.liveTrickPlays);
+
+
+  if (data.card === 'QS') {
+    playQueenOfSpades();
+  } else if (data.breaks_hearts) {
+    playHeartsBreaking();
+  }
 
   if (!prefersReducedMotion()) {
     await waitMs(trickCardInDurationMs + trickCardInBufferMs);
