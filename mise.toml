@@ -17,6 +17,6 @@ run = "npm run build:css"
 [tasks."css-watch"]
 run = "npm run watch:css"
 
-[tasks.run]
+[tasks.start]
 depends = ["css"]
 run = "go run ./cmd/hearts"

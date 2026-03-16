@@ -15,7 +15,7 @@ Architecture, boundaries, and concurrency model are documented in `architecture.
 2. Start the web server:
 
    ```bash
-   mise run run
+   mise run start
    ```
 
 3. Open the lobby in your browser:

@@ -16,7 +16,8 @@ Replace the Makefile with mise task targets, so all dev commands are defined in 
 - [x] Delete the Makefile
 - [x] Update README.md (Quick start + Frontend styling workflow sections reference make)
 - [x] Update CLAUDE.md (Commands section references make)
+- [x] Rename `run` task to `start` to avoid the awkward `mise run run`
 
 ## Summary of Changes
 
-Migrated all Makefile targets (setup, run, fmt, test, css, css-watch) to mise tasks in mise.toml. Deleted the Makefile. Updated README.md and CLAUDE.md to reference `mise run` instead of `make`.
+Migrated all Makefile targets (setup, run, fmt, test, css, css-watch) to mise tasks in mise.toml. Deleted the Makefile. Updated README.md and CLAUDE.md to reference `mise run` instead of `make`. Renamed the `run` task to `start` to avoid `mise run run`.
