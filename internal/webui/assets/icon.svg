@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!--
+    2×2 grid:  top-left = spade with eyes | top-right = red heart
+               bottom-left = dark-red heart | bottom-right = purple heart
+
+    Suit paths are scaled from the pip shapes in the vector-playing-cards deck
+    (http://code.google.com/p/vector-playing-cards).
+
+    Spade:  original coords x ∈ [−8.2, 8.2], y ∈ [−10.5, +10.5]
+            scale=2.0, centre=(25,22) inside the 50×50 top-left quadrant.
+    Hearts: original coords x ∈ [−8, 8], y ∈ [−9, +9]
+            scale=2.2, centre=(cx, cy+22) inside each 50×50 quadrant.
+  -->
+
+  <!-- ── top-left: spade (scale 2.0, centre 25,22) ── -->
+  <path fill="black" d="
+    M 40.98,28.21
+    C 40.49,20.09 25.48,4.82  25,1
+    C 24.52,4.82  9.51,20.09  9.02,28.21
+    C  8.68,33.94 12.41,36.32 15.80,36.32
+    C 19.47,36.28 22.50,30.72 23.55,29.64
+    C 24.03,31.07 20.34,43    19.19,43
+    L 30.81,43
+    C 29.66,43    25.97,31.07 26.45,29.64
+    C 27.37,30.63 30.05,36.15 34.20,36.32
+    C 37.59,36.32 41.32,33.94 40.98,28.21 Z"/>
+  <!-- eyebrows: thick white, inner corner lower → villain scowl; visible at favicon scale -->
+  <line x1="15" y1="16"   x2="23" y2="19" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="27" y1="19"   x2="35" y2="16" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- left eye: large sclera, dark pupil offset upper-left (sinister gaze) -->
+  <ellipse cx="18" cy="24" rx="5" ry="3.5" fill="white"/>
+  <circle  cx="15.5" cy="22.5" r="2.8" fill="#111"/>
+
+  <!-- right eye: pupil on inner (left) side — both eyes looking left -->
+  <ellipse cx="32" cy="24" rx="5" ry="3.5" fill="white"/>
+  <circle  cx="29.5" cy="22.5" r="2.8" fill="#111"/>
+
+  <!-- ── top-right: red heart (scale 2.2, centre 75,22) ── -->
+  <path fill="#CC2200" d="
+    M 83.09,2.20
+    C 75.95,2.20 75,9.85 75,9.85
+      75,9.85 74.05,2.20 66.91,2.20
+    C 61.92,2.20 57.40,5.63 57.40,12.10
+    C 57.40,20.65 71.87,29.25 75,41.80
+    C 77.97,29.26 92.60,20.65 92.60,12.10
+    C 92.60,5.63  88.08,2.20  83.09,2.20 Z"/>
+
+  <!-- ── bottom-left: dark-red heart (scale 2.2, centre 25,72) ── -->
+  <path fill="#7B0000" d="
+    M 33.09,52.20
+    C 25.95,52.20 25,59.85 25,59.85
+      25,59.85 24.05,52.20 16.91,52.20
+    C 11.92,52.20  7.40,55.63  7.40,62.10
+    C  7.40,70.65 21.87,79.25 25,91.80
+    C 27.97,79.26 42.60,70.65 42.60,62.10
+    C 42.60,55.63 38.08,52.20 33.09,52.20 Z"/>
+
+  <!-- ── bottom-right: purple heart (scale 2.2, centre 75,72) ── -->
+  <path fill="#6A0DAD" d="
+    M 83.09,52.20
+    C 75.95,52.20 75,59.85 75,59.85
+      75,59.85 74.05,52.20 66.91,52.20
+    C 61.92,52.20 57.40,55.63 57.40,62.10
+    C 57.40,70.65 71.87,79.25 75,91.80
+    C 77.97,79.26 92.60,70.65 92.60,62.10
+    C 92.60,55.63 88.08,52.20 83.09,52.20 Z"/>
+</svg>

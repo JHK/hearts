@@ -16,7 +16,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-//go:embed assets/index.html assets/table.html assets/styles.css assets/cards/*.svg assets/js
+//go:embed assets/index.html assets/table.html assets/styles.css assets/cards/*.svg assets/js assets/icon.svg assets/favicon.ico assets/apple-touch-icon.png
 var assetsFS embed.FS
 
 type Config struct {
@@ -176,6 +176,26 @@ func NewHandler(manager *table.Manager) (http.Handler, error) {
 		w.Header().Set("Content-Type", "image/svg+xml")
 		_, _ = w.Write(content)
 	})
+
+	for _, f := range []struct {
+		path        string
+		asset       string
+		contentType string
+	}{
+		{"/favicon.ico", "assets/favicon.ico", "image/x-icon"},
+		{"/icon.svg", "assets/icon.svg", "image/svg+xml"},
+		{"/apple-touch-icon.png", "assets/apple-touch-icon.png", "image/png"},
+	} {
+		f := f
+		data, err := assetsFS.ReadFile(f.asset)
+		if err != nil {
+			return nil, fmt.Errorf("read embedded %s: %w", f.asset, err)
+		}
+		mux.HandleFunc(f.path, func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", f.contentType)
+			_, _ = w.Write(data)
+		})
+	}
 
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	mux.HandleFunc("/ws/table/", func(w http.ResponseWriter, r *http.Request) {
