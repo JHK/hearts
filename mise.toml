@@ -1,6 +1,7 @@
 [tools]
 go = "latest"
 node = "lts"
+ko = "latest"
 
 [tasks.setup]
 run = ["npm install", "go mod download"]
@@ -20,3 +21,16 @@ run = "npm run watch:css"
 [tasks.start]
 depends = ["css"]
 run = "go run ./cmd/hearts"
+
+[tasks.image-build]
+description = "Build container image and load into local podman/docker daemon"
+depends = ["css"]
+run = "DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock ko build --local ./cmd/hearts"
+
+[tasks.image-push]
+description = "Build and push container image to docker.io/julianknocke/hearts"
+depends = ["css"]
+run = """
+IMAGE=$(DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock ko build --local ./cmd/hearts)
+podman push "$IMAGE" docker.io/julianknocke/hearts:latest
+"""

@@ -57,25 +57,18 @@ Architecture, boundaries, and concurrency model are documented in `architecture.
 - Build CSS once: `mise run css`
 - Rebuild on changes: `mise run css-watch`
 
-## Distroless image with ko
+## Container image
 
-1. Install `ko`:
+Builds use [ko](https://ko.build) with a distroless base image (see `.ko.yaml`). `ko` is managed by mise — no separate install needed.
 
-   ```bash
-   go install github.com/google/ko@latest
-   ```
+Build and load into the local podman daemon:
 
-2. Build a local distroless image (loaded into your Docker daemon):
+```bash
+mise run image-build
+```
 
-   ```fish
-   set -x IMAGE (ko build --local ./cmd/hearts)
-   ```
+Build and push to `docker.io/julianknocke/hearts`:
 
-3. Push an image to a registry:
-
-   ```fish
-   podman tag $IMAGE ghcr.io/julianknocke/hearts:latest
-   podman push ghcr.io/julianknocke/hearts:latest
-   ```
-
-The ko config is in `.ko.yaml` and uses a distroless base image.
+```bash
+mise run image-push
+```

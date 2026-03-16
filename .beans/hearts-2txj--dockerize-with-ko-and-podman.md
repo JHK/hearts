@@ -1,7 +1,7 @@
 ---
 # hearts-2txj
 title: Dockerize with ko and podman
-status: todo
+status: in-progress
 type: task
 created_at: 2026-03-15T16:38:50Z
 updated_at: 2026-03-15T16:38:50Z
