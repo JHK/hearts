@@ -1,10 +1,11 @@
 ---
 # hearts-lsoi
 title: Sound effects for hearts breaking and Queen of Spades
-status: in-progress
+status: completed
 type: feature
+priority: normal
 created_at: 2026-03-15T16:47:44Z
-updated_at: 2026-03-15T16:47:44Z
+updated_at: 2026-03-16T16:12:50Z
 ---
 
 Play a short synthetic sound effect when the first hearts card is played (hearts breaking) and when the Queen of Spades is played. Use the Web Audio API to generate sounds synthetically — no audio files to ship.
