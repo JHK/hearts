@@ -1,11 +1,11 @@
 ---
 # hearts-mox5
 title: Selected/hovered card hides adjacent cards by jumping to front of stack
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-03-16T08:17:01Z
-updated_at: 2026-03-16T08:17:12Z
+updated_at: 2026-03-17T00:00:00Z
 ---
 
 ## Context
@@ -15,9 +15,9 @@ When a card is hovered or selected, its `z-index` is raised (`z-index: 3` on hov
 Players should be able to see their full hand at all times. A selected card should feel "picked up" vertically, not pulled forward out of the deck.
 
 ## Acceptance Criteria
-- [ ] Hovering a card lifts it upward without covering adjacent cards
-- [ ] Selecting a card lifts it upward without covering adjacent cards
-- [ ] The natural left-to-right stacking order of the hand is preserved regardless of hover/selection state
+- [x] Hovering a card lifts it upward without covering adjacent cards
+- [x] Selecting a card lifts it upward without covering adjacent cards
+- [x] The natural left-to-right stacking order of the hand is preserved regardless of hover/selection state
 
 ## Out of Scope
 - Changing the card overlap amount or hand layout
