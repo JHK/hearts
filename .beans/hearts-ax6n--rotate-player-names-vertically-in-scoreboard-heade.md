@@ -1,11 +1,11 @@
 ---
 # hearts-ax6n
 title: Rotate player names vertically in scoreboard header
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-17T07:41:57Z
-updated_at: 2026-03-17T07:48:17Z
+updated_at: 2026-03-17T08:52:32Z
 ---
 
 ## Context
@@ -29,3 +29,10 @@ Keep the scoreboard readable without horizontal scrolling, even with longer or m
 - Conditional/responsive rotation based on overflow detection
 - Truncating or abbreviating player names
 - Full i18n implementation
+
+## Summary of Changes
+
+- Player name headers rotate vertically at ≥1280px (when scoreboard is side-by-side with the game table)
+- Round labels shortened to just the number (e.g. `3` instead of `Round 3`)
+- Row labels replaced with symbols: Current → `►`, Sum → `Σ`, Round header → empty
+- Rotation only applies at wide breakpoints; stacked layout keeps horizontal names

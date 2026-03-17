@@ -278,7 +278,7 @@ export function createRenderer({ dom, state, send }) {
     const headerRow = document.createElement('tr');
     const roundHeaderCell = document.createElement('th');
     roundHeaderCell.scope = 'col';
-    roundHeaderCell.textContent = 'Round';
+    roundHeaderCell.textContent = '';
     headerRow.appendChild(roundHeaderCell);
 
     if (players.length === 0) {
@@ -292,7 +292,7 @@ export function createRenderer({ dom, state, send }) {
       const emptyRow = document.createElement('tr');
       const emptyLabel = document.createElement('th');
       emptyLabel.scope = 'row';
-      emptyLabel.textContent = 'Current';
+      emptyLabel.textContent = '►';
       const emptyValue = document.createElement('td');
       emptyValue.textContent = '-';
       emptyRow.appendChild(emptyLabel);
@@ -304,7 +304,10 @@ export function createRenderer({ dom, state, send }) {
     for (const player of players) {
       const playerHeaderCell = document.createElement('th');
       playerHeaderCell.scope = 'col';
-      playerHeaderCell.textContent = player.is_bot ? `${player.name} [bot]` : player.name;
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'scoreboard-player-name';
+      nameSpan.textContent = player.is_bot ? `${player.name} [bot]` : player.name;
+      playerHeaderCell.appendChild(nameSpan);
       headerRow.appendChild(playerHeaderCell);
     }
     dom.scoreboardHeadEl.appendChild(headerRow);
@@ -330,7 +333,7 @@ export function createRenderer({ dom, state, send }) {
     }
 
     history.forEach((entry, index) => {
-      appendPointsRow(`Round ${index + 1}`, entry, 'scoreboard-history-row');
+      appendPointsRow(`${index + 1}`, entry, 'scoreboard-history-row');
     });
 
     const liveTotalPoints = {};
@@ -338,8 +341,8 @@ export function createRenderer({ dom, state, send }) {
       liveTotalPoints[player.player_id] = pointsFor(totalPoints, player.player_id) + pointsFor(roundPoints, player.player_id);
     }
 
-    appendPointsRow('Current', roundPoints, 'scoreboard-current-row');
-    appendPointsRow('Sum', liveTotalPoints, 'scoreboard-total-row');
+    appendPointsRow('►', roundPoints, 'scoreboard-current-row');
+    appendPointsRow('Σ', liveTotalPoints, 'scoreboard-total-row');
   }
 
   function renderPassPanel(snapshot) {

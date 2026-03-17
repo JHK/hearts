@@ -177,6 +177,7 @@
     color: #254258;
   }
 
+
   .scoreboard-table th {
     text-align: right;
   }
@@ -750,6 +751,18 @@
   .table-game-layout {
     grid-template-columns: minmax(860px, 1fr) minmax(300px, 360px);
     align-items: start;
+  }
+
+  .scoreboard-table thead th:not(:first-child) {
+    padding: 4px 4px;
+    vertical-align: bottom;
+  }
+
+  .scoreboard-player-name {
+    display: inline-block;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
   }
 }
 
