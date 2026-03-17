@@ -1,11 +1,11 @@
 ---
 # hearts-b8gy
 title: Sort scoreboard columns by current standing, with animated reordering
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-17T07:55:28Z
-updated_at: 2026-03-17T07:56:43Z
+updated_at: 2026-03-17T13:33:42Z
 ---
 
 Sort scoreboard columns by ascending live total points (fewest = winning = leftmost), updating on every snapshot with animated column transitions
@@ -17,13 +17,17 @@ The scoreboard renders player columns in fixed, server-arrival order. There is n
 Give players an at-a-glance read of the current standings without having to mentally compare numbers across columns.
 
 ## Acceptance Criteria
-- [ ] Scoreboard columns are ordered by ascending live total points (fewest = leftmost = winning)
-- [ ] The ordering updates on every snapshot render (i.e. after each trick or round ends)
-- [ ] Column reordering is animated so position changes are visually obvious (CSS transition or similar)
-- [ ] Tied players maintain a stable relative order (no jitter)
-- [ ] The column representing the local player is still visually distinguishable (existing highlighting, if any, is preserved)
+- [x] Scoreboard columns are ordered by ascending live total points (fewest = leftmost = winning)
+- [x] The ordering updates on every snapshot render (i.e. after each trick or round ends)
+- [x] Column reordering is animated so position changes are visually obvious (CSS transition or similar)
+- [x] Tied players maintain a stable relative order (no jitter)
+- [x] The column representing the local player is still visually distinguishable (existing highlighting, if any, is preserved)
 
 ## Out of Scope
 - Adding a rank badge or trophy icon to the leading player
 - Reordering seat positions in the play area (only the scoreboard)
 - Persisting column order across page reloads
+
+## Summary of Changes
+
+Sorted scoreboard columns by ascending live total points (fewest = leftmost = winning) on every snapshot render. Used JS stable sort for tie stability. Added FLIP animation (translateX over 0.4s ease) so column swaps are visually obvious.

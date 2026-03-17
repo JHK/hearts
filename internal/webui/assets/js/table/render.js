@@ -272,6 +272,23 @@ export function createRenderer({ dom, state, send }) {
     const roundPoints = snapshot && snapshot.round_points ? snapshot.round_points : {};
     const totalPoints = snapshot && snapshot.total_points ? snapshot.total_points : {};
 
+    // Compute live totals first so we can sort by them
+    const liveTotalPoints = {};
+    for (const player of players) {
+      liveTotalPoints[player.player_id] = pointsFor(totalPoints, player.player_id) + pointsFor(roundPoints, player.player_id);
+    }
+
+    // Sort ascending by live total (fewest = winning = leftmost); stable for ties
+    const sortedPlayers = [...players].sort((a, b) => liveTotalPoints[a.player_id] - liveTotalPoints[b.player_id]);
+
+    // Capture pre-rebuild column positions for FLIP animation
+    const prevPositions = {};
+    if (dom.scoreboardHeadEl.firstElementChild) {
+      for (const cell of dom.scoreboardHeadEl.firstElementChild.querySelectorAll('th[data-player-id]')) {
+        prevPositions[cell.dataset.playerId] = cell.getBoundingClientRect().left;
+      }
+    }
+
     dom.scoreboardHeadEl.innerHTML = '';
     dom.scoreboardBodyEl.innerHTML = '';
 
@@ -281,7 +298,7 @@ export function createRenderer({ dom, state, send }) {
     roundHeaderCell.textContent = '';
     headerRow.appendChild(roundHeaderCell);
 
-    if (players.length === 0) {
+    if (sortedPlayers.length === 0) {
       const playersHeaderCell = document.createElement('th');
       playersHeaderCell.scope = 'col';
       playersHeaderCell.textContent = 'Players';
@@ -301,9 +318,10 @@ export function createRenderer({ dom, state, send }) {
       return;
     }
 
-    for (const player of players) {
+    for (const player of sortedPlayers) {
       const playerHeaderCell = document.createElement('th');
       playerHeaderCell.scope = 'col';
+      playerHeaderCell.dataset.playerId = player.player_id;
       const nameSpan = document.createElement('span');
       nameSpan.className = 'scoreboard-player-name';
       nameSpan.textContent = player.is_bot ? `${player.name} [bot]` : player.name;
@@ -323,8 +341,9 @@ export function createRenderer({ dom, state, send }) {
       labelCell.textContent = label;
       row.appendChild(labelCell);
 
-      for (const player of players) {
+      for (const player of sortedPlayers) {
         const valueCell = document.createElement('td');
+        valueCell.dataset.playerId = player.player_id;
         valueCell.textContent = String(pointsFor(pointsByPlayer, player.player_id));
         row.appendChild(valueCell);
       }
@@ -336,13 +355,33 @@ export function createRenderer({ dom, state, send }) {
       appendPointsRow(`${index + 1}`, entry, 'scoreboard-history-row');
     });
 
-    const liveTotalPoints = {};
-    for (const player of players) {
-      liveTotalPoints[player.player_id] = pointsFor(totalPoints, player.player_id) + pointsFor(roundPoints, player.player_id);
-    }
-
     appendPointsRow('►', roundPoints, 'scoreboard-current-row');
     appendPointsRow('Σ', liveTotalPoints, 'scoreboard-total-row');
+
+    // FLIP animation: slide columns from their old positions to new ones
+    if (Object.keys(prevPositions).length > 0) {
+      for (const cell of dom.scoreboardHeadEl.firstElementChild.querySelectorAll('th[data-player-id]')) {
+        const pid = cell.dataset.playerId;
+        if (prevPositions[pid] === undefined) continue;
+        const delta = prevPositions[pid] - cell.getBoundingClientRect().left;
+        if (Math.abs(delta) < 1) continue;
+
+        const cells = document.querySelectorAll(`.scoreboard-table [data-player-id="${CSS.escape(pid)}"]`);
+        for (const c of cells) {
+          c.style.transition = 'none';
+          c.style.transform = `translateX(${delta}px)`;
+        }
+        // Double rAF ensures the browser has painted the initial offset before transitioning
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            for (const c of cells) {
+              c.style.transition = 'transform 0.4s ease';
+              c.style.transform = 'translateX(0)';
+            }
+          });
+        });
+      }
+    }
   }
 
   function renderPassPanel(snapshot) {
