@@ -213,6 +213,7 @@ async function processTrickEventQueue() {
   } finally {
     state.processingTrickEventQueue = false;
     syncTrickFromLatestSnapshot();
+    scheduleStateRefresh(0);
   }
 }
 

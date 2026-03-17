@@ -434,7 +434,8 @@ export function createRenderer({ dom, state, send }) {
       dom.botStrategySelectEl.value = 'smart';
     }
 
-    const showStartControl = !snapshot.started && players.length === 4;
+    const queueIdle = !state.processingTrickEventQueue && state.trickEventQueue.length === 0;
+    const showStartControl = !snapshot.started && players.length === 4 && queueIdle;
     const showPassControls = isPassing || isPassReview;
     dom.centerControlsEl.classList.toggle('hidden', !showStartControl && !showPassControls);
     dom.startButtonEl.hidden = !showStartControl;

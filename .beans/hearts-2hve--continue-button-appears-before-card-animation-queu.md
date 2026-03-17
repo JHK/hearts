@@ -1,7 +1,7 @@
 ---
 # hearts-2hve
 title: '"Continue" button appears before card animation queue drains'
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-03-17T07:37:29Z
@@ -20,8 +20,8 @@ Playing the final card (or watching bots finish quickly) shows the "Continue" bu
 The "Continue" button appears only after the animation queue has fully drained — consistent with how individual card plays are already sequenced.
 
 ## Acceptance Criteria
-- [ ] The "Continue" button does not appear until all pending card animations have finished
-- [ ] Behavior is consistent regardless of whether the final card was played by a human or a bot
+- [x] The "Continue" button does not appear until all pending card animations have finished
+- [x] Behavior is consistent regardless of whether the final card was played by a human or a bot
 
 ## Out of Scope
 - Changes to the card play animation sequencing itself
