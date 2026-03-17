@@ -68,6 +68,12 @@ func (t *humanPresenceTracker) Leave(tableID string) int {
 	return remaining
 }
 
+func (t *humanPresenceTracker) Count(tableID string) int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.counts[tableID]
+}
+
 func Run(cfg Config) error {
 	if strings.TrimSpace(cfg.Addr) == "" {
 		cfg.Addr = "127.0.0.1:8080"
@@ -384,7 +390,17 @@ func handleTableWebSocket(manager *table.Manager, presence *humanPresenceTracker
 
 	if humanJoined && presence.Leave(runtime.ID()) == 0 {
 		slog.Warn("table orphaned", "event", "table_orphaned", "table_id", runtime.ID())
-		manager.CloseTable(runtime.ID())
+		tableID := runtime.ID()
+		go func() {
+			const gracePeriod = 60 * time.Second
+			timer := time.NewTimer(gracePeriod)
+			defer timer.Stop()
+			<-timer.C
+			if presence.Count(tableID) == 0 {
+				slog.Warn("closing orphaned table after grace period", "event", "table_closed_orphaned", "table_id", tableID)
+				manager.CloseTable(tableID)
+			}
+		}()
 	}
 }
 

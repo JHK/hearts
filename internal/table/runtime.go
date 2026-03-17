@@ -396,10 +396,7 @@ func (r *Runtime) handleLeave(state *tableState, playerID game.PlayerID) {
 	slog.Info("player left table", "event", "player_left", "table_id", r.tableID, "player_id", playerID, "name", player.Name)
 
 	if state.round != nil {
-		if player.Token != "" {
-			delete(state.playersByToken, player.Token)
-			player.Token = ""
-		}
+		// Preserve the token so the player can reclaim their seat if they reconnect.
 		if !player.IsBot {
 			player.IsBot = true
 		}
@@ -453,6 +450,15 @@ func (r *Runtime) handleJoin(state *tableState, name, token string) protocol.Joi
 	}
 
 	if existing := state.playersByToken[token]; existing != nil {
+		if existing.IsBot {
+			// Player reconnected after being converted to a bot mid-round — reclaim the seat.
+			existing.IsBot = false
+			if n := strings.TrimSpace(name); n != "" {
+				existing.Name = n
+			}
+			delete(state.bots, existing.PlayerID)
+			slog.Info("player reclaimed seat", "event", "player_reclaimed", "table_id", r.tableID, "player_id", existing.PlayerID, "name", existing.Name, "seat", existing.Seat)
+		}
 		return protocol.JoinResponse{
 			Accepted: true,
 			TableID:  r.tableID,

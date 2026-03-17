@@ -1,11 +1,11 @@
 ---
 # hearts-e3ah
 title: Allow players to rejoin an in-progress round after disconnecting
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-17T08:11:19Z
-updated_at: 2026-03-17T08:13:49Z
+updated_at: 2026-03-17T18:47:42Z
 ---
 
 Preserve bot-replaced seats and add a grace period so disconnected players can reload and continue their game
@@ -35,3 +35,7 @@ Reproducing the exact issue: player disconnects → converted to bot → player 
 - Persistent game state across server restarts
 - Spectator mode / observing a game you never joined
 - Kicking bots from a game you were never part of
+
+## Summary of Changes
+
+Preserved player tokens in `playersByToken` on mid-round disconnect (instead of deleting them). Added seat-reclaim logic in `handleJoin`: when a token matches a bot-converted player, the bot is removed and the player resumes. Replaced immediate `CloseTable` on last-human-disconnect with a 60s grace period goroutine that only closes the table if no human has rejoined.
