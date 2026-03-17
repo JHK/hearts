@@ -640,6 +640,7 @@ export function createRenderer({ dom, state, send }) {
         const cardRect = cardEl.getBoundingClientRect();
         const clone = cardEl.cloneNode(true);
         clone.classList.add('trick-capture-card');
+        clone.style.position = 'absolute';
         clone.style.left = `${cardRect.left}px`;
         clone.style.top = `${cardRect.top}px`;
         clone.style.width = `${cardRect.width}px`;
@@ -676,6 +677,12 @@ export function createRenderer({ dom, state, send }) {
       const staggerMs = 90;
       const sortPriorityBySlot = { top: 0, left: 1, right: 2, bottom: 3 };
       animatedCards.sort((a, b) => (sortPriorityBySlot[a.slotKey] || 0) - (sortPriorityBySlot[b.slotKey] || 0));
+
+      // Force a synchronous reflow so all clones have an established initial
+      // computed style before the RAF applies the transition targets. Without
+      // this, the last-inserted clone (bottom) has no "from" state and jumps
+      // instantly to opacity: 0 instead of transitioning.
+      void dom.trickAnimationLayerEl.offsetHeight;
 
       requestAnimationFrame(() => {
         animatedCards.forEach((card, index) => {

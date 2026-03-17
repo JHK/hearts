@@ -1,7 +1,7 @@
 ---
 # hearts-uet2
 title: Fix trick collection animation positioning and scaling
-status: todo
+status: done
 type: bug
 priority: normal
 created_at: 2026-03-15T16:38:50Z
@@ -29,10 +29,10 @@ Three positioning bugs, all consistent and happening every trick:
 
 ## Acceptance Criteria
 
-- [ ] Animated card clones visually originate from their corresponding trick slot card positions
-- [ ] All cards converge on the center of the winner's seat name element
-- [ ] Cards stack at the same destination point; only rotation differs between cards
-- [ ] Cards arrive at a size visually matching opponent hand cards (consistent with the `scale()` value used for hand cards)
+- [x] Animated card clones visually originate from their corresponding trick slot card positions
+- [x] All cards converge on the center of the winner's seat name element
+- [x] Cards stack at the same destination point; only rotation differs between cards
+- [x] Cards arrive at a size visually matching opponent hand cards (consistent with the `scale()` value used for hand cards)
 
 ## Out of Scope
 
