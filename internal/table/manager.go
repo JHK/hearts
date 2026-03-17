@@ -3,6 +3,7 @@ package table
 import (
 	"crypto/rand"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"sort"
 	"strings"
@@ -64,6 +65,7 @@ func (m *Manager) Create(tableID string) (*Runtime, bool, error) {
 
 	created := NewRuntime(id)
 	m.tables[id] = created
+	slog.Info("table created", "event", "table_created", "table_id", id)
 	return created, true, nil
 }
 
@@ -97,6 +99,7 @@ func (m *Manager) Close() {
 	m.mu.Unlock()
 
 	for _, runtime := range tables {
+		slog.Info("table destroyed", "event", "table_destroyed", "table_id", runtime.ID())
 		runtime.Close()
 	}
 }
@@ -120,6 +123,7 @@ func (m *Manager) CloseTable(tableID string) bool {
 		return false
 	}
 
+	slog.Info("table destroyed", "event", "table_destroyed", "table_id", id)
 	toClose.Close()
 	return true
 }

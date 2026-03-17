@@ -2,17 +2,40 @@ package app
 
 import (
 	"flag"
-	"log"
+	"log/slog"
+	"os"
+	"strings"
 
 	"github.com/JHK/hearts/internal/webui"
 )
 
 func Run() {
 	addr := flag.String("addr", "127.0.0.1:8080", "web listen address")
+	logLevel := flag.String("log-level", "", "log level (debug, info, warn, error); overrides LOG_LEVEL env var")
 	flag.Parse()
 
-	log.Printf("Hearts web server listening at http://%s", *addr)
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: resolveLogLevel(*logLevel)})))
+
+	slog.Info("Hearts web server starting", "addr", *addr)
 	if err := webui.Run(webui.Config{Addr: *addr}); err != nil {
-		log.Fatalf("web server failed: %v", err)
+		slog.Error("web server failed", "err", err)
+		os.Exit(1)
+	}
+}
+
+func resolveLogLevel(flagValue string) slog.Level {
+	s := strings.ToLower(strings.TrimSpace(flagValue))
+	if s == "" {
+		s = strings.ToLower(strings.TrimSpace(os.Getenv("LOG_LEVEL")))
+	}
+	switch s {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
 	}
 }

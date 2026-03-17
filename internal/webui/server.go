@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -251,6 +252,8 @@ func handleTableWebSocket(manager *table.Manager, presence *humanPresenceTracker
 	}
 	defer conn.Close()
 
+	slog.Info("player connected", "event", "player_connected", "table_id", tableID, "addr", r.RemoteAddr)
+
 	events, unsubscribe := runtime.Subscribe()
 
 	out := make(chan wsMessage, 256)
@@ -373,11 +376,14 @@ func handleTableWebSocket(manager *table.Manager, presence *humanPresenceTracker
 	close(out)
 	<-writerDone
 
+	slog.Info("player disconnected", "event", "player_disconnected", "table_id", tableID, "player_id", string(getPlayerID()), "addr", r.RemoteAddr)
+
 	if humanJoined {
 		runtime.Leave(getPlayerID())
 	}
 
 	if humanJoined && presence.Leave(runtime.ID()) == 0 {
+		slog.Warn("table orphaned", "event", "table_orphaned", "table_id", runtime.ID())
 		manager.CloseTable(runtime.ID())
 	}
 }

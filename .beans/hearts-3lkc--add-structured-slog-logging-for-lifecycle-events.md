@@ -1,11 +1,11 @@
 ---
 # hearts-3lkc
 title: Add structured slog logging for lifecycle events
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-17T13:24:27Z
-updated_at: 2026-03-17T13:31:43Z
+updated_at: 2026-03-17T16:36:26Z
 ---
 
 Add log/slog structured logging for player/table lifecycle events with configurable log level
@@ -39,3 +39,7 @@ Enable operators and developers to understand what's happening in a running serv
 - Log shipping / sidecar configuration
 - Log rotation or file output
 - Changing any game logic or table behavior
+
+## Summary of Changes
+
+Replaced unstructured log package with log/slog JSON handler. Added lifecycle events (table created/started/destroyed, player connected/disconnected/joined/left, table orphaned, bot added) at appropriate levels. Log level configurable via -log-level flag or LOG_LEVEL env var; container default set to warn in .ko.yaml. Documented logging approach in architecture.md.

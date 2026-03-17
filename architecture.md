@@ -81,3 +81,26 @@ Each browser instance represents one player identity for a table.
 - Only the table runtime validates and commits game actions.
 - Only the table runtime assigns canonical player IDs and seats.
 - Clients may pre-validate for UX, but server validation is final.
+
+## Logging
+
+All logs are emitted via `log/slog` with a JSON handler to stdout.
+
+**Log level** is controlled by the `-log-level` CLI flag (`debug`, `info`, `warn`, `error`). If the flag is absent or empty, the `LOG_LEVEL` environment variable is used. The default level is `info`. The container image sets `LOG_LEVEL=warn` as the default.
+
+**Event levels:**
+
+| Level | Events |
+|-------|--------|
+| `info` | table created, table destroyed, table started (each round), player connected (WebSocket), player disconnected, player joined table, player left table |
+| `warn` | table orphaned (all human players disconnected, pending cleanup) |
+| `debug` | bot added to table |
+
+**Structured fields** included on each log entry where applicable:
+
+- `event` — machine-readable event name (e.g. `table_created`, `player_joined`)
+- `table_id` — the table identifier
+- `player_id` — the player identifier
+- `name` — player display name (join/leave events)
+- `addr` — remote address (WebSocket connect/disconnect)
+- `round` — round number (table started event)

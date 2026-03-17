@@ -5,6 +5,7 @@ builds:
     main: ./cmd/hearts
     env:
       - CGO_ENABLED=0
+      - LOG_LEVEL=warn
     flags:
       - -trimpath
     ldflags:

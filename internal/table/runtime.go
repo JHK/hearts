@@ -2,6 +2,7 @@ package table
 
 import (
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"sort"
 	"strings"
@@ -392,6 +393,8 @@ func (r *Runtime) handleLeave(state *tableState, playerID game.PlayerID) {
 		return
 	}
 
+	slog.Info("player left table", "event", "player_left", "table_id", r.tableID, "player_id", playerID, "name", player.Name)
+
 	if state.round != nil {
 		if player.Token != "" {
 			delete(state.playersByToken, player.Token)
@@ -472,6 +475,8 @@ func (r *Runtime) handleJoin(state *tableState, name, token string) protocol.Joi
 
 	player := r.addPlayer(state, name, false, token)
 
+	slog.Info("player joined table", "event", "player_joined", "table_id", r.tableID, "player_id", player.PlayerID, "name", player.Name, "seat", player.Seat)
+
 	r.publishPublic(protocol.EventPlayerJoined, protocol.PlayerJoinedData{Player: protocol.PlayerInfo{
 		PlayerID: player.PlayerID,
 		Name:     player.Name,
@@ -502,6 +507,8 @@ func (r *Runtime) handleAddBot(state *tableState, strategyName string) (AddedBot
 	name := randomBotName()
 	player := r.addPlayer(state, name, true, "")
 	state.bots[player.PlayerID] = strategyKind.New()
+
+	slog.Debug("bot added to table", "event", "bot_added", "table_id", r.tableID, "player_id", player.PlayerID, "name", player.Name, "strategy", string(strategyKind))
 
 	r.publishPublic(protocol.EventPlayerJoined, protocol.PlayerJoinedData{Player: protocol.PlayerInfo{
 		PlayerID: player.PlayerID,
@@ -549,6 +556,7 @@ func (r *Runtime) handleStart(state *tableState, playerID game.PlayerID) protoco
 	}
 
 	hands := r.initializeRound(state)
+	slog.Info("table started", "event", "table_started", "table_id", r.tableID, "round", state.roundsStarted)
 	r.publishRoundStart(state, hands)
 	if state.round.PassDirection == passDirectionHold {
 		r.startPlayPhase(state)
