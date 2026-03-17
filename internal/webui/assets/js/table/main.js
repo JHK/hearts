@@ -21,6 +21,7 @@ const state = {
   selectedPassCards: [],
   lastPlayers: [],
   liveTrickPlays: [],
+  liveTurnPlayerId: undefined,
   trickEventQueue: [],
   processingTrickEventQueue: false,
   pendingStateRefresh: 0,
@@ -125,23 +126,6 @@ function requestState() {
   send({ type: 'state' });
 }
 
-function syncTrickFromLatestSnapshot() {
-  if (state.processingTrickEventQueue || state.trickEventQueue.length > 0) {
-    return;
-  }
-
-  const players = renderer.trickRenderPlayers();
-  if (players.length === 0) {
-    return;
-  }
-
-  const snapshotTrickPlays = Array.isArray(state.lastSnapshot && state.lastSnapshot.trick_plays)
-    ? state.lastSnapshot.trick_plays.slice()
-    : [];
-  state.liveTrickPlays = snapshotTrickPlays;
-  renderer.renderTrick(players, state.liveTrickPlays);
-}
-
 function enqueueTrickEvent(type, data) {
   state.trickEventQueue.push({ type, data: data || {} });
   void processTrickEventQueue();
@@ -160,8 +144,9 @@ async function processQueuedCardPlayed(data) {
   const nextTrick = state.liveTrickPlays.filter((play) => play.player_id !== data.player_id);
   nextTrick.push({ player_id: data.player_id, card: data.card });
   state.liveTrickPlays = nextTrick;
-  renderer.renderTrick(players, state.liveTrickPlays);
 
+  state.liveTurnPlayerId = data.player_id;
+  renderer.renderState(state.lastSnapshot, { log });
 
   if (data.card === 'QS') {
     playQueenOfSpades();
@@ -182,10 +167,10 @@ async function processQueuedTrickCompleted(data) {
   state.liveTrickPlays = [];
   state.lastTrickSignature = '';
 
-  const players = renderer.trickRenderPlayers();
-  if (players.length > 0) {
-    renderer.renderTrick(players, state.liveTrickPlays);
+  if (data && data.winner_player_id) {
+    state.liveTurnPlayerId = data.winner_player_id;
   }
+  renderer.renderState(state.lastSnapshot, { log });
 }
 
 async function processTrickEventQueue() {
@@ -212,7 +197,7 @@ async function processTrickEventQueue() {
     }
   } finally {
     state.processingTrickEventQueue = false;
-    syncTrickFromLatestSnapshot();
+    renderer.renderState(state.lastSnapshot, { log });
     scheduleStateRefresh(0);
   }
 }

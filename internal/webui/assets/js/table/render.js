@@ -482,17 +482,23 @@ export function createRenderer({ dom, state, send }) {
     const hasCompletedRound = Object.values(totalPoints).some((points) => Number(points) > 0);
     dom.startButtonEl.textContent = hasCompletedRound ? 'Continue' : 'Start';
 
+    const serverTrickPlays = (snapshot.trick_plays || []).slice();
+    if (queueIdle) {
+      state.liveTrickPlays = serverTrickPlays;
+      state.liveTurnPlayerId = snapshot.turn_player_id;
+    }
+
     state.lastPlayers = players;
     const relativePlayers = relativeSeatPlayers(players);
-    const turnPlayer = players.find((player) => player.player_id === snapshot.turn_player_id);
-    const isYourTurn = !!isPlaying && !!state.myPlayerId && snapshot.turn_player_id === state.myPlayerId;
+    const turnPlayer = players.find((player) => player.player_id === state.liveTurnPlayerId);
+    const isYourTurn = !!isPlaying && !!state.myPlayerId && state.liveTurnPlayerId === state.myPlayerId;
     if (isPlaying) {
-      if (!snapshot.turn_player_id) {
+      if (!state.liveTurnPlayerId) {
         dom.turnIndicatorEl.textContent = 'collecting trick';
       } else {
         dom.turnIndicatorEl.textContent = isYourTurn
           ? 'waiting for you'
-          : `waiting for ${turnPlayer ? turnPlayer.name : snapshot.turn_player_id}`;
+          : `waiting for ${turnPlayer ? turnPlayer.name : state.liveTurnPlayerId}`;
       }
     } else if (isPassing) {
       dom.turnIndicatorEl.textContent = `pass 3 cards ${snapshot.pass_direction ? `(${snapshot.pass_direction})` : ''}`.trim();
@@ -502,12 +508,7 @@ export function createRenderer({ dom, state, send }) {
       dom.turnIndicatorEl.textContent = '';
     }
 
-    const serverTrickPlays = (snapshot.trick_plays || []).slice();
-    if (!state.processingTrickEventQueue && state.trickEventQueue.length === 0) {
-      state.liveTrickPlays = serverTrickPlays;
-    }
-
-    setSeatLabels(relativePlayers, snapshot.turn_player_id);
+    setSeatLabels(relativePlayers, state.liveTurnPlayerId);
     renderTrick(players, state.liveTrickPlays);
     renderYourHand(
       snapshot.hand || [],

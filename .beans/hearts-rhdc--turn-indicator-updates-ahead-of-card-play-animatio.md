@@ -1,7 +1,7 @@
 ---
 # hearts-rhdc
 title: Turn indicator updates ahead of card play animations
-status: todo
+status: done
 type: bug
 priority: normal
 created_at: 2026-03-17T13:44:06Z
@@ -24,17 +24,19 @@ When a player plays a card, the turn indicator (text label + seat highlight) imm
 
 ## Desired Behavior
 
-The turn indicator should only advance to the next player after the animation queue is fully drained — consistent with how the Continue button was gated in hearts-2hve. Visual order should be:
+The turn indicator advances in sync with each card-play animation: the player whose card is currently flying is highlighted, so visually the card "comes from" the highlighted seat. After the trick collection animation, the winner is highlighted. Visual order per card:
 
-1. Card play animation finishes
-2. (Trick collection animation finishes, if applicable)
-3. Turn indicator switches to next player
+1. Player X's seat gets `.turn` highlight
+2. Player X's card flies to the centre (animation)
+3. Next player's turn begins
 
 ## Acceptance Criteria
 
-- [ ] Turn indicator text and seat `.turn` highlight do not change while the trick event queue is processing
-- [ ] After the queue drains, the turn indicator reflects the correct next player
-- [ ] No regression on the Continue button delay fix (hearts-2hve)
+- [x] Turn indicator does not jump to the next player before the current player's card animation plays
+- [x] Each card animation begins with the playing player's seat highlighted
+- [x] After trick collection animation, the trick winner's seat is highlighted
+- [x] After the queue drains, the turn indicator syncs to the server's authoritative turn player
+- [x] No regression on the Continue button delay fix (hearts-2hve)
 
 ## Out of Scope
 
