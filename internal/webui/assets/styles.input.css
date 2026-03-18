@@ -840,6 +840,42 @@
   }
 }
 
+@media (max-width: 490px) {
+  .table-page main {
+    padding: 0;
+  }
+
+  .table-page section {
+    border-radius: 0;
+  }
+
+  #trickSection {
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+  }
+
+  .table-board {
+    padding: 8px 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .seat.bottom .hand-card {
+    width: 65px;
+  }
+
+  .seat.bottom .seat-hand .hand-card + .hand-card {
+    margin-left: -38px;
+  }
+
+  .seat.bottom .seat-hand {
+    min-height: 90px;
+  }
+}
+
 @media (max-width: 640px) {
   .lobby-page input,
   .lobby-page button {
