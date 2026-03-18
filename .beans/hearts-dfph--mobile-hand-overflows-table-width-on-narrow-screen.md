@@ -5,7 +5,7 @@ status: completed
 type: bug
 priority: normal
 created_at: 2026-03-17T17:23:59Z
-updated_at: 2026-03-18T09:50:44Z
+updated_at: 2026-03-18T10:18:44Z
 ---
 
 Full 13-card hand overflows table width on narrow phones, causing layout glitches until cards are played
@@ -28,10 +28,14 @@ Two approaches are viable — left to the implementer to decide:
 2. **Two-row wrap by suit** — overflow into a second row, grouping by suit. Better tap targets, more structured visual, but more complex layout and interaction code.
 
 ## Acceptance Criteria
-- [ ] A full 13-card hand renders without overflowing table width at 360px viewport
-- [ ] No layout glitches at game start on mobile
-- [ ] Cards remain tappable and interactive (play, pass-select)
+- [x] A full 13-card hand renders without overflowing table width at 360px viewport
+- [x] No layout glitches at game start on mobile
+- [x] Cards remain tappable and interactive (play, pass-select)
 
 ## Out of Scope
 - Opponent card backs (already small, unlikely to overflow)
 - Desktop layout changes
+
+## Summary of Changes
+
+Scaled card width on narrow viewports using a CSS clamp formula. Tweaked the vw coefficient (3.85vw → 4vw) for a slightly better fit across the 360–490px range.

@@ -864,7 +864,7 @@
   }
 
   .seat.bottom .hand-card {
-    width: clamp(65px, 49.15px + 3.85vw, 68px);
+    width: clamp(65px, 49.15px + 4vw, 68px);
   }
 
   .seat.bottom .seat-hand .hand-card + .hand-card {
