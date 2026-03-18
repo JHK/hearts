@@ -15,11 +15,8 @@ run = "go test ./..."
 [tasks.css]
 run = "npm run build:css"
 
-[tasks."css-watch"]
-run = "npm run watch:css"
-
-[tasks.start]
-depends = ["css"]
+[tasks.dev]
+depends = ["setup", "css"]
 run = "go run ./cmd/hearts"
 
 [tasks.image-build]

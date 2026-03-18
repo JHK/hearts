@@ -18,9 +18,9 @@ worktree:
     # Git ref to use as the base for new worktree branches (default: main)
     base_ref: main
     # Shell command to run inside a worktree after creation (e.g. "pnpm install")
-    setup: ""
+    setup: mise trust && mise setup
     # Shell command to run the project (adds a "Run" button to workspace toolbar)
-    run: ""
+    run: mise dev
 agent:
     # Enable agent functionality in the web UI (true, false)
     enabled: true
