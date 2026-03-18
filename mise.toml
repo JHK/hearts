@@ -15,9 +15,14 @@ run = "go test ./..."
 [tasks.css]
 run = "npm run build:css"
 
-[tasks.dev]
-depends = ["setup", "css"]
+[tasks.serve]
+depends = ["css"]
 run = "go run ./cmd/hearts"
+sources = ["**/*.go", "internal/**/*.html", "internal/**/*.js", "internal/webui/assets/styles.input.css", "tailwind.config.js"]
+
+[tasks.dev]
+depends = ["setup"]
+run = "mise watch serve --restart"
 
 [tasks.image-build]
 description = "Build container image and load into local podman/docker daemon"

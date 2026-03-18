@@ -1,11 +1,11 @@
 ---
 # hearts-jjfg
 title: Auto-reload dev server on changes to Go, CSS, JS, and HTML files
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-03-18T09:17:52Z
-updated_at: 2026-03-18T09:17:59Z
+updated_at: 2026-03-18T09:18:00Z
 ---
 
 Rebuild and restart the dev server automatically on file changes, following the beans project pattern
@@ -30,12 +30,12 @@ requires a Go rebuild anyway. CSS additionally requires an npm build step
 first, which can be modeled as a `depends` on the serve task.
 
 ## Acceptance Criteria
-- [ ] `mise run dev` rebuilds and restarts the server automatically when
+- [x] `mise run dev` rebuilds and restarts the server automatically when
   any `.go` file changes
-- [ ] CSS is rebuilt and the server is restarted when Tailwind source files
+- [x] CSS is rebuilt and the server is restarted when Tailwind source files
   change
-- [ ] Embedded JS and HTML template changes also trigger a restart
-- [ ] No manual server restart is needed during normal development
+- [x] Embedded JS and HTML template changes also trigger a restart
+- [x] No manual server restart is needed during normal development
 
 ## Out of Scope
 - Browser-side live reload / hot module replacement (no page auto-refresh)
