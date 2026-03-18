@@ -28,4 +28,4 @@ agent:
     default_mode: act
 server:
     # Port for the web UI (used by `beans-serve`)
-    port: 8080
+    port: 9001
