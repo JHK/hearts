@@ -1,11 +1,11 @@
 ---
 # hearts-dfph
 title: Mobile hand overflows table width on narrow screens
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-03-17T17:23:59Z
-updated_at: 2026-03-17T17:24:18Z
+updated_at: 2026-03-18T09:50:44Z
 ---
 
 Full 13-card hand overflows table width on narrow phones, causing layout glitches until cards are played
