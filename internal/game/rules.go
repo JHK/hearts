@@ -2,6 +2,58 @@ package game
 
 import "fmt"
 
+type PassDirection string
+
+const (
+	PassDirectionLeft   PassDirection = "left"
+	PassDirectionRight  PassDirection = "right"
+	PassDirectionAcross PassDirection = "across"
+	PassDirectionHold   PassDirection = "hold"
+)
+
+// PassDirectionForRound returns the pass direction for a given round index.
+func PassDirectionForRound(roundIndex int) PassDirection {
+	switch roundIndex % 4 {
+	case 0:
+		return PassDirectionLeft
+	case 1:
+		return PassDirectionRight
+	case 2:
+		return PassDirectionAcross
+	default:
+		return PassDirectionHold
+	}
+}
+
+// PassDirectionOffset returns the seat offset for a pass direction.
+func PassDirectionOffset(dir PassDirection) int {
+	switch dir {
+	case PassDirectionLeft:
+		return 1
+	case PassDirectionRight:
+		return PlayersPerTable - 1
+	case PassDirectionAcross:
+		return 2
+	default:
+		return 0
+	}
+}
+
+// ExchangePasses computes the cards each seat receives given submitted passes and a direction.
+// received[dst] contains the cards that seat dst gains. Hold returns an empty result.
+func ExchangePasses(passes [PlayersPerTable][]Card, dir PassDirection) [PlayersPerTable][]Card {
+	var received [PlayersPerTable][]Card
+	if dir == PassDirectionHold {
+		return received
+	}
+	offset := PassDirectionOffset(dir)
+	for src, cards := range passes {
+		dst := (src + offset) % PlayersPerTable
+		received[dst] = append(received[dst], cards...)
+	}
+	return received
+}
+
 type Play struct {
 	PlayerID PlayerID
 	Card     Card

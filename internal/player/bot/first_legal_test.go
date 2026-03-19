@@ -70,7 +70,7 @@ func TestFirstLegalChoosePlayNoLegalCards(t *testing.T) {
 func TestFirstLegalChoosePassUsesFirstThreeInOrder(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "3D", "2S", "AH"})
 
-	cards, err := NewFirstLegalBot().ChoosePass(PassInput{Hand: hand, Direction: "left"})
+	cards, err := NewFirstLegalBot().ChoosePass(PassInput{Hand: hand, Direction: game.PassDirectionLeft})
 	if err != nil {
 		t.Fatalf("expected pass cards, got %v", err)
 	}

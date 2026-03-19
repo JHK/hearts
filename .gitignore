@@ -4,3 +4,4 @@ dist/
 node_modules/
 internal/webui/assets/styles.css
 /genfavicons
+/sim

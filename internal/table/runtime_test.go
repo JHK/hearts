@@ -199,17 +199,17 @@ func TestPassingAndReviewFlowTransitionsToPlay(t *testing.T) {
 func TestPassDirectionCycle(t *testing.T) {
 	tests := []struct {
 		roundIndex int
-		expected   string
+		expected   game.PassDirection
 	}{
-		{roundIndex: 0, expected: passDirectionLeft},
-		{roundIndex: 1, expected: passDirectionRight},
-		{roundIndex: 2, expected: passDirectionAcross},
-		{roundIndex: 3, expected: passDirectionHold},
-		{roundIndex: 4, expected: passDirectionLeft},
+		{roundIndex: 0, expected: game.PassDirectionLeft},
+		{roundIndex: 1, expected: game.PassDirectionRight},
+		{roundIndex: 2, expected: game.PassDirectionAcross},
+		{roundIndex: 3, expected: game.PassDirectionHold},
+		{roundIndex: 4, expected: game.PassDirectionLeft},
 	}
 
 	for _, tc := range tests {
-		if actual := passDirectionForRound(tc.roundIndex); actual != tc.expected {
+		if actual := game.PassDirectionForRound(tc.roundIndex); actual != tc.expected {
 			t.Fatalf("round %d: expected %q, got %q", tc.roundIndex, tc.expected, actual)
 		}
 	}

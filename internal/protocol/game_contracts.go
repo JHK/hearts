@@ -36,7 +36,7 @@ type CardPlayedData struct {
 type PassStatusData struct {
 	Submitted int    `json:"submitted"`
 	Total     int    `json:"total"`
-	Direction string `json:"direction,omitempty"`
+	Direction game.PassDirection `json:"direction,omitempty"`
 }
 
 type PassReadyData struct {

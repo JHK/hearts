@@ -11,10 +11,11 @@ type TurnInput struct {
 
 type PassInput struct {
 	Hand      []game.Card
-	Direction string
+	Direction game.PassDirection
 }
 
 type Strategy interface {
+	Kind() StrategyKind
 	ChoosePlay(input TurnInput) (game.Card, error)
 	ChoosePass(input PassInput) ([]game.Card, error)
 }

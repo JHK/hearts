@@ -1,6 +1,10 @@
 package bot
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/JHK/hearts/internal/game"
+)
 
 func TestSmartChoosePlayLeadsShortestNonHeartSuit(t *testing.T) {
 	hand := parseCards(t, []string{"3D", "9D", "2S", "KH"})
@@ -59,7 +63,7 @@ func TestSmartChoosePlayDiscardsQueenOfSpades(t *testing.T) {
 func TestSmartChoosePassPrefersDangerousCards(t *testing.T) {
 	hand := parseCards(t, []string{"QS", "AS", "KH", "2C", "3C", "4D", "5D", "6H", "7H", "8S", "9S", "TC", "JD"})
 
-	cards, err := NewSmartBot().ChoosePass(PassInput{Hand: hand, Direction: "left"})
+	cards, err := NewSmartBot().ChoosePass(PassInput{Hand: hand, Direction: game.PassDirectionLeft})
 	if err != nil {
 		t.Fatalf("expected pass cards, got %v", err)
 	}

@@ -52,7 +52,7 @@ type Snapshot struct {
 	TrickPlays         []TrickPlaySnapshot             `json:"trick_plays"`
 	Hand               []string                        `json:"hand"`
 	HandSizes          map[game.PlayerID]int           `json:"hand_sizes"`
-	PassDirection      string                          `json:"pass_direction"`
+	PassDirection      game.PassDirection              `json:"pass_direction"`
 	PassSubmitted      bool                            `json:"pass_submitted"`
 	PassSubmittedCount int                             `json:"pass_submitted_count"`
 	PassSent           []string                        `json:"pass_sent"`
@@ -73,10 +73,6 @@ const (
 	roundPhasePassReview roundPhase = "pass_review"
 	roundPhasePlaying    roundPhase = "playing"
 
-	passDirectionLeft   = "left"
-	passDirectionRight  = "right"
-	passDirectionAcross = "across"
-	passDirectionHold   = "hold"
 )
 
 type Runtime struct {
@@ -117,7 +113,7 @@ type playerState struct {
 
 type roundState struct {
 	Phase           roundPhase
-	PassDirection   string
+	PassDirection   game.PassDirection
 	PassSubmissions map[game.PlayerID][]game.Card
 	PassSent        map[game.PlayerID][]game.Card
 	PassReceived    map[game.PlayerID][]game.Card
@@ -571,7 +567,7 @@ func (r *Runtime) handleStart(state *tableState, playerID game.PlayerID) protoco
 	hands := r.initializeRound(state)
 	slog.Info("table started", "event", "table_started", "table_id", r.tableID, "round", state.roundsStarted)
 	r.publishRoundStart(state, hands)
-	if state.round.PassDirection == passDirectionHold {
+	if state.round.PassDirection == game.PassDirectionHold {
 		r.startPlayPhase(state)
 		return protocol.CommandResponse{Accepted: true}
 	}
@@ -775,25 +771,19 @@ func (r *Runtime) parseAndValidatePassCards(hand []game.Card, cardsRaw []string)
 }
 
 func (r *Runtime) applyPassSubmissions(state *tableState) {
-	offset := r.passDirectionOffset(state.round.PassDirection)
-
-	for _, sender := range state.players {
-		cards := state.round.PassSubmissions[sender.PlayerID]
-		receiverSeat := (sender.Seat + offset) % game.PlayersPerTable
-		receiver := state.players[receiverSeat]
-
-		for _, card := range cards {
-			updatedHand, removed := game.RemoveCard(sender.Hand, card)
-			if !removed {
-				continue
-			}
-			sender.Hand = updatedHand
-			receiver.Hand = append(receiver.Hand, card)
-			state.round.PassReceived[receiver.PlayerID] = append(state.round.PassReceived[receiver.PlayerID], card)
-		}
+	var passes [game.PlayersPerTable][]game.Card
+	for seat, player := range state.players {
+		passes[seat] = state.round.PassSubmissions[player.PlayerID]
 	}
 
-	for _, player := range state.players {
+	received := game.ExchangePasses(passes, state.round.PassDirection)
+
+	for seat, player := range state.players {
+		for _, card := range passes[seat] {
+			player.Hand, _ = game.RemoveCard(player.Hand, card)
+		}
+		player.Hand = append(player.Hand, received[seat]...)
+		state.round.PassReceived[player.PlayerID] = received[seat]
 		game.SortCards(player.Hand)
 	}
 }
@@ -853,33 +843,6 @@ func (r *Runtime) findTwoClubsSeat(state *tableState) int {
 	return 0
 }
 
-func (r *Runtime) passDirectionOffset(direction string) int {
-	switch direction {
-	case passDirectionLeft:
-		return 1
-	case passDirectionRight:
-		return game.PlayersPerTable - 1
-	case passDirectionAcross:
-		return 2
-	case passDirectionHold:
-		return 0
-	default:
-		return 1
-	}
-}
-
-func passDirectionForRound(roundIndex int) string {
-	switch roundIndex % 4 {
-	case 0:
-		return passDirectionLeft
-	case 1:
-		return passDirectionRight
-	case 2:
-		return passDirectionAcross
-	default:
-		return passDirectionHold
-	}
-}
 
 func (r *Runtime) handleBotTurn(state *tableState, playerID game.PlayerID) {
 	if state.round == nil || state.round.Phase != roundPhasePlaying {
@@ -1019,7 +982,7 @@ func (r *Runtime) validateStartPreconditions(state *tableState, playerID game.Pl
 
 func (r *Runtime) initializeRound(state *tableState) map[game.PlayerID][]string {
 	hands := make(map[game.PlayerID][]string)
-	passDirection := passDirectionForRound(state.roundsStarted)
+	passDirection := game.PassDirectionForRound(state.roundsStarted)
 	state.roundsStarted++
 
 	for _, player := range state.players {
@@ -1072,7 +1035,7 @@ func (r *Runtime) publishRoundStart(state *tableState, hands map[game.PlayerID][
 		r.publishPrivate(playerID, protocol.EventHandUpdated, protocol.HandUpdatedData{Cards: cards})
 	}
 
-	if state.round != nil && state.round.PassDirection != passDirectionHold {
+	if state.round != nil && state.round.PassDirection != game.PassDirectionHold {
 		r.publishPublic(protocol.EventPassSubmitted, protocol.PassStatusData{
 			Submitted: 0,
 			Total:     game.PlayersPerTable,

@@ -115,6 +115,17 @@ func BuildDeck() []Card {
 	return deck
 }
 
+// Deal builds a shuffled deck and distributes 13 cards to each of 4 seats.
+func Deal(rng *rand.Rand) [4][]Card {
+	deck := BuildDeck()
+	Shuffle(deck, rng)
+	var hands [4][]Card
+	for i, card := range deck {
+		hands[i%4] = append(hands[i%4], card)
+	}
+	return hands
+}
+
 func Shuffle(cards []Card, rng *rand.Rand) {
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))

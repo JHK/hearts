@@ -12,6 +12,8 @@ type Random struct {
 	rng *rand.Rand
 }
 
+func (r *Random) Kind() StrategyKind { return StrategyRandom }
+
 func NewRandomBot(rng *rand.Rand) Strategy {
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))

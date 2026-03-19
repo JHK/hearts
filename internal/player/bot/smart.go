@@ -9,6 +9,8 @@ import (
 
 type Smart struct{}
 
+func (s *Smart) Kind() StrategyKind { return StrategySmart }
+
 func NewSmartBot() Strategy {
 	return &Smart{}
 }

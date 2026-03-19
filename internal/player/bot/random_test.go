@@ -11,7 +11,7 @@ func TestRandomChoosePassReturnsThreeDistinctCardsFromHand(t *testing.T) {
 	hand := mustParseCards(t, []string{"KC", "3D", "2S", "AH", "7C"})
 	strategy := NewRandomBot(rand.New(rand.NewSource(7)))
 
-	cards, err := strategy.ChoosePass(PassInput{Hand: hand, Direction: "left"})
+	cards, err := strategy.ChoosePass(PassInput{Hand: hand, Direction: game.PassDirectionLeft})
 	if err != nil {
 		t.Fatalf("expected pass cards, got %v", err)
 	}

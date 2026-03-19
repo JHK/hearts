@@ -8,6 +8,8 @@ import (
 
 type FirstLegal struct{}
 
+func (f *FirstLegal) Kind() StrategyKind { return StrategyFirstLegal }
+
 func NewFirstLegalBot() Strategy {
 	return &FirstLegal{}
 }
