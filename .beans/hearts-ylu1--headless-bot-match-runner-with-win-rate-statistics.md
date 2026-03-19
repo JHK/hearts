@@ -1,7 +1,7 @@
 ---
 # hearts-ylu1
 title: Headless bot match runner with win-rate statistics
-status: todo
+status: done
 type: feature
 priority: normal
 created_at: 2026-03-19T07:16:47Z
