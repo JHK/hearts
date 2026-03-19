@@ -79,7 +79,11 @@ func (m *Manager) List() []protocol.TableInfo {
 
 	infos := make([]protocol.TableInfo, 0, len(tables))
 	for _, runtime := range tables {
-		infos = append(infos, runtime.Info())
+		info := runtime.Info()
+		if info.GameOver {
+			continue
+		}
+		infos = append(infos, info)
 	}
 
 	sort.Slice(infos, func(i, j int) bool {

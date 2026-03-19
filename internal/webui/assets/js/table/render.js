@@ -394,6 +394,41 @@ export function createRenderer({ dom, state, send }) {
     }
   }
 
+  function renderGameOverPanel(snapshot) {
+    const players = Array.isArray(snapshot.players) ? snapshot.players : [];
+    const totalPoints = (snapshot && snapshot.total_points) ? snapshot.total_points : {};
+    const winners = Array.isArray(snapshot.winners) ? snapshot.winners : [];
+
+    const winnerNames = winners.map((wid) => {
+      const p = players.find((pl) => pl.player_id === wid);
+      return p ? (p.is_bot ? `${p.name} [bot]` : p.name) : wid;
+    });
+
+    dom.gameOverWinnerEl.textContent = winnerNames.length === 1
+      ? `Winner: ${winnerNames[0]}`
+      : `Co-winners: ${winnerNames.join(', ')}`;
+
+    const sorted = [...players].sort((a, b) => (totalPoints[a.player_id] || 0) - (totalPoints[b.player_id] || 0));
+
+    dom.gameOverScoresEl.innerHTML = '';
+    const table = document.createElement('table');
+    table.className = 'game-over-scores-table';
+    for (const p of sorted) {
+      const tr = document.createElement('tr');
+      if (winners.includes(p.player_id)) {
+        tr.classList.add('game-over-winner-row');
+      }
+      const nameTd = document.createElement('td');
+      nameTd.textContent = p.is_bot ? `${p.name} [bot]` : p.name;
+      const scoreTd = document.createElement('td');
+      scoreTd.textContent = String(totalPoints[p.player_id] || 0);
+      tr.appendChild(nameTd);
+      tr.appendChild(scoreTd);
+      table.appendChild(tr);
+    }
+    dom.gameOverScoresEl.appendChild(table);
+  }
+
   function renderPassPanel(snapshot) {
     if (state.isObserver) {
       dom.passSummaryEl.hidden = true;
@@ -478,6 +513,12 @@ export function createRenderer({ dom, state, send }) {
     state.lastPassSubmittedCount = passSubmittedCount;
     state.lastPassReadyCount = passReadyCount;
 
+    const isGameOver = !!snapshot.game_over;
+    dom.gameOverOverlayEl.classList.toggle('hidden', !isGameOver);
+    if (isGameOver) {
+      renderGameOverPanel(snapshot);
+    }
+
     const waitingForPlayers = !snapshot.started && players.length < 4;
     dom.statusEl.hidden = !waitingForPlayers;
     if (waitingForPlayers) {
@@ -486,14 +527,14 @@ export function createRenderer({ dom, state, send }) {
 
     dom.trickSectionEl.hidden = false;
 
-    const canAddBot = !state.isObserver && !snapshot.started && players.length < 4;
+    const canAddBot = !state.isObserver && !snapshot.started && players.length < 4 && !isGameOver;
     dom.botControlEl.classList.toggle('hidden', !canAddBot);
     if (!canAddBot) {
       dom.botStrategySelectEl.value = 'smart';
     }
 
     const queueIdle = !state.processingTrickEventQueue && state.trickEventQueue.length === 0;
-    const showStartControl = !state.isObserver && !snapshot.started && players.length === 4 && queueIdle;
+    const showStartControl = !state.isObserver && !snapshot.started && players.length === 4 && queueIdle && !isGameOver;
     const showPassControls = !state.isObserver && (isPassing || isPassReview);
     dom.centerControlsEl.classList.toggle('hidden', !showStartControl && !showPassControls);
     dom.startButtonEl.hidden = !showStartControl;
@@ -511,7 +552,9 @@ export function createRenderer({ dom, state, send }) {
     const relativePlayers = relativeSeatPlayers(players);
     const turnPlayer = players.find((player) => player.player_id === state.liveTurnPlayerId);
     const isYourTurn = !!isPlaying && !!state.myPlayerId && state.liveTurnPlayerId === state.myPlayerId;
-    if (isPlaying) {
+    if (isGameOver) {
+      dom.turnIndicatorEl.textContent = '';
+    } else if (isPlaying) {
       if (!state.liveTurnPlayerId) {
         dom.turnIndicatorEl.textContent = 'collecting trick';
       } else {

@@ -745,6 +745,86 @@
   #actionsSection.hidden {
     display: none;
   }
+
+  .game-over-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(14, 22, 34, 0.72);
+    backdrop-filter: blur(3px);
+  }
+
+  .game-over-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+    text-align: center;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 20px 48px rgba(10, 20, 34, 0.32);
+  }
+
+  .game-over-panel h2 {
+    margin: 0;
+    font-size: 1.6rem;
+    letter-spacing: 0.01em;
+  }
+
+  .game-over-winner-text {
+    margin: 0;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--ink);
+  }
+
+  .game-over-scores {
+    width: 100%;
+  }
+
+  .game-over-scores-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+
+  .game-over-scores-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .game-over-scores-table td:last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .game-over-scores-table .game-over-winner-row td {
+    font-weight: 700;
+    color: var(--green);
+  }
+
+  .game-over-back-link {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 9px 20px;
+    border-radius: 10px;
+    background: linear-gradient(130deg, var(--accent, #116466), #1b8d8f);
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+
+  .game-over-back-link:hover {
+    opacity: 0.88;
+  }
 }
 
 @media (min-width: 1280px) {

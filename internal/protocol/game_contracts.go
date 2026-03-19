@@ -58,3 +58,8 @@ type RoundCompletedData struct {
 type HandUpdatedData struct {
 	Cards []string `json:"cards"`
 }
+
+type GameOverData struct {
+	FinalScores map[game.PlayerID]game.Points `json:"final_scores"`
+	Winners     []game.PlayerID               `json:"winners"`
+}

@@ -14,4 +14,5 @@ const (
 	EventTrickCompleted    EventType = "trick_completed"
 	EventRoundCompleted    EventType = "round_completed"
 	EventHandUpdated       EventType = "hand_updated"
+	EventGameOver          EventType = "game_over"
 )

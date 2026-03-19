@@ -34,6 +34,9 @@ export function createTableDom({ tableId, eventsEnabled }) {
   const seatBottomNameEl = document.getElementById('seatBottomName');
   const seatBottomHandEl = document.getElementById('seatBottomHand');
   const trickSlotEls = createTrickSlots(trickCenterEl);
+  const gameOverOverlayEl = document.getElementById('gameOverOverlay');
+  const gameOverWinnerEl = document.getElementById('gameOverWinner');
+  const gameOverScoresEl = document.getElementById('gameOverScores');
 
   eventsSectionEl.hidden = !eventsEnabled;
   titleEl.textContent = `Hearts Table ${tableId}`;
@@ -73,7 +76,10 @@ export function createTableDom({ tableId, eventsEnabled }) {
     seatBottomEl,
     seatBottomNameEl,
     seatBottomHandEl,
-    trickSlotEls
+    trickSlotEls,
+    gameOverOverlayEl,
+    gameOverWinnerEl,
+    gameOverScoresEl
   };
 }
 

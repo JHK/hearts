@@ -62,6 +62,8 @@ type Snapshot struct {
 	RoundPoints        map[game.PlayerID]game.Points   `json:"round_points"`
 	RoundHistory       []map[game.PlayerID]game.Points `json:"round_history"`
 	TotalPoints        map[game.PlayerID]game.Points   `json:"total_points"`
+	GameOver           bool                            `json:"game_over"`
+	Winners            []game.PlayerID                 `json:"winners,omitempty"`
 }
 
 type roundPhase string
@@ -101,6 +103,7 @@ type tableState struct {
 	round         *roundState
 	roundsStarted int
 	nextPlayerSeq int
+	gameOver      bool
 }
 
 type playerState struct {
@@ -377,6 +380,7 @@ func (r *Runtime) run() {
 					Players:    len(state.players),
 					MaxPlayers: game.PlayersPerTable,
 					Started:    state.round != nil,
+					GameOver:   state.gameOver,
 				}
 			case botTurnCommand:
 				r.handleBotTurn(state, cmd.playerID)
@@ -498,6 +502,9 @@ func (r *Runtime) handleJoin(state *tableState, name, token string) protocol.Joi
 }
 
 func (r *Runtime) handleAddBot(state *tableState, strategyName string) (AddedBot, error) {
+	if state.gameOver {
+		return AddedBot{}, fmt.Errorf("game is over")
+	}
 	if state.round != nil {
 		return AddedBot{}, fmt.Errorf("round already in progress")
 	}
@@ -649,6 +656,7 @@ func (r *Runtime) handlePlay(state *tableState, playerID game.PlayerID, cardRaw 
 		r.publishPlayAndHand(update)
 		r.publishPublic(protocol.EventTrickCompleted, trickCompleted)
 		r.publishPublic(protocol.EventRoundCompleted, roundCompleted)
+		r.maybeEndGame(state)
 		return protocol.CommandResponse{Accepted: true}
 	}
 
@@ -991,6 +999,9 @@ func (r *Runtime) chooseBotPassCardStrings(state *tableState, playerID game.Play
 }
 
 func (r *Runtime) validateStartPreconditions(state *tableState, playerID game.PlayerID) string {
+	if state.gameOver {
+		return "game is over"
+	}
 	if state.round != nil {
 		return "round already started"
 	}
@@ -1130,6 +1141,41 @@ func (r *Runtime) completeRound(state *tableState) protocol.RoundCompletedData {
 	}
 }
 
+const gameOverThreshold = game.Points(100)
+
+func computeWinners(totals map[game.PlayerID]game.Points) []game.PlayerID {
+	var minPts game.Points
+	first := true
+	for _, pts := range totals {
+		if first || pts < minPts {
+			minPts = pts
+			first = false
+		}
+	}
+
+	winners := make([]game.PlayerID, 0, len(totals))
+	for playerID, pts := range totals {
+		if pts == minPts {
+			winners = append(winners, playerID)
+		}
+	}
+	sort.Slice(winners, func(i, j int) bool { return winners[i] < winners[j] })
+	return winners
+}
+
+func (r *Runtime) maybeEndGame(state *tableState) {
+	for _, pts := range state.totals {
+		if pts >= gameOverThreshold {
+			state.gameOver = true
+			r.publishPublic(protocol.EventGameOver, protocol.GameOverData{
+				FinalScores: copyPoints(state.totals),
+				Winners:     computeWinners(state.totals),
+			})
+			return
+		}
+	}
+}
+
 func (r *Runtime) buildSnapshot(state *tableState, forPlayer game.PlayerID) Snapshot {
 	players := make([]PlayerSnapshot, 0, len(state.players))
 	for _, player := range state.players {
@@ -1153,6 +1199,11 @@ func (r *Runtime) buildSnapshot(state *tableState, forPlayer game.PlayerID) Snap
 		RoundPoints:  map[game.PlayerID]game.Points{},
 		RoundHistory: copyRoundHistory(state.roundHistory),
 		TotalPoints:  copyPoints(state.totals),
+		GameOver:     state.gameOver,
+	}
+
+	if state.gameOver {
+		snapshot.Winners = computeWinners(state.totals)
 	}
 
 	for _, player := range state.players {

@@ -1,7 +1,7 @@
 ---
 # hearts-m7mt
 title: End game at 100 points with winner screen
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-19T07:24:21Z
@@ -17,12 +17,12 @@ Hearts games currently run indefinitely — there is no end condition. Standard 
 Make a complete, playable game of Hearts rather than an endless loop of rounds.
 
 ## Acceptance Criteria
-- [ ] After each round, the table checks whether any player's cumulative score >= 100
-- [ ] If the threshold is met, the table emits a game-over event (not a new round)
-- [ ] The game-over event includes final cumulative scores and the winner(s) (lowest score)
-- [ ] The frontend shows an ending screen with the final scores and who won
-- [ ] The table is closed/shut down after the game ends (no further commands accepted)
-- [ ] Ties for lowest score are handled — multiple co-winners are shown
+- [x] After each round, the table checks whether any player's cumulative score >= 100
+- [x] If the threshold is met, the table emits a game-over event (not a new round)
+- [x] The game-over event includes final cumulative scores and the winner(s) (lowest score)
+- [x] The frontend shows an ending screen with the final scores and who won
+- [x] The table is closed/shut down after the game ends (no further commands accepted)
+- [x] Ties for lowest score are handled — multiple co-winners are shown
 
 ## Out of Scope
 - Persistent leaderboards or game history across server restarts
