@@ -1,7 +1,7 @@
 ---
 # hearts-sn8x
 title: 'Observer mode: watch a game on a full table'
-status: todo
+status: done
 type: feature
 priority: normal
 created_at: 2026-03-18T10:47:25Z
@@ -20,11 +20,11 @@ Makes the game social beyond its 4 active players and enables passive engagement
 
 ## Acceptance Criteria
 
-- [ ] A user can navigate to a full table and join as an observer without taking a seat
-- [ ] Observers receive real-time game updates over WebSocket (tricks played, scores, passing phase, etc.)
-- [ ] Observers see only what a real spectator would: the current trick, played cards, scores, and which player's turn it is — not any player's hand
-- [ ] Observers are not prompted for any game action (pass, play card)
-- [ ] The number of observers is not capped
+- [x] A user can navigate to a full table and join as an observer without taking a seat
+- [x] Observers receive real-time game updates over WebSocket (tricks played, scores, passing phase, etc.)
+- [x] Observers see only what a real spectator would: the current trick, played cards, scores, and which player's turn it is — not any player's hand
+- [x] Observers are not prompted for any game action (pass, play card)
+- [x] The number of observers is not capped
 
 ## Out of Scope
 

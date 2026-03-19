@@ -1,6 +1,7 @@
 export function createTableDom({ tableId, eventsEnabled }) {
   const titleEl = document.getElementById('title');
   const statusEl = document.getElementById('status');
+  const observerBadgeEl = document.getElementById('observerBadge');
   const turnIndicatorEl = document.getElementById('turnIndicator');
   const botControlEl = document.getElementById('botControl');
   const addBotDefaultEl = document.getElementById('addBotDefault');
@@ -40,6 +41,7 @@ export function createTableDom({ tableId, eventsEnabled }) {
   return {
     titleEl,
     statusEl,
+    observerBadgeEl,
     turnIndicatorEl,
     botControlEl,
     addBotDefaultEl,

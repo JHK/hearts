@@ -1,6 +1,16 @@
 import { cardAltText, cardImageURL } from './cards.js';
 
 export function createRenderer({ dom, state, send }) {
+  function effectiveMe(players) {
+    if (!players || players.length === 0) return null;
+    const me = players.find((p) => p.player_id === state.myPlayerId);
+    if (me) return me;
+    if (state.isObserver) {
+      return players.find((p) => p.seat === 0) || players[0];
+    }
+    return null;
+  }
+
   function setSeatTurnClass(el, player, turnPlayerId) {
     if (player && turnPlayerId && player.player_id === turnPlayerId) {
       el.classList.add('turn');
@@ -10,7 +20,7 @@ export function createRenderer({ dom, state, send }) {
   }
 
   function relativeSeatPlayers(players) {
-    const me = players.find((p) => p.player_id === state.myPlayerId);
+    const me = effectiveMe(players);
     if (!me) {
       return { me: null, top: null, left: null, right: null };
     }
@@ -107,7 +117,7 @@ export function createRenderer({ dom, state, send }) {
   }
 
   function renderTrick(players, trickPlays) {
-    const me = players.find((player) => player.player_id === state.myPlayerId);
+    const me = effectiveMe(players);
     const trickSignature = `${me ? me.seat : '-'}|${(trickPlays || []).map((play) => `${play.player_id}:${play.card}`).join('|')}`;
     if (trickSignature === state.lastTrickSignature) {
       return;
@@ -385,6 +395,15 @@ export function createRenderer({ dom, state, send }) {
   }
 
   function renderPassPanel(snapshot) {
+    if (state.isObserver) {
+      dom.passSummaryEl.hidden = true;
+      dom.passDetailsEl.hidden = true;
+      dom.passSelectionEl.hidden = true;
+      dom.submitPassEl.hidden = true;
+      dom.readyAfterPassEl.hidden = true;
+      return;
+    }
+
     const phase = snapshot && snapshot.phase ? snapshot.phase : '';
     const passSubmitted = !!(snapshot && snapshot.pass_submitted);
     const passReady = !!(snapshot && snapshot.pass_ready);
@@ -467,15 +486,15 @@ export function createRenderer({ dom, state, send }) {
 
     dom.trickSectionEl.hidden = false;
 
-    const canAddBot = !snapshot.started && players.length < 4;
+    const canAddBot = !state.isObserver && !snapshot.started && players.length < 4;
     dom.botControlEl.classList.toggle('hidden', !canAddBot);
     if (!canAddBot) {
       dom.botStrategySelectEl.value = 'smart';
     }
 
     const queueIdle = !state.processingTrickEventQueue && state.trickEventQueue.length === 0;
-    const showStartControl = !snapshot.started && players.length === 4 && queueIdle;
-    const showPassControls = isPassing || isPassReview;
+    const showStartControl = !state.isObserver && !snapshot.started && players.length === 4 && queueIdle;
+    const showPassControls = !state.isObserver && (isPassing || isPassReview);
     dom.centerControlsEl.classList.toggle('hidden', !showStartControl && !showPassControls);
     dom.startButtonEl.hidden = !showStartControl;
     dom.startButtonEl.disabled = !showStartControl;
@@ -510,14 +529,20 @@ export function createRenderer({ dom, state, send }) {
 
     setSeatLabels(relativePlayers, state.liveTurnPlayerId);
     renderTrick(players, state.liveTrickPlays);
-    renderYourHand(
-      snapshot.hand || [],
-      phase,
-      isYourTurn,
-      !!snapshot.pass_submitted,
-      snapshot.pass_received || [],
-      !!snapshot.pass_ready
-    );
+    if (state.isObserver) {
+      const bottomPlayer = relativePlayers.me;
+      const bottomCount = bottomPlayer ? ((snapshot.hand_sizes || {})[bottomPlayer.player_id] || 0) : 0;
+      renderSeatBackHand(dom.seatBottomHandEl, bottomCount);
+    } else {
+      renderYourHand(
+        snapshot.hand || [],
+        phase,
+        isYourTurn,
+        !!snapshot.pass_submitted,
+        snapshot.pass_received || [],
+        !!snapshot.pass_ready
+      );
+    }
     renderOtherHands(relativePlayers, snapshot.hand_sizes || {});
     renderPassPanel(snapshot);
     renderScoreboard(snapshot);
@@ -528,7 +553,7 @@ export function createRenderer({ dom, state, send }) {
       return null;
     }
 
-    const me = state.lastPlayers.find((player) => player.player_id === state.myPlayerId);
+    const me = effectiveMe(state.lastPlayers);
     const winner = state.lastPlayers.find((player) => player.player_id === playerId);
     if (!me || !winner) {
       return null;
@@ -554,7 +579,7 @@ export function createRenderer({ dom, state, send }) {
       return null;
     }
 
-    const me = state.lastPlayers.find((player) => player.player_id === state.myPlayerId);
+    const me = effectiveMe(state.lastPlayers);
     const winner = state.lastPlayers.find((player) => player.player_id === playerId);
     if (!me || !winner) {
       return null;

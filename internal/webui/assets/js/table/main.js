@@ -15,6 +15,7 @@ const dom = createTableDom({ tableId, eventsEnabled });
 const state = {
   ws: undefined,
   myPlayerId: '',
+  isObserver: false,
   lastTrickSignature: '',
   lastHandRenderKey: '',
   lastSnapshot: {},
@@ -236,9 +237,16 @@ function connect() {
       case 'join_result':
         if (msg.data && msg.data.accepted) {
           state.myPlayerId = msg.data.player_id;
+          state.isObserver = false;
+          dom.observerBadgeEl.hidden = true;
           log(`joined as ${state.myPlayerId} seat ${msg.data.seat}`);
         } else {
-          log(`join rejected: ${msg.data && msg.data.reason ? msg.data.reason : 'join rejected'}`);
+          const reason = msg.data && msg.data.reason ? msg.data.reason : 'join rejected';
+          log(`join rejected: ${reason}`);
+          if (reason === 'table is full' || reason === 'round already in progress') {
+            state.isObserver = true;
+            dom.observerBadgeEl.hidden = false;
+          }
         }
         requestState();
         break;
