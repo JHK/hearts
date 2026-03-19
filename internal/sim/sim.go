@@ -13,7 +13,8 @@ const gameOverThreshold = game.Points(100)
 // Result holds win counts per strategy slot (index 0–3).
 // Ties count as a win for each tied player.
 type Result struct {
-	Wins [game.PlayersPerTable]int
+	Wins      [game.PlayersPerTable]int
+	MoonShots [game.PlayersPerTable]int
 }
 
 // Simulation runs N complete games between 4 fixed bot strategies.
@@ -33,39 +34,50 @@ func (s *Simulation) Run() Result {
 	rng := rand.New(rand.NewSource(rand.Int63()))
 
 	for i := 0; i < s.iterations; i++ {
-		for _, w := range s.runGame(rng) {
+		wins, moonShots := s.runGame(rng)
+		for _, w := range wins {
 			result.Wins[w]++
+		}
+		for slot, n := range moonShots {
+			result.MoonShots[slot] += n
 		}
 	}
 
 	return result
 }
 
-// runGame plays one complete game and returns the winning slot index/indices.
-func (s *Simulation) runGame(rng *rand.Rand) []int {
+// runGame plays one complete game and returns the winning slot index/indices and
+// moon-shot counts per slot for the game.
+func (s *Simulation) runGame(rng *rand.Rand) ([]int, [game.PlayersPerTable]int) {
 	var totals [game.PlayersPerTable]game.Points
+	var moonShots [game.PlayersPerTable]int
 
 	for roundIndex := 0; ; roundIndex++ {
-		s.runRound(rng, &totals, roundIndex)
+		s.runRound(rng, &totals, roundIndex, &moonShots)
 
 		for _, pts := range totals {
 			if pts >= gameOverThreshold {
-				return winners(totals)
+				return winners(totals), moonShots
 			}
 		}
 	}
 }
 
-func (s *Simulation) runRound(rng *rand.Rand, totals *[game.PlayersPerTable]game.Points, roundIndex int) {
+func (s *Simulation) runRound(rng *rand.Rand, totals *[game.PlayersPerTable]game.Points, roundIndex int, moonShots *[game.PlayersPerTable]int) {
 	hands := game.Deal(rng)
 
 	dir := game.PassDirectionForRound(roundIndex)
-	applyPasses(&hands, s.strategies, dir)
+	if dir != game.PassDirectionHold {
+		applyPasses(&hands, s.strategies, dir)
+	}
 
 	roundPoints := playRound(&hands, s.strategies)
 	adjusted := game.ApplyShootTheMoon(roundPoints)
 	for i := range game.PlayersPerTable {
 		pid := game.PlayerID(fmt.Sprintf("p%d", i))
+		if roundPoints[pid] == game.ShootTheMoonPoints {
+			moonShots[i]++
+		}
 		totals[i] += adjusted[pid]
 	}
 }
@@ -109,6 +121,7 @@ func playRound(hands *[game.PlayersPerTable][]game.Card, strategies [game.Player
 	}
 
 	heartsBroken := false
+	var playedCards []game.Card
 
 	for trick := 0; trick < 13; trick++ {
 		firstTrick := trick == 0
@@ -126,6 +139,7 @@ func playRound(hands *[game.PlayersPerTable][]game.Card, strategies [game.Player
 				Trick:        trickCards,
 				HeartsBroken: heartsBroken,
 				FirstTrick:   firstTrick,
+				PlayedCards:  playedCards,
 			})
 			if err != nil || !game.ContainsCard(legal, card) {
 				card = legal[0]
@@ -141,6 +155,10 @@ func playRound(hands *[game.PlayersPerTable][]game.Card, strategies [game.Player
 
 		winnerID, points, _ := game.TrickWinner(plays)
 		roundPoints[winnerID] += points
+
+		for _, p := range plays {
+			playedCards = append(playedCards, p.Card)
+		}
 
 		for i := range game.PlayersPerTable {
 			if game.PlayerID(fmt.Sprintf("p%d", i)) == winnerID {

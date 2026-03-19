@@ -124,6 +124,7 @@ type roundState struct {
 	HeartsBroken bool
 	Trick        []trickPlay
 	RoundPoints  map[game.PlayerID]game.Points
+	PlayedCards  []game.Card // cards played in completed tricks
 }
 
 type trickPlay struct {
@@ -513,9 +514,10 @@ func (r *Runtime) handleAddBot(state *tableState, strategyName string) (AddedBot
 		return AddedBot{}, err
 	}
 
-	name := randomBotName()
+	strategy := strategyKind.New()
+	name := strategy.BotName()
 	player := r.addPlayer(state, name, true, "")
-	state.bots[player.PlayerID] = strategyKind.New()
+	state.bots[player.PlayerID] = strategy
 
 	slog.Debug("bot added to table", "event", "bot_added", "table_id", r.tableID, "player_id", player.PlayerID, "name", player.Name, "strategy", string(strategyKind))
 
@@ -659,6 +661,9 @@ func (r *Runtime) handlePlay(state *tableState, playerID game.PlayerID, cardRaw 
 	nextSeat := state.playersByID[winnerPlayerID].Seat
 	nextTrick := trickNumber + 1
 
+	for _, tp := range state.round.Trick {
+		state.round.PlayedCards = append(state.round.PlayedCards, tp.Card)
+	}
 	state.round.Trick = nil
 	state.round.TrickNumber = nextTrick
 	state.round.TurnSeat = nextSeat
@@ -864,6 +869,7 @@ func (r *Runtime) handleBotTurn(state *tableState, playerID game.PlayerID) {
 		Trick:        currentTrickCards(state.round),
 		HeartsBroken: state.round.HeartsBroken,
 		FirstTrick:   state.round.TrickNumber == 0,
+		PlayedCards:  state.round.PlayedCards,
 	})
 	if err != nil {
 		return
@@ -1264,22 +1270,3 @@ func copyRoundHistory(source []map[game.PlayerID]game.Points) []map[game.PlayerI
 	return out
 }
 
-var defaultBotNames = []string{
-	"Ada",
-	"Linus",
-	"Grace",
-	"Ken",
-	"Dennis",
-	"Margaret",
-	"Alan",
-	"Radia",
-	"Barbara",
-	"Edsger",
-	"Anita",
-	"Claude",
-}
-
-func randomBotName() string {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	return defaultBotNames[rng.Intn(len(defaultBotNames))]
-}

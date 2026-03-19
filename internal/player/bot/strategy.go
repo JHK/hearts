@@ -7,6 +7,7 @@ type TurnInput struct {
 	Trick        []game.Card
 	HeartsBroken bool
 	FirstTrick   bool
+	PlayedCards  []game.Card // all cards played in completed tricks this round
 }
 
 type PassInput struct {
@@ -16,6 +17,7 @@ type PassInput struct {
 
 type Strategy interface {
 	Kind() StrategyKind
+	BotName() string
 	ChoosePlay(input TurnInput) (game.Card, error)
 	ChoosePass(input PassInput) ([]game.Card, error)
 }

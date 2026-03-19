@@ -14,15 +14,15 @@ func main() {
 
 	strategies := [4]bot.Strategy{
 		bot.NewSmartBot(),
+		bot.NewDumbBot(),
 		bot.NewRandomBot(nil),
 		bot.NewFirstLegalBot(),
-		bot.NewRandomBot(nil),
 	}
 
 	result := sim.New(strategies, *n).Run()
 
 	fmt.Printf("Results after %d games:\n", *n)
 	for i, wins := range result.Wins {
-		fmt.Printf("  slot %d (%s): %d wins (%.1f%%)\n", i, strategies[i].Kind(), wins, 100*float64(wins)/float64(*n))
+		fmt.Printf("  slot %d (%s): %d wins (%.1f%%), %d moon shots\n", i, strategies[i].Kind(), wins, 100*float64(wins)/float64(*n), result.MoonShots[i])
 	}
 }

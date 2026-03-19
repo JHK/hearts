@@ -12,7 +12,10 @@ type Random struct {
 	rng *rand.Rand
 }
 
+var randomBotNames = []string{"Lucky", "Dice", "Chance", "Jinx", "Hazard", "Wild", "Shuffle", "Rando"}
+
 func (r *Random) Kind() StrategyKind { return StrategyRandom }
+func (r *Random) BotName() string    { return randomFrom(randomBotNames) }
 
 func NewRandomBot(rng *rand.Rand) Strategy {
 	if rng == nil {

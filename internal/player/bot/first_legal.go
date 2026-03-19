@@ -9,6 +9,7 @@ import (
 type FirstLegal struct{}
 
 func (f *FirstLegal) Kind() StrategyKind { return StrategyFirstLegal }
+func (f *FirstLegal) BotName() string    { return "Fritz" }
 
 func NewFirstLegalBot() Strategy {
 	return &FirstLegal{}
