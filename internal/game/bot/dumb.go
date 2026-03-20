@@ -7,12 +7,15 @@ import (
 	"github.com/JHK/hearts/internal/game"
 )
 
-type Dumb struct{}
+type Dumb struct {
+	*game.Player
+}
 
 var dumbBotNames = []string{"Linus", "Ken", "Dennis", "Anita", "Bob", "Dave", "Carol", "Ted"}
 
-func (d *Dumb) Kind() StrategyKind { return StrategyDumb }
-func (d *Dumb) BotName() string    { return randomFrom(dumbBotNames) }
+func (d *Dumb) Kind() StrategyKind   { return StrategyDumb }
+func (d *Dumb) BotName() string      { return randomFrom(dumbBotNames) }
+func (d *Dumb) Unwrap() *game.Player { return d.Player }
 
 func chooseSmartLead(hand []game.Card, legal []game.Card) game.Card {
 	nonHearts := filterCards(legal, func(card game.Card) bool {
@@ -94,8 +97,9 @@ func chooseSmartDiscard(legal []game.Card) game.Card {
 	return highestRiskCard(legal)
 }
 
-func NewDumbBot() Strategy {
-	return &Dumb{}
+// NewDumbBot creates a dumb bot for testing.
+func NewDumbBot() *Dumb {
+	return &Dumb{Player: game.NewPlayer()}
 }
 
 func (s *Dumb) ChoosePlay(input TurnInput) (game.Card, error) {

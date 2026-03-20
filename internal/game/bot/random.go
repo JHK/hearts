@@ -9,20 +9,26 @@ import (
 )
 
 type Random struct {
+	*game.Player
 	rng *rand.Rand
 }
 
 var randomBotNames = []string{"Lucky", "Dice", "Chance", "Jinx", "Hazard", "Wild", "Shuffle", "Rando"}
 
-func (r *Random) Kind() StrategyKind { return StrategyRandom }
-func (r *Random) BotName() string    { return randomFrom(randomBotNames) }
+func (r *Random) Kind() StrategyKind   { return StrategyRandom }
+func (r *Random) BotName() string      { return randomFrom(randomBotNames) }
+func (r *Random) Unwrap() *game.Player { return r.Player }
 
-func NewRandomBot(rng *rand.Rand) Strategy {
+func newRandomBot(p *game.Player, rng *rand.Rand) *Random {
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
+	return &Random{Player: p, rng: rng}
+}
 
-	return &Random{rng: rng}
+// NewRandomBot creates a random bot for testing with a seeded RNG.
+func NewRandomBot(rng *rand.Rand) *Random {
+	return newRandomBot(game.NewPlayer(), rng)
 }
 
 func (r *Random) ChoosePlay(input TurnInput) (game.Card, error) {

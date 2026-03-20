@@ -45,22 +45,26 @@ Each browser instance represents one player identity for a table.
 
 ### Table runtime (authoritative agent)
 
-- Owns table, round, trick, and score mutable state.
-- Enforces all gameplay rules using `internal/game`.
-- Assigns canonical `player_id` values and seats.
+- Owns table, round, and trick mutable state.
+- Validates all player inputs (card legality, pass card count, turn order) using `internal/game`.
+- Delegates per-player game state (hand, points, pass state) to `game.Player`.
+- Assigns canonical `player_id` values and seats. A `player_id` is the stable string identity used across all protocol events; it is owned by the runtime and lives in `internal/protocol`.
 - Emits public table events and private player events.
 - Accepts commands from browser players and bots.
 
-### Bot automation (`internal/player/bot`)
+### Bot automation (`internal/game/bot`)
 
-- Strategy-only logic.
-- Runs as local server-side agents.
-- Uses the same command/event contract as human players.
+- Implements the `game.Participant` interface via `bot.Bot`, which extends it with `ChoosePlay`, `ChoosePass`, and strategy metadata.
+- Each concrete bot embeds `*game.Player`, making it the authoritative owner of its own game state.
+- Runs as local server-side agents using the same command/event contract as human players.
 - Never bypasses table authority.
+- Bot detection in the runtime is a type assertion: `player.Participant.(bot.Bot)`.
 
 ### Domain logic (`internal/game`)
 
-- Owns pure Hearts rules and scoring.
+- Owns Hearts rules, scoring, and per-player game state.
+- `game.Player` is the authoritative struct for a player's hand, round points, cumulative points, and pass state (cards sent/received, ready flag).
+- Pure functions handle card validation, trick resolution, and pass direction.
 - Contains no networking, persistence, or websocket concerns.
 
 ## Concurrency model

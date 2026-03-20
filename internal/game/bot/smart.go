@@ -18,19 +18,22 @@ const (
 // Smart is a stateful bot that selects a per-round strategy during the pass
 // phase and maintains moon-shot state across tricks.
 type Smart struct {
-	moonShotActive  bool
-	moonShotAborted bool
+	*game.Player
+	moonShotActive   bool
+	moonShotAborted  bool
 	winningAllTricks bool // true while bot has won every trick this round
 	prevPlayedCount  int
 }
 
 var smartBotNames = []string{"Ada", "Grace", "Alan", "Radia", "Margaret", "Barbara", "Edsger", "Claude"}
 
-func (s *Smart) Kind() StrategyKind { return StrategySmart }
-func (s *Smart) BotName() string    { return randomFrom(smartBotNames) }
+func (s *Smart) Kind() StrategyKind   { return StrategySmart }
+func (s *Smart) BotName() string      { return randomFrom(smartBotNames) }
+func (s *Smart) Unwrap() *game.Player { return s.Player }
 
-func NewSmartBot() Strategy {
-	return &Smart{}
+// NewSmartBot creates a smart bot for testing.
+func NewSmartBot() *Smart {
+	return &Smart{Player: game.NewPlayer()}
 }
 
 // ChoosePass selects a strategy for the round and passes accordingly.

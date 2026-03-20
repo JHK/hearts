@@ -8,7 +8,7 @@ type CommandResponse struct {
 }
 
 type PlayerInfo struct {
-	PlayerID game.PlayerID `json:"player_id"`
+	PlayerID PlayerID `json:"player_id"`
 	Name     string        `json:"name"`
 	Seat     int           `json:"seat"`
 }
@@ -18,17 +18,17 @@ type PlayerJoinedData struct {
 }
 
 type TurnChangedData struct {
-	PlayerID    game.PlayerID `json:"player_id"`
+	PlayerID    PlayerID `json:"player_id"`
 	TrickNumber int           `json:"trick_number"`
 }
 
 type YourTurnData struct {
-	PlayerID    game.PlayerID `json:"player_id"`
+	PlayerID    PlayerID `json:"player_id"`
 	TrickNumber int           `json:"trick_number"`
 }
 
 type CardPlayedData struct {
-	PlayerID     game.PlayerID `json:"player_id"`
+	PlayerID     PlayerID `json:"player_id"`
 	Card         string        `json:"card"`
 	BreaksHearts bool          `json:"breaks_hearts,omitempty"`
 }
@@ -46,13 +46,13 @@ type PassReadyData struct {
 
 type TrickCompletedData struct {
 	TrickNumber    int           `json:"trick_number"`
-	WinnerPlayerID game.PlayerID `json:"winner_player_id"`
+	WinnerPlayerID PlayerID `json:"winner_player_id"`
 	Points         game.Points   `json:"points"`
 }
 
 type RoundCompletedData struct {
-	RoundPoints map[game.PlayerID]game.Points `json:"round_points"`
-	TotalPoints map[game.PlayerID]game.Points `json:"total_points"`
+	RoundPoints map[PlayerID]game.Points `json:"round_points"`
+	TotalPoints map[PlayerID]game.Points `json:"total_points"`
 }
 
 type HandUpdatedData struct {
@@ -60,6 +60,6 @@ type HandUpdatedData struct {
 }
 
 type GameOverData struct {
-	FinalScores map[game.PlayerID]game.Points `json:"final_scores"`
-	Winners     []game.PlayerID               `json:"winners"`
+	FinalScores map[PlayerID]game.Points `json:"final_scores"`
+	Winners     []PlayerID               `json:"winners"`
 }

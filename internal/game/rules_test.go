@@ -39,17 +39,18 @@ func TestValidatePlayMustFollowSuit(t *testing.T) {
 }
 
 func TestTrickWinnerAndPoints(t *testing.T) {
+	p1, p2, p3, p4 := NewPlayer(), NewPlayer(), NewPlayer(), NewPlayer()
 	winner, points, err := TrickWinner([]Play{
-		{PlayerID: "p1", Card: Card{Suit: SuitSpades, Rank: 10}},
-		{PlayerID: "p2", Card: Card{Suit: SuitSpades, Rank: 14}},
-		{PlayerID: "p3", Card: Card{Suit: SuitHearts, Rank: 2}},
-		{PlayerID: "p4", Card: Card{Suit: SuitSpades, Rank: 12}},
+		{Player: p1, Card: Card{Suit: SuitSpades, Rank: 10}},
+		{Player: p2, Card: Card{Suit: SuitSpades, Rank: 14}},
+		{Player: p3, Card: Card{Suit: SuitHearts, Rank: 2}},
+		{Player: p4, Card: Card{Suit: SuitSpades, Rank: 12}},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if winner != "p2" {
-		t.Fatalf("expected p2 to win, got %s", winner)
+	if winner != p2 {
+		t.Fatalf("expected p2 to win")
 	}
 	if points != 14 {
 		t.Fatalf("expected 14 points, got %d", points)
@@ -57,14 +58,9 @@ func TestTrickWinnerAndPoints(t *testing.T) {
 }
 
 func TestApplyShootTheMoon(t *testing.T) {
-	adjusted := ApplyShootTheMoon(map[PlayerID]Points{
-		"p1": 26,
-		"p2": 0,
-		"p3": 0,
-		"p4": 0,
-	})
+	adjusted := ApplyShootTheMoon([PlayersPerTable]Points{26, 0, 0, 0})
 
-	if adjusted["p1"] != 0 || adjusted["p2"] != 26 || adjusted["p3"] != 26 || adjusted["p4"] != 26 {
+	if adjusted[0] != 0 || adjusted[1] != 26 || adjusted[2] != 26 || adjusted[3] != 26 {
 		t.Fatalf("unexpected adjusted scores: %v", adjusted)
 	}
 }

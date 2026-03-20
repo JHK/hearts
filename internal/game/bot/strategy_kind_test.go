@@ -37,18 +37,32 @@ func TestParseStrategyKind(t *testing.T) {
 }
 
 func TestStrategyKindNew(t *testing.T) {
-	strategy := StrategySmart.New()
-	if _, ok := strategy.(*Smart); !ok {
-		t.Fatalf("expected Smart strategy")
+	bot := StrategySmart.New()
+	if _, ok := bot.(*Smart); !ok {
+		t.Fatalf("expected Smart bot")
 	}
 
-	strategy = StrategyRandom.New()
-	if _, ok := strategy.(*Random); !ok {
-		t.Fatalf("expected Random strategy")
+	bot = StrategyRandom.New()
+	if _, ok := bot.(*Random); !ok {
+		t.Fatalf("expected Random bot")
 	}
 
-	strategy = StrategyFirstLegal.New()
-	if _, ok := strategy.(*FirstLegal); !ok {
-		t.Fatalf("expected FirstLegal strategy")
+	bot = StrategyFirstLegal.New()
+	if _, ok := bot.(*FirstLegal); !ok {
+		t.Fatalf("expected FirstLegal bot")
+	}
+}
+
+func TestStrategyKindWrapPlayerPreservesState(t *testing.T) {
+	b := StrategyDumb.NewBot()
+	b.DealCards(mustParseCards(t, []string{"AC", "KH"}))
+	b.AddTrickPoints(5)
+
+	wrapped := StrategyRandom.WrapPlayer(b.Unwrap())
+	if len(wrapped.Hand()) != 2 {
+		t.Fatalf("expected 2 cards in hand, got %d", len(wrapped.Hand()))
+	}
+	if wrapped.RoundPoints() != 5 {
+		t.Fatalf("expected round points 5, got %d", wrapped.RoundPoints())
 	}
 }

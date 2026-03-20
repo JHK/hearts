@@ -6,13 +6,17 @@ import (
 	"github.com/JHK/hearts/internal/game"
 )
 
-type FirstLegal struct{}
+type FirstLegal struct {
+	*game.Player
+}
 
-func (f *FirstLegal) Kind() StrategyKind { return StrategyFirstLegal }
-func (f *FirstLegal) BotName() string    { return "Fritz" }
+func (f *FirstLegal) Kind() StrategyKind   { return StrategyFirstLegal }
+func (f *FirstLegal) BotName() string      { return "Fritz" }
+func (f *FirstLegal) Unwrap() *game.Player { return f.Player }
 
-func NewFirstLegalBot() Strategy {
-	return &FirstLegal{}
+// NewFirstLegalBot creates a first-legal bot for testing.
+func NewFirstLegalBot() *FirstLegal {
+	return &FirstLegal{Player: game.NewPlayer()}
 }
 
 func (f *FirstLegal) ChoosePlay(input TurnInput) (game.Card, error) {

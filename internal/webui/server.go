@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/JHK/hearts/internal/game"
+	"github.com/JHK/hearts/internal/protocol"
 	"github.com/JHK/hearts/internal/table"
 	"github.com/gorilla/websocket"
 )
@@ -265,16 +265,16 @@ func handleTableWebSocket(manager *table.Manager, presence *humanPresenceTracker
 	out := make(chan wsMessage, 256)
 
 	var playerMu sync.RWMutex
-	var playerID game.PlayerID
+	var playerID protocol.PlayerID
 	humanJoined := false
 
-	setPlayerID := func(id game.PlayerID) {
+	setPlayerID := func(id protocol.PlayerID) {
 		playerMu.Lock()
 		playerID = id
 		playerMu.Unlock()
 	}
 
-	getPlayerID := func() game.PlayerID {
+	getPlayerID := func() protocol.PlayerID {
 		playerMu.RLock()
 		defer playerMu.RUnlock()
 		return playerID

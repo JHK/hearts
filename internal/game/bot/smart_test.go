@@ -135,8 +135,8 @@ func TestSmartDiscardsQueenOfSpadesWhenVoid(t *testing.T) {
 	hand := parseCards(t, []string{"QS", "AH", "2D"})
 
 	card, err := NewSmartBot().ChoosePlay(TurnInput{
-		Hand:        hand,
-		Trick:       parseCards(t, []string{"5C"}),
+		Hand:         hand,
+		Trick:        parseCards(t, []string{"5C"}),
 		HeartsBroken: true,
 	})
 	if err != nil {
@@ -152,8 +152,8 @@ func TestSmartDiscardsHighHeartWhenVoidAndNoQueenSpades(t *testing.T) {
 	hand := parseCards(t, []string{"AH", "KH", "2D"})
 
 	card, err := NewSmartBot().ChoosePlay(TurnInput{
-		Hand:        hand,
-		Trick:       parseCards(t, []string{"5C"}),
+		Hand:         hand,
+		Trick:        parseCards(t, []string{"5C"}),
 		HeartsBroken: true,
 	})
 	if err != nil {
@@ -220,11 +220,11 @@ func TestSmartAbortsMoonShotWhenOtherLeads(t *testing.T) {
 	hand := parseCards(t, []string{"AH", "KH"})
 
 	_, err := bot.ChoosePlay(TurnInput{
-		Hand:        hand,
-		Trick:       parseCards(t, []string{"3D"}), // someone else led
+		Hand:         hand,
+		Trick:        parseCards(t, []string{"3D"}), // someone else led
 		HeartsBroken: false,
-		FirstTrick:  false,
-		PlayedCards: parseCards(t, []string{"2C", "5D", "7S", "8H"}), // 1 completed trick
+		FirstTrick:   false,
+		PlayedCards:  parseCards(t, []string{"2C", "5D", "7S", "8H"}), // 1 completed trick
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -242,11 +242,11 @@ func TestSmartContinuesMoonShotWhenLeadingEveryTrick(t *testing.T) {
 	hand := parseCards(t, []string{"AH", "KH", "QH", "JH"})
 
 	_, err := bot.ChoosePlay(TurnInput{
-		Hand:        hand,
-		Trick:       nil, // bot is leading
+		Hand:         hand,
+		Trick:        nil, // bot is leading
 		HeartsBroken: true,
-		FirstTrick:  false,
-		PlayedCards: parseCards(t, []string{"2C", "5D", "7S", "8H"}),
+		FirstTrick:   false,
+		PlayedCards:  parseCards(t, []string{"2C", "5D", "7S", "8H"}),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

@@ -55,8 +55,8 @@ func ExchangePasses(passes [PlayersPerTable][]Card, dir PassDirection) [PlayersP
 }
 
 type Play struct {
-	PlayerID PlayerID
-	Card     Card
+	Player Participant
+	Card   Card
 }
 
 type ValidatePlayInput struct {
@@ -120,9 +120,9 @@ func LegalPlays(hand []Card, trick []Card, heartsBroken bool, firstTrick bool) [
 	return legal
 }
 
-func TrickWinner(plays []Play) (PlayerID, Points, error) {
+func TrickWinner(plays []Play) (Participant, Points, error) {
 	if len(plays) == 0 {
-		return PlayerID(""), Points(0), fmt.Errorf("trick has no plays")
+		return nil, Points(0), fmt.Errorf("trick has no plays")
 	}
 
 	leadSuit := plays[0].Card.Suit
@@ -136,30 +136,30 @@ func TrickWinner(plays []Play) (PlayerID, Points, error) {
 		}
 	}
 
-	return winner.PlayerID, points, nil
+	return winner.Player, points, nil
 }
 
-func ApplyShootTheMoon(roundPoints map[PlayerID]Points) map[PlayerID]Points {
-	adjusted := make(map[PlayerID]Points, len(roundPoints))
-	moonShooter := PlayerID("")
+func ApplyShootTheMoon(roundPoints [PlayersPerTable]Points) [PlayersPerTable]Points {
+	adjusted := roundPoints
+	moonShooter := -1
 
-	for playerID, points := range roundPoints {
-		adjusted[playerID] = points
-		if points == ShootTheMoonPoints {
-			moonShooter = playerID
+	for i, pts := range roundPoints {
+		if pts == ShootTheMoonPoints {
+			moonShooter = i
+			break
 		}
 	}
 
-	if moonShooter == "" {
+	if moonShooter == -1 {
 		return adjusted
 	}
 
-	for playerID := range adjusted {
-		if playerID == moonShooter {
-			adjusted[playerID] = Points(0)
-			continue
+	for i := range adjusted {
+		if i == moonShooter {
+			adjusted[i] = Points(0)
+		} else {
+			adjusted[i] = ShootTheMoonPoints
 		}
-		adjusted[playerID] = ShootTheMoonPoints
 	}
 
 	return adjusted
