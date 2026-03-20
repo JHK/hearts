@@ -1,11 +1,11 @@
 ---
 # hearts-cuqo
 title: Actually smart bot
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-15T16:38:51Z
-updated_at: 2026-03-18T10:40:49Z
+updated_at: 2026-03-20T10:42:58Z
 ---
 
 ## Context
