@@ -859,19 +859,7 @@ func (r *Table) scheduleBotTurn(_ *tableState, player *playerState) {
 		return
 	}
 
-	playerID := player.id
-	go func() {
-		timer := time.NewTimer(350 * time.Millisecond)
-		defer timer.Stop()
-
-		select {
-		case <-r.stop:
-			return
-		case <-timer.C:
-		}
-
-		r.submit(botTurnCommand{playerID: playerID})
-	}()
+	go r.submit(botTurnCommand{playerID: player.id})
 }
 
 func (r *Table) schedulePassingBots(state *tableState) {
@@ -891,19 +879,7 @@ func (r *Table) scheduleBotPass(player *playerState) {
 		return
 	}
 
-	playerID := player.id
-	go func() {
-		timer := time.NewTimer(300 * time.Millisecond)
-		defer timer.Stop()
-
-		select {
-		case <-r.stop:
-			return
-		case <-timer.C:
-		}
-
-		r.submit(botPassCommand{playerID: playerID})
-	}()
+	go r.submit(botPassCommand{playerID: player.id})
 }
 
 func (r *Table) validateStartPreconditions(state *tableState, playerID protocol.PlayerID) string {
