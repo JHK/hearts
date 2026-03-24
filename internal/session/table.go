@@ -516,8 +516,13 @@ func (r *Table) handleAddBot(state *tableState, strategyName string) (AddedBot, 
 		return AddedBot{}, err
 	}
 
+	taken := make(map[string]bool, len(state.players))
+	for _, p := range state.players {
+		taken[p.Name] = true
+	}
+
 	id := r.nextPlayerID(state)
-	player := r.addPlayer(state, id, strategyKind.BotName(), strategyKind.NewBot(), "")
+	player := r.addPlayer(state, id, strategyKind.BotName(taken), strategyKind.NewBot(), "")
 
 	slog.Debug("bot added to table", "event", "bot_added", "table_id", r.tableID, "player_id", player.id, "name", player.Name, "strategy", string(strategyKind))
 

@@ -67,11 +67,38 @@ var botNames = map[StrategyKind][]string{
 	StrategyFirstLegal: firstLegalBotNames,
 }
 
-// BotName returns a randomly chosen name for a bot of this strategy.
-func (k StrategyKind) BotName() string {
+// BotName returns a randomly chosen name for a bot of this strategy that
+// does not collide with any of the provided taken names. If every name in
+// the pool is taken, a numeric suffix is appended to make the name unique.
+func (k StrategyKind) BotName(taken map[string]bool) string {
 	pool := botNames[k]
 	if len(pool) == 0 {
-		return "Bot"
+		return uniqueName("Bot", taken)
 	}
-	return pool[rand.New(rand.NewSource(time.Now().UnixNano())).Intn(len(pool))]
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// Shuffle and pick the first available name.
+	perm := rng.Perm(len(pool))
+	for _, i := range perm {
+		if !taken[pool[i]] {
+			return pool[i]
+		}
+	}
+
+	// All pool names taken — append a suffix to a random one.
+	base := pool[perm[0]]
+	return uniqueName(base, taken)
+}
+
+func uniqueName(base string, taken map[string]bool) string {
+	if !taken[base] {
+		return base
+	}
+	for i := 2; ; i++ {
+		candidate := fmt.Sprintf("%s %d", base, i)
+		if !taken[candidate] {
+			return candidate
+		}
+	}
 }
