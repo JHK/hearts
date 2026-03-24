@@ -1,11 +1,11 @@
 ---
 # hearts-87m7
 title: Parallelize sim with goroutines
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-03-24T13:11:27Z
-updated_at: 2026-03-24T13:11:41Z
+updated_at: 2026-03-24T17:22:32Z
 ---
 
 Use a worker pool of runtime.NumCPU() goroutines to run sim games in parallel
@@ -21,14 +21,18 @@ Faster feedback loop when tuning bot strategies or validating rule changes.
 
 ## Acceptance Criteria
 
-- [ ] Games run concurrently using a worker-pool of `runtime.NumCPU()` goroutines
-- [ ] Each worker uses its own `*rand.Rand` (seeded independently) — no shared RNG
-- [ ] Results are aggregated without data races (`go test -race` passes)
-- [ ] `time go run ./cmd/sim -n 50000` is measurably faster than before (run before/after, include timings in PR summary)
-- [ ] Existing tests pass (`mise run test`)
+- [x] Games run concurrently using a worker-pool of `runtime.NumCPU()` goroutines
+- [x] Each worker uses its own `*rand.Rand` (seeded independently) — no shared RNG
+- [x] Results are aggregated without data races (`go test -race` passes)
+- [x] `time go run ./cmd/sim -n 50000` is measurably faster than before (run before/after, include timings in PR summary)
+- [x] Existing tests pass (`mise run test`)
 
 ## Out of Scope
 
 - Changing bot logic or game rules
 - Making the number of worker goroutines configurable (just use `runtime.NumCPU()`)
 - Deterministic / reproducible output (each run already varies by seed)
+
+## Summary of Changes
+
+Parallelized sim with a worker pool of `runtime.NumCPU()` goroutines. Each worker runs in `runWorker()` with its own `*rand.Rand`, accumulates results locally, and sends them back via a buffered channel. 50k-game run went from ~37s to ~13s (~3x speedup).
