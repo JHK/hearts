@@ -1,11 +1,11 @@
 ---
 # hearts-0jmb
 title: Introduce game.Player as authoritative owner of player game state
-status: in_progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-03-20T10:44:39Z
-updated_at: 2026-03-20T11:30:00Z
+updated_at: 2026-03-24T10:14:26Z
 ---
 
 ## Context
@@ -35,3 +35,7 @@ Centralizing player game state in a `game.Player` struct makes `internal/game/` 
 - Moving bot strategy logic into `game.Player`
 - UI changes
 - Persistence beyond what already exists
+
+## Summary of Changes
+
+Introduced  struct in  as the authoritative owner of per-player game state (hand, round points, cumulative points, pass state). Removed  from the game logic and domain layer.  now delegates to  instead of managing hand/points directly. Pass maps and round-points maps in  replaced by per-player state.  updated to use  instances. All existing tests pass with new unit tests added for  methods.
