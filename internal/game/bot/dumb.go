@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/JHK/hearts/internal/game"
@@ -102,7 +101,7 @@ func NewDumbBot() *Dumb {
 func (s *Dumb) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
 	if len(legal) == 0 {
-		return game.Card{}, fmt.Errorf("no legal plays")
+		return game.Card{}, ErrNoLegalPlays
 	}
 
 	if len(input.Trick) == 0 {
@@ -119,7 +118,7 @@ func (s *Dumb) ChoosePlay(input game.TurnInput) (game.Card, error) {
 
 func (s *Dumb) ChoosePass(input game.PassInput) ([]game.Card, error) {
 	if len(input.Hand) < 3 {
-		return nil, fmt.Errorf("not enough cards to pass")
+		return nil, ErrNotEnoughCards
 	}
 
 	suitCounts := make(map[game.Suit]int, 4)

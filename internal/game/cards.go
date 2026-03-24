@@ -47,7 +47,7 @@ func (c Card) String() string {
 func ParseCard(raw string) (Card, error) {
 	raw = strings.ToUpper(strings.TrimSpace(raw))
 	if len(raw) != 2 {
-		return Card{}, fmt.Errorf("card must be two characters like QS")
+		return Card{}, ErrInvalidCardFormat
 	}
 
 	var rank int
@@ -65,7 +65,7 @@ func ParseCard(raw string) (Card, error) {
 	case '2', '3', '4', '5', '6', '7', '8', '9':
 		rank = int(raw[0] - '0')
 	default:
-		return Card{}, fmt.Errorf("invalid card rank %q", raw[0])
+		return Card{}, fmt.Errorf("%w %q", ErrInvalidCardRank, raw[0])
 	}
 
 	var suit Suit
@@ -79,7 +79,7 @@ func ParseCard(raw string) (Card, error) {
 	case 'H':
 		suit = SuitHearts
 	default:
-		return Card{}, fmt.Errorf("invalid card suit %q", raw[1])
+		return Card{}, fmt.Errorf("%w %q", ErrInvalidCardSuit, raw[1])
 	}
 
 	return Card{Suit: suit, Rank: rank}, nil

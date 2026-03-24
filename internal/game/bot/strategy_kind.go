@@ -24,7 +24,7 @@ func ParseStrategyKind(raw string) (StrategyKind, error) {
 
 	kind := StrategyKind(name)
 	if !kind.Valid() {
-		return "", fmt.Errorf("unknown strategy %q (available: %s, %s, %s, %s)", raw, StrategySmart, StrategyDumb, StrategyRandom, StrategyFirstLegal)
+		return "", fmt.Errorf("%w %q (available: %s, %s, %s, %s)", ErrUnknownStrategy, raw, StrategySmart, StrategyDumb, StrategyRandom, StrategyFirstLegal)
 	}
 
 	return kind, nil

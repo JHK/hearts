@@ -69,7 +69,7 @@ type ValidatePlayInput struct {
 
 func ValidatePlay(input ValidatePlayInput) error {
 	if !ContainsCard(input.Hand, input.Card) {
-		return fmt.Errorf("card %s is not in hand", input.Card)
+		return fmt.Errorf("card %s is not in hand: %w", input.Card, ErrCardNotInHand)
 	}
 
 	isLead := len(input.Trick) == 0
@@ -77,13 +77,13 @@ func ValidatePlay(input ValidatePlayInput) error {
 		if input.FirstTrick {
 			twoClubs := Card{Suit: SuitClubs, Rank: 2}
 			if input.Card != twoClubs {
-				return fmt.Errorf("first trick must be led with 2C")
+				return ErrMustLeadTwoClubs
 			}
 			return nil
 		}
 
 		if input.Card.Suit == SuitHearts && !input.HeartsBroken && !allHearts(input.Hand) {
-			return fmt.Errorf("hearts are not broken")
+			return ErrHeartsNotBroken
 		}
 
 		return nil
@@ -91,11 +91,11 @@ func ValidatePlay(input ValidatePlayInput) error {
 
 	leadSuit := input.Trick[0].Suit
 	if HasSuit(input.Hand, leadSuit) && input.Card.Suit != leadSuit {
-		return fmt.Errorf("must follow suit %s", leadSuit)
+		return fmt.Errorf("%w %s", ErrMustFollowSuit, leadSuit)
 	}
 
 	if input.FirstTrick && IsPenaltyCard(input.Card) && hasNonPenalty(input.Hand) {
-		return fmt.Errorf("penalty cards are blocked on first trick when alternatives exist")
+		return ErrPenaltyCardBlocked
 	}
 
 	return nil
@@ -122,7 +122,7 @@ func LegalPlays(hand []Card, trick []Card, heartsBroken bool, firstTrick bool) [
 
 func TrickWinner(plays []Play) (int, Points, error) {
 	if len(plays) == 0 {
-		return 0, Points(0), fmt.Errorf("trick has no plays")
+		return 0, Points(0), ErrEmptyTrick
 	}
 
 	leadSuit := plays[0].Card.Suit

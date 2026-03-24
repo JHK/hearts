@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/JHK/hearts/internal/game"
@@ -36,7 +35,7 @@ func NewSmartBot() *Smart {
 
 func (s *Smart) ChoosePass(input game.PassInput) ([]game.Card, error) {
 	if len(input.Hand) < 3 {
-		return nil, fmt.Errorf("not enough cards to pass")
+		return nil, ErrNotEnoughCards
 	}
 
 	strategy := selectRoundStrategy(input.Hand)
@@ -56,7 +55,7 @@ func (s *Smart) ChoosePass(input game.PassInput) ([]game.Card, error) {
 func (s *Smart) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
 	if len(legal) == 0 {
-		return game.Card{}, fmt.Errorf("no legal plays")
+		return game.Card{}, ErrNoLegalPlays
 	}
 
 	// Detect hold round: PlayedCards just reset to 0 but choosePass wasn't

@@ -1,10 +1,6 @@
 package bot
 
-import (
-	"fmt"
-
-	"github.com/JHK/hearts/internal/game"
-)
+import "github.com/JHK/hearts/internal/game"
 
 type FirstLegal struct{}
 
@@ -32,12 +28,12 @@ func (f *FirstLegal) ChoosePlay(input game.TurnInput) (game.Card, error) {
 		}
 	}
 
-	return game.Card{}, fmt.Errorf("no legal plays")
+	return game.Card{}, ErrNoLegalPlays
 }
 
 func (f *FirstLegal) ChoosePass(input game.PassInput) ([]game.Card, error) {
 	if len(input.Hand) < 3 {
-		return nil, fmt.Errorf("not enough cards to pass")
+		return nil, ErrNotEnoughCards
 	}
 
 	return append([]game.Card(nil), input.Hand[:3]...), nil

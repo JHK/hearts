@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -32,7 +31,7 @@ func NewRandomBot(rng *rand.Rand) *Random {
 func (r *Random) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
 	if len(legal) == 0 {
-		return game.Card{}, fmt.Errorf("no legal plays")
+		return game.Card{}, ErrNoLegalPlays
 	}
 
 	return legal[r.rng.Intn(len(legal))], nil
@@ -40,7 +39,7 @@ func (r *Random) ChoosePlay(input game.TurnInput) (game.Card, error) {
 
 func (r *Random) ChoosePass(input game.PassInput) ([]game.Card, error) {
 	if len(input.Hand) < 3 {
-		return nil, fmt.Errorf("not enough cards to pass")
+		return nil, ErrNotEnoughCards
 	}
 
 	perm := r.rng.Perm(len(input.Hand))

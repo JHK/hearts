@@ -1,9 +1,6 @@
 package game
 
-import (
-	"errors"
-	"fmt"
-)
+import "fmt"
 
 const PlayersPerTable = 4
 
@@ -131,7 +128,7 @@ func (r *Round) SubmitPass(seat int, cards []Card) error {
 		return errWrongPhase("submit pass", "passing")
 	}
 	if r.passSubmitted[seat] != nil {
-		return errAlready("pass already submitted")
+		return ErrPassAlreadySubmitted
 	}
 	for _, card := range cards {
 		if !ContainsCard(r.hands[seat], card) {
@@ -149,7 +146,7 @@ func (r *Round) ApplyPasses() error {
 	}
 	for i := range r.passSubmitted {
 		if r.passSubmitted[i] == nil {
-			return errNotReady("not all passes submitted")
+			return ErrNotAllPassesSubmitted
 		}
 	}
 
@@ -213,7 +210,7 @@ func (r *Round) Play(seat int, card Card) (*TrickResult, error) {
 		return nil, errWrongPhase("play", "playing")
 	}
 	if seat != r.turnSeat {
-		return nil, errNotYourTurn()
+		return nil, ErrNotYourTurn
 	}
 
 	if err := ValidatePlay(ValidatePlayInput{
@@ -284,10 +281,9 @@ func (r *Round) currentTrickCards() []Card {
 }
 
 func errWrongPhase(action, expected string) error {
-	return fmt.Errorf("cannot %s: round is not in %s phase", action, expected)
+	return fmt.Errorf("cannot %s: round is not in %s phase: %w", action, expected, ErrWrongPhase)
 }
 
-func errAlready(msg string) error  { return errors.New(msg) }
-func errNotReady(msg string) error { return errors.New(msg) }
-func errNotInHand(card Card) error { return fmt.Errorf("card %s is not in hand", card) }
-func errNotYourTurn() error        { return errors.New("not your turn") }
+func errNotInHand(card Card) error {
+	return fmt.Errorf("card %s is not in hand: %w", card, ErrCardNotInHand)
+}

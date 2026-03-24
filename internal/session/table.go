@@ -241,7 +241,7 @@ func (r *Table) Subscribe() (<-chan StreamEvent, func()) {
 func (r *Table) Join(name, token string) (protocol.JoinResponse, error) {
 	reply := make(chan protocol.JoinResponse, 1)
 	if !r.submit(joinCommand{name: name, token: token, reply: reply}) {
-		return protocol.JoinResponse{}, fmt.Errorf("table is stopping")
+		return protocol.JoinResponse{}, ErrTableStopping
 	}
 	return <-reply, nil
 }
@@ -281,7 +281,7 @@ func (r *Table) ReadyAfterPass(playerID protocol.PlayerID) protocol.CommandRespo
 func (r *Table) AddBot(strategyName string) (AddedBot, error) {
 	reply := make(chan addBotResult, 1)
 	if !r.submit(addBotCommand{strategyName: strategyName, reply: reply}) {
-		return AddedBot{}, fmt.Errorf("table is stopping")
+		return AddedBot{}, ErrTableStopping
 	}
 	result := <-reply
 	return result.added, result.err
@@ -465,10 +465,10 @@ func (r *Table) handleJoin(state *tableState, name, token string) protocol.JoinR
 	}
 
 	if state.round != nil {
-		return protocol.JoinResponse{Accepted: false, Reason: "round already in progress"}
+		return protocol.JoinResponse{Accepted: false, Reason: ErrRoundInProgress.Error()}
 	}
 	if len(state.players) >= game.PlayersPerTable {
-		return protocol.JoinResponse{Accepted: false, Reason: "table is full"}
+		return protocol.JoinResponse{Accepted: false, Reason: ErrTableFull.Error()}
 	}
 
 	name = strings.TrimSpace(name)
@@ -502,13 +502,13 @@ func (r *Table) handleJoin(state *tableState, name, token string) protocol.JoinR
 
 func (r *Table) handleAddBot(state *tableState, strategyName string) (AddedBot, error) {
 	if state.gameOver {
-		return AddedBot{}, fmt.Errorf("game is over")
+		return AddedBot{}, ErrGameOver
 	}
 	if state.round != nil {
-		return AddedBot{}, fmt.Errorf("round already in progress")
+		return AddedBot{}, ErrRoundInProgress
 	}
 	if len(state.players) >= game.PlayersPerTable {
-		return AddedBot{}, fmt.Errorf("table is full")
+		return AddedBot{}, ErrTableFull
 	}
 
 	strategyKind, err := bot.ParseStrategyKind(strategyName)
@@ -606,16 +606,9 @@ func (r *Table) handlePlay(state *tableState, playerID protocol.PlayerID, cardRa
 	if state.round == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "round is not running"}
 	}
-	if state.round.Phase() != game.PhasePlaying {
-		return protocol.CommandResponse{Accepted: false, Reason: "round is not in play phase"}
-	}
-
 	player := state.playersByID[playerID]
 	if player == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "player is not seated"}
-	}
-	if player.position != state.round.TurnSeat() {
-		return protocol.CommandResponse{Accepted: false, Reason: "not your turn"}
 	}
 
 	heartsBrokenBefore := state.round.HeartsBroken()
@@ -671,19 +664,12 @@ func (r *Table) handlePass(state *tableState, playerID protocol.PlayerID, cardsR
 	if state.round == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "round is not running"}
 	}
-	if state.round.Phase() != game.PhasePassing {
-		return protocol.CommandResponse{Accepted: false, Reason: "round is not in pass phase"}
-	}
-
 	player := state.playersByID[playerID]
 	if player == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "player is not seated"}
 	}
-	if state.round.HasSubmittedPass(player.position) {
-		return protocol.CommandResponse{Accepted: false, Reason: "pass already submitted"}
-	}
 
-	passCards, err := r.parseAndValidatePassCards(state.round.Hand(player.position), cardsRaw)
+	passCards, err := r.parseAndValidatePassCards(cardsRaw)
 	if err != nil {
 		return protocol.CommandResponse{Accepted: false, Reason: err.Error()}
 	}
@@ -719,14 +705,13 @@ func (r *Table) handleReadyAfterPass(state *tableState, playerID protocol.Player
 	if state.round == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "round is not running"}
 	}
-	if state.round.Phase() != game.PhasePassReview {
-		return protocol.CommandResponse{Accepted: false, Reason: "round is not in pass review"}
-	}
 	if state.playersByID[playerID] == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "player is not seated"}
 	}
 
-	_ = state.round.MarkReady(state.playersByID[playerID].position)
+	if err := state.round.MarkReady(state.playersByID[playerID].position); err != nil {
+		return protocol.CommandResponse{Accepted: false, Reason: err.Error()}
+	}
 
 	ready := 0
 	for i := 0; i < game.PlayersPerTable; i++ {
@@ -749,7 +734,7 @@ func (r *Table) handleReadyAfterPass(state *tableState, playerID protocol.Player
 	return protocol.CommandResponse{Accepted: true}
 }
 
-func (r *Table) parseAndValidatePassCards(hand []game.Card, cardsRaw []string) ([]game.Card, error) {
+func (r *Table) parseAndValidatePassCards(cardsRaw []string) ([]game.Card, error) {
 	if len(cardsRaw) != 3 {
 		return nil, fmt.Errorf("pass requires exactly 3 cards")
 	}
@@ -764,10 +749,6 @@ func (r *Table) parseAndValidatePassCards(hand []game.Card, cardsRaw []string) (
 		if _, duplicate := seen[card]; duplicate {
 			return nil, fmt.Errorf("pass contains duplicate card %s", card.String())
 		}
-		if !game.ContainsCard(hand, card) {
-			return nil, fmt.Errorf("card %s is not in hand", card.String())
-		}
-
 		seen[card] = struct{}{}
 		cards = append(cards, card)
 	}
@@ -884,10 +865,10 @@ func (r *Table) scheduleBotPass(player *playerState) {
 
 func (r *Table) validateStartPreconditions(state *tableState, playerID protocol.PlayerID) string {
 	if state.gameOver {
-		return "game is over"
+		return ErrGameOver.Error()
 	}
 	if state.round != nil {
-		return "round already started"
+		return ErrRoundInProgress.Error()
 	}
 	if len(state.players) == 0 {
 		return "at least one player must join before start"
