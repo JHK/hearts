@@ -1,6 +1,9 @@
 package bot
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseStrategyKind(t *testing.T) {
 	tests := []struct {
@@ -50,5 +53,40 @@ func TestStrategyKindNew(t *testing.T) {
 	bot = StrategyFirstLegal.New()
 	if _, ok := bot.(*FirstLegal); !ok {
 		t.Fatalf("expected FirstLegal bot")
+	}
+}
+
+func TestBotNameAvoidsCollisions(t *testing.T) {
+	taken := map[string]bool{}
+
+	// Add 4 bots of the same strategy — all names must be unique.
+	for range 4 {
+		name := StrategyRandom.BotName(taken)
+		if taken[name] {
+			t.Fatalf("duplicate bot name: %s", name)
+		}
+		taken[name] = true
+	}
+}
+
+func TestBotNameFallsBackToSuffix(t *testing.T) {
+	// FirstLegal has only one name ("Fritz"). Exhaust the pool.
+	taken := map[string]bool{"Fritz": true}
+	name := StrategyFirstLegal.BotName(taken)
+	if name == "Fritz" {
+		t.Fatal("expected a different name when Fritz is taken")
+	}
+	if !strings.HasPrefix(name, "Fritz") {
+		t.Fatalf("expected suffixed Fritz variant, got %s", name)
+	}
+}
+
+func TestBotNameAvoidsHumanNames(t *testing.T) {
+	taken := map[string]bool{"Lucky": true}
+	for range 20 {
+		name := StrategyRandom.BotName(taken)
+		if name == "Lucky" {
+			t.Fatal("bot name collided with human name")
+		}
 	}
 }
