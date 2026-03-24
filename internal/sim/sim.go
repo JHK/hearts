@@ -2,6 +2,8 @@ package sim
 
 import (
 	"math/rand"
+	"runtime"
+	"sync"
 
 	"github.com/JHK/hearts/internal/game"
 	"github.com/JHK/hearts/internal/game/bot"
@@ -27,21 +29,45 @@ func New(strategies [game.PlayersPerTable]bot.StrategyKind, iterations int) *Sim
 	return &Simulation{strategies: strategies, iterations: iterations}
 }
 
-// Run plays all games and returns cumulative win counts per slot.
+// Run plays all games concurrently using a worker pool and returns cumulative win counts per slot.
 func (s *Simulation) Run() Result {
-	var result Result
-	rng := rand.New(rand.NewSource(rand.Int63()))
+	workers := runtime.NumCPU()
+	perWorker := s.iterations / workers
+	remainder := s.iterations % workers
 
-	for i := 0; i < s.iterations; i++ {
-		wins, moonShots := s.runGame(rng)
-		for _, w := range wins {
-			result.Wins[w]++
+	var mu sync.Mutex
+	var result Result
+	var wg sync.WaitGroup
+	wg.Add(workers)
+
+	for w := 0; w < workers; w++ {
+		n := perWorker
+		if w < remainder {
+			n++
 		}
-		for slot, n := range moonShots {
-			result.MoonShots[slot] += n
-		}
+		go func(n int) {
+			defer wg.Done()
+			rng := rand.New(rand.NewSource(rand.Int63()))
+			var local Result
+			for i := 0; i < n; i++ {
+				wins, moonShots := s.runGame(rng)
+				for _, w := range wins {
+					local.Wins[w]++
+				}
+				for slot, count := range moonShots {
+					local.MoonShots[slot] += count
+				}
+			}
+			mu.Lock()
+			for i := range result.Wins {
+				result.Wins[i] += local.Wins[i]
+				result.MoonShots[i] += local.MoonShots[i]
+			}
+			mu.Unlock()
+		}(n)
 	}
 
+	wg.Wait()
 	return result
 }
 
