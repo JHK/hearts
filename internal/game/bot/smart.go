@@ -367,15 +367,36 @@ func smartChooseLead(hand []game.Card, legal []game.Card, playedCards []game.Car
 		pool = crowdedSuits
 	}
 
-	// Exclude unsafe high cards from the candidate pool when safer options exist.
+	// Prefer low cards that are NOT guaranteed trick-winners.
+	// - Guaranteed winners (all higher ranks gone or held) invite void opponents to
+	//   dump Q♠ onto the trick.
+	// - High uncertain cards (rank ≥ 11 that can still be beaten) risk ceding control.
+	// Only low non-winning cards are genuinely safe defensive leads.
 	safePool := filterCards(pool, func(c game.Card) bool {
-		return c.Rank < 11 || isSafeHighCard(c, hand, playedCards)
+		return c.Rank < 11 && !isSafeHighCard(c, hand, playedCards)
 	})
 	if len(safePool) > 0 {
 		pool = safePool
 	}
 
-	// Fall back to the dumb lead logic (shortest suit, lowest rank, avoids danger).
+	// Within the safe pool, further prefer genuinely low cards (rank < 9).
+	// This prevents choosing a borderline card like T (rank 10) when a 2 or 3 is
+	// available in another suit, while keeping the suit-length tiebreaker below.
+	lowPool := filterCards(pool, func(c game.Card) bool { return c.Rank < 9 })
+	// If the non-heart / void filters left no low options, widen to the full
+	// legal set so a low heart beats leading a high non-heart (e.g. K♠).
+	// Apply !isSafeHighCard to avoid leading a guaranteed-winner heart.
+	if len(lowPool) == 0 {
+		lowPool = filterCards(legal, func(c game.Card) bool {
+			return c.Rank < 9 && !isSafeHighCard(c, hand, playedCards)
+		})
+	}
+	if len(lowPool) > 0 {
+		pool = lowPool
+	}
+
+	// Final tiebreaker: shortest suit, then highest rank (shed borderline cards
+	// first while opponents still hold higher ones), avoiding Q♠ danger.
 	hasQS := game.ContainsCard(hand, game.Card{Suit: game.SuitSpades, Rank: 12})
 	suitCounts := make(map[game.Suit]int, 4)
 	for _, c := range hand {
@@ -384,7 +405,7 @@ func smartChooseLead(hand []game.Card, legal []game.Card, playedCards []game.Car
 
 	best := pool[0]
 	for _, c := range pool[1:] {
-		if compareLeadCard(c, best, suitCounts, hasQS) < 0 {
+		if compareDefensiveLeadCard(c, best, suitCounts, hasQS) < 0 {
 			best = c
 		}
 	}

@@ -193,6 +193,17 @@ type botPassCommand struct {
 	playerID protocol.PlayerID
 }
 
+type botHandsCommand struct {
+	reply chan []BotHandSnapshot
+}
+
+// BotHandSnapshot holds a bot's name, seat, and current hand for debugging.
+type BotHandSnapshot struct {
+	Name  string   `json:"name"`
+	Seat  int      `json:"seat"`
+	Cards []string `json:"cards"`
+}
+
 func NewRuntime(tableID string) *Runtime {
 	r := &Runtime{
 		tableID:   tableID,
@@ -322,6 +333,16 @@ func (r *Runtime) Info() protocol.TableInfo {
 	return <-reply
 }
 
+// BotHands returns the name, seat, and current hand of every bot at the table.
+// Intended for dev/debug use only; returns nil when the runtime is stopped.
+func (r *Runtime) BotHands() []BotHandSnapshot {
+	reply := make(chan []BotHandSnapshot, 1)
+	if !r.submit(botHandsCommand{reply: reply}) {
+		return nil
+	}
+	return <-reply
+}
+
 func (r *Runtime) submit(command any) bool {
 	select {
 	case <-r.stop:
@@ -375,6 +396,8 @@ func (r *Runtime) run() {
 				r.handleBotTurn(state, cmd.playerID)
 			case botPassCommand:
 				r.handleBotPass(state, cmd.playerID)
+			case botHandsCommand:
+				cmd.reply <- r.buildBotHands(state)
 			}
 		}
 	}
@@ -1128,6 +1151,21 @@ func (r *Runtime) maybeEndGame(state *tableState) {
 			return
 		}
 	}
+}
+
+func (r *Runtime) buildBotHands(state *tableState) []BotHandSnapshot {
+	var out []BotHandSnapshot
+	for _, p := range state.players {
+		if _, isBot := p.Participant.(bot.Bot); !isBot {
+			continue
+		}
+		cards := make([]string, 0, len(p.Hand()))
+		for _, c := range p.Hand() {
+			cards = append(cards, c.String())
+		}
+		out = append(out, BotHandSnapshot{Name: p.Name, Seat: p.Seat, Cards: cards})
+	}
+	return out
 }
 
 func (r *Runtime) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) Snapshot {

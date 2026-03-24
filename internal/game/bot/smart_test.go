@@ -128,6 +128,75 @@ func TestSmartDoesNotLeadUnsafeKing(t *testing.T) {
 	}
 }
 
+func TestSmartDefensiveLeadPrefersLowestRankOverShortestSuit(t *testing.T) {
+	// Clubs is the shortest non-heart suit (TC, QC = 2 cards), but TC rank 10
+	// is far more likely to win a trick than 2S rank 2.
+	// Defensive mode must prioritise rank over suit-length heuristic.
+	hand := parseCards(t, []string{
+		"TC", "QC",
+		"3D", "7D", "8D",
+		"2S", "3S", "9S", "KS", "AS",
+		"4H", "KH",
+	})
+
+	card, err := NewSmartBot().ChoosePlay(TurnInput{
+		Hand:        hand,
+		Trick:       nil,
+		PlayedCards: nil,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if card.Rank >= 10 {
+		t.Fatalf("defensive lead should prefer low-rank card over short-suit heuristic, got %s (rank %d)", card, card.Rank)
+	}
+}
+
+func TestSmartDefensiveLeadPrefersLowHeartOverHighSpade(t *testing.T) {
+	// K♠ is the only non-heart but rank 13 will almost certainly win the trick.
+	// With hearts broken and low hearts available, the bot should lead the
+	// highest non-winning heart (shed borderline cards first).
+	hand := parseCards(t, []string{"KS", "2H", "3H", "5H", "6H"})
+
+	card, err := NewSmartBot().ChoosePlay(TurnInput{
+		Hand:         hand,
+		Trick:        nil,
+		HeartsBroken: true,
+		PlayedCards:  nil,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if card.Suit == game.SuitSpades {
+		t.Fatalf("should not lead %s when low hearts are available", card)
+	}
+	// 6H is the highest non-winning heart — shed it first while opponents
+	// still hold 7H–AH to beat it.
+	want := game.Card{Suit: game.SuitHearts, Rank: 6}
+	if card != want {
+		t.Fatalf("expected %s (highest safe heart), got %s", want, card)
+	}
+}
+
+func TestSmartDefensiveLeadAvoidsGuaranteedWinner(t *testing.T) {
+	// A♣ and K♣ are both guaranteed winners: bot holds the entire top run in clubs.
+	// 5♦ is NOT a guaranteed winner (higher diamonds may still be in opponents' hands).
+	// Defensive mode must prefer 5♦ to avoid inviting Q♠ dumps from void opponents.
+	hand := parseCards(t, []string{"AC", "KC", "5D"})
+
+	card, err := NewSmartBot().ChoosePlay(TurnInput{
+		Hand:        hand,
+		Trick:       nil,
+		PlayedCards: nil,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if card.String() == "AC" || card.String() == "KC" {
+		t.Fatalf("defensive lead should avoid guaranteed-winner %s when 5D is available", card)
+	}
+}
+
 // --- Void exploitation ---
 
 func TestSmartDiscardsQueenOfSpadesWhenVoid(t *testing.T) {

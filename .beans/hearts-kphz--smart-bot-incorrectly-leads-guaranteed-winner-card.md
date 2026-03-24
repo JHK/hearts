@@ -1,7 +1,7 @@
 ---
 # hearts-kphz
 title: Smart bot incorrectly leads guaranteed-winner cards in defensive mode
-status: todo
+status: done
 type: bug
 priority: normal
 created_at: 2026-03-20T11:02:57Z
@@ -28,6 +28,16 @@ In defensive mode the bot should prefer leading cards where at least one higher 
 - [ ] After the fix, a 50 k sim run shows bot win rate and moon-shot rate no worse than the baseline (within noise)
 - [ ] The bot does not lead a guaranteed-winner card in defensive mode when non-winning legal alternatives exist
 - [ ] Moon-shot lead and follow/discard behavior is unaffected
+
+## Sim Results
+
+| State | Smart wins | Moon shots | Notes |
+|---|---|---|---|
+| Pre-fix (baseline) | ~54.3% | ~478 | Estimated from prior work; not captured explicitly |
+| After `safePool` fix + `lowPool` (rank < 9) | 53.8% | 496 | Pure rank-first ordering caused −1.7% regression; reverted to lowPool approach |
+| After hearts fallback fix (KS vs low ♥) | 57.0% | 500 | Leading low heart instead of K♠ when hearts broken |
+
+All runs: 50 000 games, 4-player table (smart / dumb / random / first-legal).
 
 ## Out of Scope
 - Changes to moon-shot evaluation logic or pass strategy

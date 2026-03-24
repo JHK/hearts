@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -22,6 +23,7 @@ var assetsFS embed.FS
 
 type Config struct {
 	Addr string
+	Dev  bool
 }
 
 type wsMessage struct {
@@ -79,7 +81,7 @@ func Run(cfg Config) error {
 		cfg.Addr = "127.0.0.1:8080"
 	}
 
-	handler, err := NewHandler(nil)
+	handler, err := NewHandler(cfg, nil)
 	if err != nil {
 		return err
 	}
@@ -87,7 +89,7 @@ func Run(cfg Config) error {
 	return http.ListenAndServe(cfg.Addr, handler)
 }
 
-func NewHandler(manager *table.Manager) (http.Handler, error) {
+func NewHandler(cfg Config, manager *table.Manager) (http.Handler, error) {
 	if manager == nil {
 		manager = table.NewManager()
 	}
@@ -201,6 +203,34 @@ func NewHandler(manager *table.Manager) (http.Handler, error) {
 		mux.HandleFunc(f.path, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", f.contentType)
 			_, _ = w.Write(data)
+		})
+	}
+
+	if cfg.Dev {
+		devJS := []byte(`window.debugBot = async function(tableID) {
+  tableID = tableID || window.location.pathname.replace('/table/', '');
+  const r = await fetch('/api/debug/bot-hands?table_id=' + encodeURIComponent(tableID));
+  const data = await r.json();
+  console.table(data.bots.map(b => ({name: b.name, seat: b.seat, hand: b.cards.join(' ')})));
+  return data;
+};
+console.log('[dev] debugBot() available — call debugBot() to see bot hands');
+`)
+		tableHTML = bytes.ReplaceAll(tableHTML, []byte("</body>"), []byte("<script src=\"/dev.js\"></script>\n</body>"))
+
+		mux.HandleFunc("/dev.js", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+			_, _ = w.Write(devJS)
+		})
+
+		mux.HandleFunc("/api/debug/bot-hands", func(w http.ResponseWriter, r *http.Request) {
+			tableID := r.URL.Query().Get("table_id")
+			rt, ok := manager.Get(tableID)
+			if !ok {
+				http.Error(w, "table not found", http.StatusNotFound)
+				return
+			}
+			writeJSON(w, map[string]any{"bots": rt.BotHands()})
 		})
 	}
 

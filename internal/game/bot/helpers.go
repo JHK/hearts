@@ -176,6 +176,30 @@ func opponentCardCount(suit game.Suit, hand []game.Card, playedCards []game.Card
 	return 13 - inHand - played
 }
 
+// compareDefensiveLeadCard returns negative if a is a better defensive lead than b.
+// Like compareLeadCard but prefers HIGHER rank among the filtered candidates:
+// shedding the highest non-winning card first prevents it from becoming a
+// guaranteed winner later as more cards get played.
+func compareDefensiveLeadCard(a, b game.Card, suitCounts map[game.Suit]int, hasQueenSpades bool) int {
+	aDanger := leadDangerPenalty(a, suitCounts, hasQueenSpades)
+	bDanger := leadDangerPenalty(b, suitCounts, hasQueenSpades)
+	if aDanger != bDanger {
+		return aDanger - bDanger
+	}
+
+	aCount := suitCounts[a.Suit]
+	bCount := suitCounts[b.Suit]
+	if aCount != bCount {
+		return aCount - bCount
+	}
+
+	if a.Rank != b.Rank {
+		return b.Rank - a.Rank // higher rank = better defensive lead (shed first)
+	}
+
+	return smartSuitPriority(a.Suit) - smartSuitPriority(b.Suit)
+}
+
 // compareLeadCard returns negative if a is a better lead than b.
 func compareLeadCard(a, b game.Card, suitCounts map[game.Suit]int, hasQueenSpades bool) int {
 	aDanger := leadDangerPenalty(a, suitCounts, hasQueenSpades)

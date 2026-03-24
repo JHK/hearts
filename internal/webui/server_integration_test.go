@@ -23,7 +23,7 @@ func TestServesExtractedScripts(t *testing.T) {
 	manager := table.NewManager()
 	defer manager.Close()
 
-	handler, err := NewHandler(manager)
+	handler, err := NewHandler(Config{}, manager)
 	if err != nil {
 		t.Fatalf("new handler: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestWebSocketJoinAndStateFlow(t *testing.T) {
 	manager := table.NewManager()
 	defer manager.Close()
 
-	handler, err := NewHandler(manager)
+	handler, err := NewHandler(Config{}, manager)
 	if err != nil {
 		t.Fatalf("new handler: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestWebSocketJoinReusesPlayerByToken(t *testing.T) {
 	manager := table.NewManager()
 	defer manager.Close()
 
-	handler, err := NewHandler(manager)
+	handler, err := NewHandler(Config{}, manager)
 	if err != nil {
 		t.Fatalf("new handler: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestDisconnectLeavesTableBeforeRoundStart(t *testing.T) {
 	manager := table.NewManager()
 	defer manager.Close()
 
-	handler, err := NewHandler(manager)
+	handler, err := NewHandler(Config{}, manager)
 	if err != nil {
 		t.Fatalf("new handler: %v", err)
 	}
@@ -233,7 +233,7 @@ func TestWebSocketAutoCreatesTable(t *testing.T) {
 	manager := table.NewManager()
 	defer manager.Close()
 
-	handler, err := NewHandler(manager)
+	handler, err := NewHandler(Config{}, manager)
 	if err != nil {
 		t.Fatalf("new handler: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestTableClosesWhenLastHumanLeaves(t *testing.T) {
 	manager := table.NewManager()
 	defer manager.Close()
 
-	handler, err := NewHandler(manager)
+	handler, err := NewHandler(Config{}, manager)
 	if err != nil {
 		t.Fatalf("new handler: %v", err)
 	}
@@ -283,7 +283,7 @@ func TestPassPhaseAndReviewFlowOverWebSocket(t *testing.T) {
 	manager := table.NewManager()
 	defer manager.Close()
 
-	handler, err := NewHandler(manager)
+	handler, err := NewHandler(Config{}, manager)
 	if err != nil {
 		t.Fatalf("new handler: %v", err)
 	}
