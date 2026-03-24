@@ -87,7 +87,7 @@ type tableState struct {
 	roundHistory   []map[protocol.PlayerID]game.Points
 
 	round         *game.Round
-	roundsStarted int
+	game          *game.Game
 	nextPlayerSeq int
 	gameOver      bool
 }
@@ -111,8 +111,6 @@ type playerState struct {
 	// Human turns are driven by Play/Pass commands from the WebSocket connection.
 	bot bot.Bot
 
-	// cumulative scoring (persists across rounds)
-	cumulativePoints game.Points
 }
 
 type joinCommand struct {
@@ -341,6 +339,7 @@ func (r *Table) run() {
 		playersByID:    make(map[protocol.PlayerID]*playerState),
 		playersByToken: make(map[string]*playerState),
 		departedTokens: make(map[string]protocol.PlayerID),
+		game:           game.NewGame(),
 	}
 
 	for {
@@ -568,7 +567,7 @@ func (r *Table) handleStart(state *tableState, playerID protocol.PlayerID) proto
 	}
 
 	state.round = r.initializeRound(state)
-	slog.Info("table started", "event", "table_started", "table_id", r.tableID, "round", state.roundsStarted)
+	slog.Info("table started", "event", "table_started", "table_id", r.tableID, "round", state.game.RoundsPlayed()+1)
 
 	hands := make(map[protocol.PlayerID][]string, len(state.players))
 	for _, player := range state.players {
@@ -883,8 +882,7 @@ func (r *Table) validateStartPreconditions(state *tableState, playerID protocol.
 }
 
 func (r *Table) initializeRound(state *tableState) *game.Round {
-	passDirection := game.PassDirectionForRound(state.roundsStarted)
-	state.roundsStarted++
+	passDirection := state.game.NextPassDirection()
 
 	var hands [game.PlayersPerTable][]game.Card
 	deck := defaultShuffledDeck()
@@ -930,58 +928,45 @@ func (r *Table) completeRound(state *tableState) protocol.RoundCompletedData {
 	scores := state.round.Scores()
 	adjustedRound := make(map[protocol.PlayerID]game.Points, len(state.players))
 	for i, player := range state.players {
-		player.cumulativePoints += scores.Adjusted[i]
 		adjustedRound[player.id] = scores.Adjusted[i]
 	}
 	state.roundHistory = append(state.roundHistory, adjustedRound)
+	state.game.AddRoundScores(scores.Adjusted)
 
-	totals := make(map[protocol.PlayerID]game.Points, len(state.players))
-	for _, player := range state.players {
-		totals[player.id] = player.cumulativePoints
-	}
 	return protocol.RoundCompletedData{
 		RoundPoints: copyPoints(adjustedRound),
-		TotalPoints: totals,
+		TotalPoints: r.buildTotals(state),
 	}
 }
 
-const gameOverThreshold = game.Points(100)
-
-func computeWinners(totals map[protocol.PlayerID]game.Points) []protocol.PlayerID {
-	var minPts game.Points
-	first := true
-	for _, pts := range totals {
-		if first || pts < minPts {
-			minPts = pts
-			first = false
-		}
+func (r *Table) buildTotals(state *tableState) map[protocol.PlayerID]game.Points {
+	totals := make(map[protocol.PlayerID]game.Points, len(state.players))
+	scores := state.game.Scores()
+	for _, player := range state.players {
+		totals[player.id] = scores[player.position]
 	}
+	return totals
+}
 
-	winners := make([]protocol.PlayerID, 0, len(totals))
-	for playerID, pts := range totals {
-		if pts == minPts {
-			winners = append(winners, playerID)
-		}
+func (r *Table) seatWinnersToPlayerIDs(state *tableState, seats []int) []protocol.PlayerID {
+	winners := make([]protocol.PlayerID, 0, len(seats))
+	for _, seat := range seats {
+		winners = append(winners, state.players[seat].id)
 	}
 	sort.Slice(winners, func(i, j int) bool { return winners[i] < winners[j] })
 	return winners
 }
 
 func (r *Table) maybeEndGame(state *tableState) {
-	for _, player := range state.players {
-		if player.cumulativePoints >= gameOverThreshold {
-			state.gameOver = true
-			totals := make(map[protocol.PlayerID]game.Points, len(state.players))
-			for _, p := range state.players {
-				totals[p.id] = p.cumulativePoints
-			}
-			r.publishPublic(protocol.EventGameOver, protocol.GameOverData{
-				FinalScores: copyPoints(totals),
-				Winners:     computeWinners(totals),
-			})
-			return
-		}
+	if !state.game.IsOver() {
+		return
 	}
+	state.gameOver = true
+	totals := r.buildTotals(state)
+	r.publishPublic(protocol.EventGameOver, protocol.GameOverData{
+		FinalScores: copyPoints(totals),
+		Winners:     r.seatWinnersToPlayerIDs(state, state.game.Winners()),
+	})
 }
 
 func (r *Table) buildBotHands(state *tableState) []BotHandSnapshot {
@@ -1017,10 +1002,7 @@ func (r *Table) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) Sn
 		return playerSnapshots[i].Seat < playerSnapshots[j].Seat
 	})
 
-	totals := make(map[protocol.PlayerID]game.Points, len(state.players))
-	for _, player := range state.players {
-		totals[player.id] = player.cumulativePoints
-	}
+	totals := r.buildTotals(state)
 
 	snapshot := Snapshot{
 		TableID:      r.tableID,
@@ -1035,7 +1017,7 @@ func (r *Table) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) Sn
 	}
 
 	if state.gameOver {
-		snapshot.Winners = computeWinners(totals)
+		snapshot.Winners = r.seatWinnersToPlayerIDs(state, state.game.Winners())
 	}
 
 	if state.round != nil {

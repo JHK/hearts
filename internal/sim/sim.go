@@ -8,8 +8,6 @@ import (
 	"github.com/JHK/hearts/internal/game/bot"
 )
 
-const gameOverThreshold = game.Points(100)
-
 // Result holds win counts per strategy slot (index 0–3).
 // Ties count as a win for each tied player.
 type Result struct {
@@ -74,12 +72,12 @@ func (s *Simulation) runGame(rng *rand.Rand) ([]int, [game.PlayersPerTable]int) 
 	for i, strategy := range s.strategies {
 		bots[i] = strategy.NewBot()
 	}
-	var cumulative [game.PlayersPerTable]game.Points
+	g := game.NewGame()
 	var moonShots [game.PlayersPerTable]int
 
-	for roundIndex := 0; ; roundIndex++ {
+	for {
 		hands := game.Deal(rng)
-		passDir := game.PassDirectionForRound(roundIndex)
+		passDir := g.NextPassDirection()
 		round := game.NewRound(hands, passDir)
 
 		if passDir != game.PassDirectionHold {
@@ -110,33 +108,14 @@ func (s *Simulation) runGame(rng *rand.Rand) ([]int, [game.PlayersPerTable]int) 
 		}
 
 		scores := round.Scores()
-		for i := range cumulative {
+		for i := range game.PlayersPerTable {
 			if scores.Raw[i] == game.ShootTheMoonPoints {
 				moonShots[i]++
 			}
-			cumulative[i] += scores.Adjusted[i]
 		}
 
-		for _, pts := range cumulative {
-			if pts >= gameOverThreshold {
-				return winners(cumulative), moonShots
-			}
+		if g.AddRoundScores(scores.Adjusted) {
+			return g.Winners(), moonShots
 		}
 	}
-}
-
-func winners(cumulative [game.PlayersPerTable]game.Points) []int {
-	min := cumulative[0]
-	for _, pts := range cumulative {
-		if pts < min {
-			min = pts
-		}
-	}
-	var out []int
-	for i, pts := range cumulative {
-		if pts == min {
-			out = append(out, i)
-		}
-	}
-	return out
 }
