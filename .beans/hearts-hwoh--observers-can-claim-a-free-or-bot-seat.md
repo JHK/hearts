@@ -5,7 +5,8 @@ status: draft
 type: feature
 priority: normal
 created_at: 2026-03-18T10:48:36Z
-updated_at: 2026-03-18T10:48:46Z
+updated_at: 2026-03-24T11:07:25Z
+parent: hearts-g7wu
 blocked_by:
     - hearts-sn8x
 ---
