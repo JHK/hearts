@@ -5,7 +5,7 @@ status: draft
 type: epic
 priority: normal
 created_at: 2026-03-24T11:04:40Z
-updated_at: 2026-03-24T15:45:06Z
+updated_at: 2026-03-24T15:59:50Z
 ---
 
 Make the game invite humans to play with other humans
@@ -17,3 +17,4 @@ Make the game invite humans to play with other humans
 - indicator on game state in lobby (waiting, started)
 - do not start a table automatically when visiting a non existent table -> info and redirect to lobby
 - indicator that there are other players in the lobby
+- keep state across restarts
