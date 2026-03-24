@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/JHK/hearts/internal/protocol"
-	"github.com/JHK/hearts/internal/table"
+	"github.com/JHK/hearts/internal/session"
 	"github.com/gorilla/websocket"
 )
 
@@ -20,7 +20,7 @@ type testWSMessage struct {
 }
 
 func TestServesExtractedScripts(t *testing.T) {
-	manager := table.NewManager()
+	manager := session.NewManager()
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
@@ -64,7 +64,7 @@ func TestServesExtractedScripts(t *testing.T) {
 }
 
 func TestWebSocketJoinAndStateFlow(t *testing.T) {
-	manager := table.NewManager()
+	manager := session.NewManager()
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
@@ -101,7 +101,7 @@ func TestWebSocketJoinAndStateFlow(t *testing.T) {
 	}
 
 	stateMsg := readMessageType(t, ws, "table_state")
-	var snapshot table.Snapshot
+	var snapshot session.Snapshot
 	if err := json.Unmarshal(stateMsg.Data, &snapshot); err != nil {
 		t.Fatalf("decode table state: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestWebSocketJoinAndStateFlow(t *testing.T) {
 }
 
 func TestWebSocketJoinReusesPlayerByToken(t *testing.T) {
-	manager := table.NewManager()
+	manager := session.NewManager()
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
@@ -189,7 +189,7 @@ func TestWebSocketJoinReusesPlayerByToken(t *testing.T) {
 }
 
 func TestDisconnectLeavesTableBeforeRoundStart(t *testing.T) {
-	manager := table.NewManager()
+	manager := session.NewManager()
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
@@ -230,7 +230,7 @@ func TestDisconnectLeavesTableBeforeRoundStart(t *testing.T) {
 }
 
 func TestWebSocketAutoCreatesTable(t *testing.T) {
-	manager := table.NewManager()
+	manager := session.NewManager()
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
@@ -252,7 +252,7 @@ func TestWebSocketAutoCreatesTable(t *testing.T) {
 }
 
 func TestTableClosesWhenLastHumanLeaves(t *testing.T) {
-	manager := table.NewManager()
+	manager := session.NewManager()
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
@@ -280,7 +280,7 @@ func TestTableClosesWhenLastHumanLeaves(t *testing.T) {
 }
 
 func TestPassPhaseAndReviewFlowOverWebSocket(t *testing.T) {
-	manager := table.NewManager()
+	manager := session.NewManager()
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
@@ -333,7 +333,7 @@ func TestPassPhaseAndReviewFlowOverWebSocket(t *testing.T) {
 
 	passCardsByPlayer := make([][]string, len(players))
 	for i := range players {
-		var snapshot table.Snapshot
+		var snapshot session.Snapshot
 		assertEventually(t, 2*time.Second, func() bool {
 			snapshot = requestStateSnapshot(t, players[i].conn)
 			return snapshot.Phase == "passing" && len(snapshot.Hand) == 13
@@ -450,7 +450,7 @@ func assertEventually(t *testing.T, timeout time.Duration, predicate func() bool
 	t.Fatalf("condition was not met within %s", timeout)
 }
 
-func requestStateSnapshot(t *testing.T, conn *websocket.Conn) table.Snapshot {
+func requestStateSnapshot(t *testing.T, conn *websocket.Conn) session.Snapshot {
 	t.Helper()
 
 	if err := conn.WriteJSON(wsCommand{Type: "state"}); err != nil {
@@ -458,7 +458,7 @@ func requestStateSnapshot(t *testing.T, conn *websocket.Conn) table.Snapshot {
 	}
 
 	stateMsg := readMessageType(t, conn, "table_state")
-	var snapshot table.Snapshot
+	var snapshot session.Snapshot
 	if err := json.Unmarshal(stateMsg.Data, &snapshot); err != nil {
 		t.Fatalf("decode table state: %v", err)
 	}

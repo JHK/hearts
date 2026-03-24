@@ -1,4 +1,4 @@
-package table
+package session
 
 import (
 	"fmt"
@@ -28,53 +28,45 @@ type AddedBot struct {
 
 type PlayerSnapshot struct {
 	PlayerID protocol.PlayerID `json:"player_id"`
-	Name     string        `json:"name"`
-	Seat     int           `json:"seat"`
-	IsBot    bool          `json:"is_bot"`
+	Name     string            `json:"name"`
+	Seat     int               `json:"seat"`
+	IsBot    bool              `json:"is_bot"`
 }
 
 type TrickPlaySnapshot struct {
 	PlayerID protocol.PlayerID `json:"player_id"`
-	Name     string        `json:"name"`
-	Seat     int           `json:"seat"`
-	Card     string        `json:"card"`
+	Name     string            `json:"name"`
+	Seat     int               `json:"seat"`
+	Card     string            `json:"card"`
 }
 
 type Snapshot struct {
-	TableID            string                          `json:"table_id"`
-	Players            []PlayerSnapshot                `json:"players"`
-	Started            bool                            `json:"started"`
-	Phase              string                          `json:"phase"`
-	TrickNumber        int                             `json:"trick_number"`
+	TableID            string                              `json:"table_id"`
+	Players            []PlayerSnapshot                    `json:"players"`
+	Started            bool                                `json:"started"`
+	Phase              string                              `json:"phase"`
+	TrickNumber        int                                 `json:"trick_number"`
 	TurnPlayerID       protocol.PlayerID                   `json:"turn_player_id"`
-	HeartsBroken       bool                            `json:"hearts_broken"`
-	CurrentTrick       []string                        `json:"current_trick"`
-	TrickPlays         []TrickPlaySnapshot             `json:"trick_plays"`
-	Hand               []string                        `json:"hand"`
+	HeartsBroken       bool                                `json:"hearts_broken"`
+	CurrentTrick       []string                            `json:"current_trick"`
+	TrickPlays         []TrickPlaySnapshot                 `json:"trick_plays"`
+	Hand               []string                            `json:"hand"`
 	HandSizes          map[protocol.PlayerID]int           `json:"hand_sizes"`
-	PassDirection      game.PassDirection              `json:"pass_direction"`
-	PassSubmitted      bool                            `json:"pass_submitted"`
-	PassSubmittedCount int                             `json:"pass_submitted_count"`
-	PassSent           []string                        `json:"pass_sent"`
-	PassReceived       []string                        `json:"pass_received"`
-	PassReady          bool                            `json:"pass_ready"`
-	PassReadyCount     int                             `json:"pass_ready_count"`
+	PassDirection      game.PassDirection                  `json:"pass_direction"`
+	PassSubmitted      bool                                `json:"pass_submitted"`
+	PassSubmittedCount int                                 `json:"pass_submitted_count"`
+	PassSent           []string                            `json:"pass_sent"`
+	PassReceived       []string                            `json:"pass_received"`
+	PassReady          bool                                `json:"pass_ready"`
+	PassReadyCount     int                                 `json:"pass_ready_count"`
 	RoundPoints        map[protocol.PlayerID]game.Points   `json:"round_points"`
 	RoundHistory       []map[protocol.PlayerID]game.Points `json:"round_history"`
 	TotalPoints        map[protocol.PlayerID]game.Points   `json:"total_points"`
-	GameOver           bool                            `json:"game_over"`
+	GameOver           bool                                `json:"game_over"`
 	Winners            []protocol.PlayerID                 `json:"winners,omitempty"`
 }
 
-type roundPhase string
-
-const (
-	roundPhasePassing    roundPhase = "passing"
-	roundPhasePassReview roundPhase = "pass_review"
-	roundPhasePlaying    roundPhase = "playing"
-)
-
-type Runtime struct {
+type Table struct {
 	tableID string
 
 	commands  chan any
@@ -94,44 +86,33 @@ type tableState struct {
 	departedTokens map[string]protocol.PlayerID // token → last player ID for pre-round leavers
 	roundHistory   []map[protocol.PlayerID]game.Points
 
-	round         *roundState
+	round         *game.Round
 	roundsStarted int
 	nextPlayerSeq int
 	gameOver      bool
 }
 
 // playerState holds the seat-level data for one player.
-// The embedded game.Participant is *game.Player for human players and a bot.Bot for bots.
-// Bot detection: _, isBot := player.Participant.(bot.Bot)
+//
+// Game state lives in tableState.round (the game.Round coordinator).
+// playerState only carries identity/transport and cumulative scoring.
+//
+// Bot detection: player.bot != nil (set for bots, nil for humans)
 type playerState struct {
-	id   protocol.PlayerID
-	game.Participant
-	Name  string
-	Seat  int
+	// web-transport state
+	id    protocol.PlayerID
 	Token string
-}
 
-type roundState struct {
-	Phase         roundPhase
-	PassDirection game.PassDirection
+	// seated identity
+	Name     string
+	position int // ordinal seat number (0–3)
 
-	TrickNumber  int
-	TurnSeat     int
-	HeartsBroken bool
-	Trick        []trickPlay
-	PlayedCards  []game.Card // cards played in completed tricks
-}
+	// bot handles autonomous decisions; nil for human players.
+	// Human turns are driven by Play/Pass commands from the WebSocket connection.
+	bot bot.Bot
 
-type trickPlay struct {
-	Seat   int
-	Player game.Participant
-	Card   game.Card
-}
-
-type playUpdate struct {
-	playerID    protocol.PlayerID
-	cardPlayed  protocol.CardPlayedData
-	handUpdated protocol.HandUpdatedData
+	// cumulative scoring (persists across rounds)
+	cumulativePoints game.Points
 }
 
 type joinCommand struct {
@@ -205,8 +186,8 @@ type BotHandSnapshot struct {
 	Cards []string `json:"cards"`
 }
 
-func NewRuntime(tableID string) *Runtime {
-	r := &Runtime{
+func NewTable(tableID string) *Table {
+	r := &Table{
 		tableID:   tableID,
 		commands:  make(chan any),
 		stop:      make(chan struct{}),
@@ -218,11 +199,11 @@ func NewRuntime(tableID string) *Runtime {
 	return r
 }
 
-func (r *Runtime) ID() string {
+func (r *Table) ID() string {
 	return r.tableID
 }
 
-func (r *Runtime) Close() {
+func (r *Table) Close() {
 	r.stopOnce.Do(func() {
 		close(r.stop)
 		<-r.stoppedCh
@@ -236,7 +217,7 @@ func (r *Runtime) Close() {
 	})
 }
 
-func (r *Runtime) Subscribe() (<-chan StreamEvent, func()) {
+func (r *Table) Subscribe() (<-chan StreamEvent, func()) {
 	r.subsMu.Lock()
 	r.nextSubID++
 	id := r.nextSubID
@@ -257,7 +238,7 @@ func (r *Runtime) Subscribe() (<-chan StreamEvent, func()) {
 	return ch, unsubscribe
 }
 
-func (r *Runtime) Join(name, token string) (protocol.JoinResponse, error) {
+func (r *Table) Join(name, token string) (protocol.JoinResponse, error) {
 	reply := make(chan protocol.JoinResponse, 1)
 	if !r.submit(joinCommand{name: name, token: token, reply: reply}) {
 		return protocol.JoinResponse{}, fmt.Errorf("table is stopping")
@@ -265,7 +246,7 @@ func (r *Runtime) Join(name, token string) (protocol.JoinResponse, error) {
 	return <-reply, nil
 }
 
-func (r *Runtime) Start(playerID protocol.PlayerID) protocol.CommandResponse {
+func (r *Table) Start(playerID protocol.PlayerID) protocol.CommandResponse {
 	reply := make(chan protocol.CommandResponse, 1)
 	if !r.submit(startCommand{playerID: playerID, reply: reply}) {
 		return protocol.CommandResponse{Accepted: false, Reason: "table is stopping"}
@@ -273,7 +254,7 @@ func (r *Runtime) Start(playerID protocol.PlayerID) protocol.CommandResponse {
 	return <-reply
 }
 
-func (r *Runtime) Play(playerID protocol.PlayerID, card string) protocol.CommandResponse {
+func (r *Table) Play(playerID protocol.PlayerID, card string) protocol.CommandResponse {
 	reply := make(chan protocol.CommandResponse, 1)
 	if !r.submit(playCommand{playerID: playerID, card: card, reply: reply}) {
 		return protocol.CommandResponse{Accepted: false, Reason: "table is stopping"}
@@ -281,7 +262,7 @@ func (r *Runtime) Play(playerID protocol.PlayerID, card string) protocol.Command
 	return <-reply
 }
 
-func (r *Runtime) Pass(playerID protocol.PlayerID, cards []string) protocol.CommandResponse {
+func (r *Table) Pass(playerID protocol.PlayerID, cards []string) protocol.CommandResponse {
 	reply := make(chan protocol.CommandResponse, 1)
 	if !r.submit(passCommand{playerID: playerID, cards: cards, reply: reply}) {
 		return protocol.CommandResponse{Accepted: false, Reason: "table is stopping"}
@@ -289,7 +270,7 @@ func (r *Runtime) Pass(playerID protocol.PlayerID, cards []string) protocol.Comm
 	return <-reply
 }
 
-func (r *Runtime) ReadyAfterPass(playerID protocol.PlayerID) protocol.CommandResponse {
+func (r *Table) ReadyAfterPass(playerID protocol.PlayerID) protocol.CommandResponse {
 	reply := make(chan protocol.CommandResponse, 1)
 	if !r.submit(readyAfterPassCommand{playerID: playerID, reply: reply}) {
 		return protocol.CommandResponse{Accepted: false, Reason: "table is stopping"}
@@ -297,7 +278,7 @@ func (r *Runtime) ReadyAfterPass(playerID protocol.PlayerID) protocol.CommandRes
 	return <-reply
 }
 
-func (r *Runtime) AddBot(strategyName string) (AddedBot, error) {
+func (r *Table) AddBot(strategyName string) (AddedBot, error) {
 	reply := make(chan addBotResult, 1)
 	if !r.submit(addBotCommand{strategyName: strategyName, reply: reply}) {
 		return AddedBot{}, fmt.Errorf("table is stopping")
@@ -306,7 +287,7 @@ func (r *Runtime) AddBot(strategyName string) (AddedBot, error) {
 	return result.added, result.err
 }
 
-func (r *Runtime) Snapshot(forPlayer protocol.PlayerID) Snapshot {
+func (r *Table) Snapshot(forPlayer protocol.PlayerID) Snapshot {
 	reply := make(chan Snapshot, 1)
 	if !r.submit(snapshotCommand{forPlayer: forPlayer, reply: reply}) {
 		return Snapshot{TableID: r.tableID}
@@ -314,7 +295,7 @@ func (r *Runtime) Snapshot(forPlayer protocol.PlayerID) Snapshot {
 	return <-reply
 }
 
-func (r *Runtime) Leave(playerID protocol.PlayerID) {
+func (r *Table) Leave(playerID protocol.PlayerID) {
 	if playerID == "" {
 		return
 	}
@@ -326,7 +307,7 @@ func (r *Runtime) Leave(playerID protocol.PlayerID) {
 	<-reply
 }
 
-func (r *Runtime) Info() protocol.TableInfo {
+func (r *Table) Info() protocol.TableInfo {
 	reply := make(chan protocol.TableInfo, 1)
 	if !r.submit(infoCommand{reply: reply}) {
 		return protocol.TableInfo{TableID: r.tableID, MaxPlayers: game.PlayersPerTable}
@@ -335,8 +316,8 @@ func (r *Runtime) Info() protocol.TableInfo {
 }
 
 // BotHands returns the name, seat, and current hand of every bot at the table.
-// Intended for dev/debug use only; returns nil when the runtime is stopped.
-func (r *Runtime) BotHands() []BotHandSnapshot {
+// Intended for dev/debug use only; returns nil when the session is stopped.
+func (r *Table) BotHands() []BotHandSnapshot {
 	reply := make(chan []BotHandSnapshot, 1)
 	if !r.submit(botHandsCommand{reply: reply}) {
 		return nil
@@ -344,7 +325,7 @@ func (r *Runtime) BotHands() []BotHandSnapshot {
 	return <-reply
 }
 
-func (r *Runtime) submit(command any) bool {
+func (r *Table) submit(command any) bool {
 	select {
 	case <-r.stop:
 		return false
@@ -353,7 +334,7 @@ func (r *Runtime) submit(command any) bool {
 	}
 }
 
-func (r *Runtime) run() {
+func (r *Table) run() {
 	defer close(r.stoppedCh)
 
 	state := &tableState{
@@ -405,7 +386,7 @@ func (r *Runtime) run() {
 	}
 }
 
-func (r *Runtime) handleLeave(state *tableState, playerID protocol.PlayerID) {
+func (r *Table) handleLeave(state *tableState, playerID protocol.PlayerID) {
 	player := state.playersByID[playerID]
 	if player == nil {
 		return
@@ -415,25 +396,26 @@ func (r *Runtime) handleLeave(state *tableState, playerID protocol.PlayerID) {
 
 	if state.round != nil {
 		// Preserve the token so the player can reclaim their seat if they reconnect.
-		// Convert human to bot; if already a bot, leave as is.
-		if _, isBot := player.Participant.(bot.Bot); !isBot {
-			human := player.Participant.(*game.Player)
-			player.Participant = bot.StrategyRandom.WrapPlayer(human)
+		// Assign a bot; game state stays in the Round untouched.
+		if player.bot == nil {
+			player.bot = bot.StrategyRandom.NewBot()
 		}
 
-		switch state.round.Phase {
-		case roundPhasePassing:
-			if !player.HasSubmittedPass() {
-				if cards, err := r.chooseBotPassCards(player, state.round.PassDirection); err == nil {
-					_ = r.handlePass(state, playerID, cards)
+		switch state.round.Phase() {
+		case game.PhasePassing:
+			if !state.round.HasSubmittedPass(player.position) {
+				input := state.round.PassInput(player.position)
+				cards, err := player.bot.ChoosePass(input)
+				if err == nil {
+					_ = r.handlePass(state, playerID, game.CardStrings(cards))
 				}
 			}
-		case roundPhasePassReview:
-			if !player.PassReady() {
+		case game.PhasePassReview:
+			if !state.round.IsPassReady(player.position) {
 				_ = r.handleReadyAfterPass(state, playerID)
 			}
-		case roundPhasePlaying:
-			if player.Seat == state.round.TurnSeat {
+		case game.PhasePlaying:
+			if player.position == state.round.TurnSeat() {
 				r.scheduleBotTurn(state, player)
 			}
 		}
@@ -453,32 +435,32 @@ func (r *Runtime) handleLeave(state *tableState, playerID protocol.PlayerID) {
 
 		state.players = append(state.players[:index], state.players[index+1:]...)
 		for seat, updated := range state.players {
-			updated.Seat = seat
+			updated.position = seat
 		}
 		return
 	}
 }
 
-func (r *Runtime) handleJoin(state *tableState, name, token string) protocol.JoinResponse {
+func (r *Table) handleJoin(state *tableState, name, token string) protocol.JoinResponse {
 	token = strings.TrimSpace(token)
 	if token == "" {
 		return protocol.JoinResponse{Accepted: false, Reason: "player token is required"}
 	}
 
 	if existing := state.playersByToken[token]; existing != nil {
-		if b, isBot := existing.Participant.(bot.Bot); isBot {
+		if existing.bot != nil {
 			// Player reconnected after being converted to a bot mid-round — reclaim the seat.
-			existing.Participant = b.Unwrap()
+			existing.bot = nil
 			if n := strings.TrimSpace(name); n != "" {
 				existing.Name = n
 			}
-			slog.Info("player reclaimed seat", "event", "player_reclaimed", "table_id", r.tableID, "player_id", existing.id, "name", existing.Name, "seat", existing.Seat)
+			slog.Info("player reclaimed seat", "event", "player_reclaimed", "table_id", r.tableID, "player_id", existing.id, "name", existing.Name, "seat", existing.position)
 		}
 		return protocol.JoinResponse{
 			Accepted: true,
 			TableID:  r.tableID,
 			PlayerID: existing.id,
-			Seat:     existing.Seat,
+			Seat:     existing.position,
 		}
 	}
 
@@ -500,25 +482,25 @@ func (r *Runtime) handleJoin(state *tableState, name, token string) protocol.Joi
 	} else {
 		id = r.nextPlayerID(state)
 	}
-	player := r.addPlayer(state, id, name, game.NewPlayer(), token)
+	player := r.addPlayer(state, id, name, nil, token)
 
-	slog.Info("player joined table", "event", "player_joined", "table_id", r.tableID, "player_id", player.id, "name", player.Name, "seat", player.Seat)
+	slog.Info("player joined table", "event", "player_joined", "table_id", r.tableID, "player_id", player.id, "name", player.Name, "seat", player.position)
 
 	r.publishPublic(protocol.EventPlayerJoined, protocol.PlayerJoinedData{Player: protocol.PlayerInfo{
 		PlayerID: player.id,
 		Name:     player.Name,
-		Seat:     player.Seat,
+		Seat:     player.position,
 	}})
 
 	return protocol.JoinResponse{
 		Accepted: true,
 		TableID:  r.tableID,
 		PlayerID: player.id,
-		Seat:     player.Seat,
+		Seat:     player.position,
 	}
 }
 
-func (r *Runtime) handleAddBot(state *tableState, strategyName string) (AddedBot, error) {
+func (r *Table) handleAddBot(state *tableState, strategyName string) (AddedBot, error) {
 	if state.gameOver {
 		return AddedBot{}, fmt.Errorf("game is over")
 	}
@@ -535,15 +517,14 @@ func (r *Runtime) handleAddBot(state *tableState, strategyName string) (AddedBot
 	}
 
 	id := r.nextPlayerID(state)
-	b := strategyKind.NewBot()
-	player := r.addPlayer(state, id, b.BotName(), b, "")
+	player := r.addPlayer(state, id, strategyKind.BotName(), strategyKind.NewBot(), "")
 
 	slog.Debug("bot added to table", "event", "bot_added", "table_id", r.tableID, "player_id", player.id, "name", player.Name, "strategy", string(strategyKind))
 
 	r.publishPublic(protocol.EventPlayerJoined, protocol.PlayerJoinedData{Player: protocol.PlayerInfo{
 		PlayerID: player.id,
 		Name:     player.Name,
-		Seat:     player.Seat,
+		Seat:     player.position,
 	}})
 
 	return AddedBot{
@@ -551,20 +532,20 @@ func (r *Runtime) handleAddBot(state *tableState, strategyName string) (AddedBot
 			Accepted: true,
 			TableID:  r.tableID,
 			PlayerID: player.id,
-			Seat:     player.Seat,
+			Seat:     player.position,
 		},
 		Name:     player.Name,
 		Strategy: string(strategyKind),
 	}, nil
 }
 
-func (r *Runtime) addPlayer(state *tableState, id protocol.PlayerID, name string, p game.Participant, token string) *playerState {
+func (r *Table) addPlayer(state *tableState, id protocol.PlayerID, name string, b bot.Bot, token string) *playerState {
 	player := &playerState{
-		id:          id,
-		Participant: p,
-		Name:        name,
-		Seat:        len(state.players),
-		Token:       token,
+		id:       id,
+		Name:     name,
+		position: len(state.players),
+		Token:    token,
+		bot:      b,
 	}
 
 	state.players = append(state.players, player)
@@ -576,16 +557,23 @@ func (r *Runtime) addPlayer(state *tableState, id protocol.PlayerID, name string
 	return player
 }
 
-func (r *Runtime) handleStart(state *tableState, playerID protocol.PlayerID) protocol.CommandResponse {
+func (r *Table) handleStart(state *tableState, playerID protocol.PlayerID) protocol.CommandResponse {
 	if reason := r.validateStartPreconditions(state, playerID); reason != "" {
 		return protocol.CommandResponse{Accepted: false, Reason: reason}
 	}
 
-	hands := r.initializeRound(state)
+	state.round = r.initializeRound(state)
 	slog.Info("table started", "event", "table_started", "table_id", r.tableID, "round", state.roundsStarted)
+
+	hands := make(map[protocol.PlayerID][]string, len(state.players))
+	for _, player := range state.players {
+		hands[player.id] = game.CardStrings(state.round.Hand(player.position))
+	}
 	r.publishRoundStart(state, hands)
-	if state.round.PassDirection == game.PassDirectionHold {
-		r.startPlayPhase(state)
+
+	if state.round.PassDirection() == game.PassDirectionHold {
+		_ = state.round.StartPlaying()
+		r.publishPlayPhaseStart(state)
 		return protocol.CommandResponse{Accepted: true}
 	}
 
@@ -594,7 +582,7 @@ func (r *Runtime) handleStart(state *tableState, playerID protocol.PlayerID) pro
 	return protocol.CommandResponse{Accepted: true}
 }
 
-func (r *Runtime) nextPlayerID(state *tableState) protocol.PlayerID {
+func (r *Table) nextPlayerID(state *tableState) protocol.PlayerID {
 	for {
 		state.nextPlayerSeq++
 		candidate := protocol.PlayerID(fmt.Sprintf("p-%d", state.nextPlayerSeq))
@@ -604,7 +592,7 @@ func (r *Runtime) nextPlayerID(state *tableState) protocol.PlayerID {
 	}
 }
 
-func (r *Runtime) handlePlay(state *tableState, playerID protocol.PlayerID, cardRaw string) protocol.CommandResponse {
+func (r *Table) handlePlay(state *tableState, playerID protocol.PlayerID, cardRaw string) protocol.CommandResponse {
 	card, err := game.ParseCard(cardRaw)
 	if err != nil {
 		return protocol.CommandResponse{Accepted: false, Reason: err.Error()}
@@ -613,7 +601,7 @@ func (r *Runtime) handlePlay(state *tableState, playerID protocol.PlayerID, card
 	if state.round == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "round is not running"}
 	}
-	if state.round.Phase != roundPhasePlaying {
+	if state.round.Phase() != game.PhasePlaying {
 		return protocol.CommandResponse{Accepted: false, Reason: "round is not in play phase"}
 	}
 
@@ -621,87 +609,64 @@ func (r *Runtime) handlePlay(state *tableState, playerID protocol.PlayerID, card
 	if player == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "player is not seated"}
 	}
-	if player.Seat != state.round.TurnSeat {
+	if player.position != state.round.TurnSeat() {
 		return protocol.CommandResponse{Accepted: false, Reason: "not your turn"}
 	}
 
-	err = game.ValidatePlay(game.ValidatePlayInput{
-		Hand:         player.Hand(),
-		Card:         card,
-		Trick:        currentTrickCards(state.round),
-		HeartsBroken: state.round.HeartsBroken,
-		FirstTrick:   state.round.TrickNumber == 0,
+	heartsBrokenBefore := state.round.HeartsBroken()
+	trickResult, err := state.round.Play(player.position, card)
+	if err != nil {
+		return protocol.CommandResponse{Accepted: false, Reason: err.Error()}
+	}
+
+	breaksHearts := card.Suit == game.SuitHearts && !heartsBrokenBefore
+	r.publishPublic(protocol.EventCardPlayed, protocol.CardPlayedData{
+		PlayerID: playerID, Card: card.String(), BreaksHearts: breaksHearts,
 	})
-	if err != nil {
-		return protocol.CommandResponse{Accepted: false, Reason: err.Error()}
-	}
+	r.publishPrivate(playerID, protocol.EventHandUpdated, protocol.HandUpdatedData{
+		Cards: game.CardStrings(state.round.Hand(player.position)),
+	})
 
-	update, err := r.applyValidatedPlay(state.round, player, card)
-	if err != nil {
-		return protocol.CommandResponse{Accepted: false, Reason: err.Error()}
-	}
-
-	if len(state.round.Trick) < game.PlayersPerTable {
-		nextSeat := (state.round.TurnSeat + 1) % game.PlayersPerTable
+	if trickResult == nil {
+		// Trick not complete — advance to next player.
+		nextSeat := state.round.TurnSeat()
 		nextPlayer := state.players[nextSeat]
-		trickNumber := state.round.TrickNumber
-		state.round.TurnSeat = nextSeat
-
-		r.publishPlayAndHand(update)
-		r.publishTurn(nextPlayer.id, trickNumber)
+		r.publishTurn(nextPlayer.id, state.round.TrickNumber())
 		r.scheduleBotTurn(state, nextPlayer)
 		return protocol.CommandResponse{Accepted: true}
 	}
 
-	winner, points, err := game.TrickWinner(currentTrickPlays(state.round))
-	if err != nil {
-		return protocol.CommandResponse{Accepted: false, Reason: err.Error()}
+	// Trick completed.
+	winnerPlayer := state.players[trickResult.WinnerSeat]
+	trickCompleted := protocol.TrickCompletedData{
+		TrickNumber:    trickResult.TrickNumber,
+		WinnerPlayerID: winnerPlayer.id,
+		Points:         trickResult.Points,
 	}
 
-	winner.AddTrickPoints(points)
-	var nextSeat int
-	for _, tp := range state.round.Trick {
-		if tp.Player == winner {
-			nextSeat = tp.Seat
-			break
-		}
-	}
-	winnerPlayerID := state.players[nextSeat].id
-	trickNumber := state.round.TrickNumber
-	trickCompleted := protocol.TrickCompletedData{TrickNumber: trickNumber, WinnerPlayerID: winnerPlayerID, Points: points}
-
-	if trickNumber == 12 {
+	if state.round.Phase() == game.PhaseComplete {
+		// Last trick — round is complete.
 		roundCompleted := r.completeRound(state)
-		state.round = nil
-
-		r.publishPlayAndHand(update)
 		r.publishPublic(protocol.EventTrickCompleted, trickCompleted)
 		r.publishPublic(protocol.EventRoundCompleted, roundCompleted)
+		state.round = nil
 		r.maybeEndGame(state)
 		return protocol.CommandResponse{Accepted: true}
 	}
-	nextTrick := trickNumber + 1
 
-	for _, tp := range state.round.Trick {
-		state.round.PlayedCards = append(state.round.PlayedCards, tp.Card)
-	}
-	state.round.Trick = nil
-	state.round.TrickNumber = nextTrick
-	state.round.TurnSeat = nextSeat
-
-	r.publishPlayAndHand(update)
+	// More tricks to play.
 	r.publishPublic(protocol.EventTrickCompleted, trickCompleted)
-	r.publishTurn(winnerPlayerID, nextTrick)
-	r.scheduleBotTurn(state, state.players[nextSeat])
+	r.publishTurn(winnerPlayer.id, state.round.TrickNumber())
+	r.scheduleBotTurn(state, winnerPlayer)
 
 	return protocol.CommandResponse{Accepted: true}
 }
 
-func (r *Runtime) handlePass(state *tableState, playerID protocol.PlayerID, cardsRaw []string) protocol.CommandResponse {
+func (r *Table) handlePass(state *tableState, playerID protocol.PlayerID, cardsRaw []string) protocol.CommandResponse {
 	if state.round == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "round is not running"}
 	}
-	if state.round.Phase != roundPhasePassing {
+	if state.round.Phase() != game.PhasePassing {
 		return protocol.CommandResponse{Accepted: false, Reason: "round is not in pass phase"}
 	}
 
@@ -709,20 +674,22 @@ func (r *Runtime) handlePass(state *tableState, playerID protocol.PlayerID, card
 	if player == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "player is not seated"}
 	}
-	if player.HasSubmittedPass() {
+	if state.round.HasSubmittedPass(player.position) {
 		return protocol.CommandResponse{Accepted: false, Reason: "pass already submitted"}
 	}
 
-	passCards, err := r.parseAndValidatePassCards(player.Hand(), cardsRaw)
+	passCards, err := r.parseAndValidatePassCards(state.round.Hand(player.position), cardsRaw)
 	if err != nil {
 		return protocol.CommandResponse{Accepted: false, Reason: err.Error()}
 	}
 
-	player.SubmitPass(passCards)
+	if err := state.round.SubmitPass(player.position, passCards); err != nil {
+		return protocol.CommandResponse{Accepted: false, Reason: err.Error()}
+	}
 
 	submitted := 0
-	for _, p := range state.players {
-		if p.HasSubmittedPass() {
+	for i := 0; i < game.PlayersPerTable; i++ {
+		if state.round.HasSubmittedPass(i) {
 			submitted++
 		}
 	}
@@ -730,35 +697,35 @@ func (r *Runtime) handlePass(state *tableState, playerID protocol.PlayerID, card
 	r.publishPublic(protocol.EventPassSubmitted, protocol.PassStatusData{
 		Submitted: submitted,
 		Total:     game.PlayersPerTable,
-		Direction: state.round.PassDirection,
+		Direction: state.round.PassDirection(),
 	})
 
 	if submitted < game.PlayersPerTable {
 		return protocol.CommandResponse{Accepted: true}
 	}
 
-	r.applyPassSubmissions(state)
+	_ = state.round.ApplyPasses()
 	r.startPassReview(state)
 
 	return protocol.CommandResponse{Accepted: true}
 }
 
-func (r *Runtime) handleReadyAfterPass(state *tableState, playerID protocol.PlayerID) protocol.CommandResponse {
+func (r *Table) handleReadyAfterPass(state *tableState, playerID protocol.PlayerID) protocol.CommandResponse {
 	if state.round == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "round is not running"}
 	}
-	if state.round.Phase != roundPhasePassReview {
+	if state.round.Phase() != game.PhasePassReview {
 		return protocol.CommandResponse{Accepted: false, Reason: "round is not in pass review"}
 	}
 	if state.playersByID[playerID] == nil {
 		return protocol.CommandResponse{Accepted: false, Reason: "player is not seated"}
 	}
 
-	state.playersByID[playerID].MarkPassReady()
+	_ = state.round.MarkReady(state.playersByID[playerID].position)
 
 	ready := 0
-	for _, p := range state.players {
-		if p.PassReady() {
+	for i := 0; i < game.PlayersPerTable; i++ {
+		if state.round.IsPassReady(i) {
 			ready++
 		}
 	}
@@ -772,11 +739,12 @@ func (r *Runtime) handleReadyAfterPass(state *tableState, playerID protocol.Play
 		return protocol.CommandResponse{Accepted: true}
 	}
 
-	r.startPlayPhase(state)
+	_ = state.round.StartPlaying()
+	r.publishPlayPhaseStart(state)
 	return protocol.CommandResponse{Accepted: true}
 }
 
-func (r *Runtime) parseAndValidatePassCards(hand []game.Card, cardsRaw []string) ([]game.Card, error) {
+func (r *Table) parseAndValidatePassCards(hand []game.Card, cardsRaw []string) ([]game.Card, error) {
 	if len(cardsRaw) != 3 {
 		return nil, fmt.Errorf("pass requires exactly 3 cards")
 	}
@@ -802,123 +770,87 @@ func (r *Runtime) parseAndValidatePassCards(hand []game.Card, cardsRaw []string)
 	return cards, nil
 }
 
-func (r *Runtime) applyPassSubmissions(state *tableState) {
-	var passes [game.PlayersPerTable][]game.Card
-	for seat, player := range state.players {
-		passes[seat] = player.PassSent()
-	}
-
-	received := game.ExchangePasses(passes, state.round.PassDirection)
-
-	for seat, player := range state.players {
-		player.SendPassCards()
-		player.ReceivePassCards(received[seat])
-	}
-}
-
-func (r *Runtime) startPassReview(state *tableState) {
-	state.round.Phase = roundPhasePassReview
-	ready := 0
+func (r *Table) startPassReview(state *tableState) {
+	// Auto-mark bots ready.
 	for _, player := range state.players {
-		if _, isBot := player.Participant.(bot.Bot); isBot {
-			player.MarkPassReady()
+		if player.bot != nil {
+			_ = state.round.MarkReady(player.position)
 		}
-		if player.PassReady() {
+	}
+
+	ready := 0
+	for i := 0; i < game.PlayersPerTable; i++ {
+		if state.round.IsPassReady(i) {
 			ready++
 		}
-		r.publishPrivate(player.id, protocol.EventHandUpdated, protocol.HandUpdatedData{Cards: game.CardStrings(player.Hand())})
+	}
+
+	for _, player := range state.players {
+		r.publishPrivate(player.id, protocol.EventHandUpdated, protocol.HandUpdatedData{Cards: game.CardStrings(state.round.Hand(player.position))})
 	}
 
 	r.publishPublic(protocol.EventPassReviewStarted, protocol.PassStatusData{
 		Submitted: game.PlayersPerTable,
 		Total:     game.PlayersPerTable,
-		Direction: state.round.PassDirection,
+		Direction: state.round.PassDirection(),
 	})
 	r.publishPublic(protocol.EventPassReadyChanged, protocol.PassReadyData{Ready: ready, Total: game.PlayersPerTable})
 
 	if ready == game.PlayersPerTable {
-		r.startPlayPhase(state)
+		_ = state.round.StartPlaying()
+		r.publishPlayPhaseStart(state)
 	}
 }
 
-func (r *Runtime) startPlayPhase(state *tableState) {
+func (r *Table) publishPlayPhaseStart(state *tableState) {
 	if state.round == nil {
 		return
 	}
-
-	state.round.Phase = roundPhasePlaying
-	state.round.Trick = nil
-	state.round.TrickNumber = 0
-	state.round.HeartsBroken = false
-
-	startSeat := r.findTwoClubsSeat(state)
-	state.round.TurnSeat = startSeat
-	turnPlayer := state.players[startSeat]
-
+	turnSeat := state.round.TurnSeat()
+	turnPlayer := state.players[turnSeat]
 	r.publishTurn(turnPlayer.id, 0)
 	r.scheduleBotTurn(state, turnPlayer)
 }
 
-func (r *Runtime) findTwoClubsSeat(state *tableState) int {
-	twoClubs := game.Card{Suit: game.SuitClubs, Rank: 2}
-	for _, player := range state.players {
-		if game.ContainsCard(player.Hand(), twoClubs) {
-			return player.Seat
-		}
-	}
-
-	return 0
-}
-
-func (r *Runtime) handleBotTurn(state *tableState, playerID protocol.PlayerID) {
-	if state.round == nil || state.round.Phase != roundPhasePlaying {
+func (r *Table) handleBotTurn(state *tableState, playerID protocol.PlayerID) {
+	if state.round == nil || state.round.Phase() != game.PhasePlaying {
 		return
 	}
 
 	player := state.playersByID[playerID]
-	if player == nil || player.Seat != state.round.TurnSeat {
+	if player == nil || player.bot == nil || player.position != state.round.TurnSeat() {
 		return
 	}
 
-	b, ok := player.Participant.(bot.Bot)
-	if !ok {
-		return
-	}
-
-	card, err := b.ChoosePlay(bot.TurnInput{
-		Hand:         player.Hand(),
-		Trick:        currentTrickCards(state.round),
-		HeartsBroken: state.round.HeartsBroken,
-		FirstTrick:   state.round.TrickNumber == 0,
-		PlayedCards:  state.round.PlayedCards,
-	})
+	input := state.round.TurnInput(player.position)
+	card, err := player.bot.ChoosePlay(input)
 	if err != nil {
 		return
 	}
-
 	_ = r.handlePlay(state, playerID, card.String())
 }
 
-func (r *Runtime) handleBotPass(state *tableState, playerID protocol.PlayerID) {
-	if state.round == nil || state.round.Phase != roundPhasePassing {
+func (r *Table) handleBotPass(state *tableState, playerID protocol.PlayerID) {
+	if state.round == nil || state.round.Phase() != game.PhasePassing {
 		return
 	}
 
 	player := state.playersByID[playerID]
-	if player == nil || player.HasSubmittedPass() {
+	if player == nil || player.bot == nil || state.round.HasSubmittedPass(player.position) {
 		return
 	}
 
-	cards, err := r.chooseBotPassCards(player, state.round.PassDirection)
+	input := state.round.PassInput(player.position)
+	cards, err := player.bot.ChoosePass(input)
 	if err != nil {
 		return
 	}
 
-	_ = r.handlePass(state, playerID, cards)
+	_ = r.handlePass(state, playerID, game.CardStrings(cards))
 }
 
-func (r *Runtime) scheduleBotTurn(state *tableState, player *playerState) {
-	if _, ok := player.Participant.(bot.Bot); !ok {
+func (r *Table) scheduleBotTurn(_ *tableState, player *playerState) {
+	if player.bot == nil {
 		return
 	}
 
@@ -937,21 +869,20 @@ func (r *Runtime) scheduleBotTurn(state *tableState, player *playerState) {
 	}()
 }
 
-func (r *Runtime) schedulePassingBots(state *tableState) {
-	if state.round == nil || state.round.Phase != roundPhasePassing {
+func (r *Table) schedulePassingBots(state *tableState) {
+	if state.round == nil || state.round.Phase() != game.PhasePassing {
 		return
 	}
 
 	for _, player := range state.players {
-		if _, isBot := player.Participant.(bot.Bot); !isBot {
-			continue
+		if player.bot != nil {
+			r.scheduleBotPass(player)
 		}
-		r.scheduleBotPass(player)
 	}
 }
 
-func (r *Runtime) scheduleBotPass(player *playerState) {
-	if _, ok := player.Participant.(bot.Bot); !ok {
+func (r *Table) scheduleBotPass(player *playerState) {
+	if player.bot == nil {
 		return
 	}
 
@@ -970,24 +901,7 @@ func (r *Runtime) scheduleBotPass(player *playerState) {
 	}()
 }
 
-func (r *Runtime) chooseBotPassCards(player *playerState, dir game.PassDirection) ([]string, error) {
-	b, ok := player.Participant.(bot.Bot)
-	if !ok {
-		return nil, fmt.Errorf("not a bot")
-	}
-
-	cards, err := b.ChoosePass(bot.PassInput{
-		Hand:      append([]game.Card(nil), player.Hand()...),
-		Direction: dir,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return game.CardStrings(cards), nil
-}
-
-func (r *Runtime) validateStartPreconditions(state *tableState, playerID protocol.PlayerID) string {
+func (r *Table) validateStartPreconditions(state *tableState, playerID protocol.PlayerID) string {
 	if state.gameOver {
 		return "game is over"
 	}
@@ -1006,30 +920,21 @@ func (r *Runtime) validateStartPreconditions(state *tableState, playerID protoco
 	return ""
 }
 
-func (r *Runtime) initializeRound(state *tableState) map[protocol.PlayerID][]string {
+func (r *Table) initializeRound(state *tableState) *game.Round {
 	passDirection := game.PassDirectionForRound(state.roundsStarted)
 	state.roundsStarted++
 
-	var handSlices [game.PlayersPerTable][]game.Card
+	var hands [game.PlayersPerTable][]game.Card
 	deck := defaultShuffledDeck()
 	for i, card := range deck {
 		seat := i % game.PlayersPerTable
-		handSlices[seat] = append(handSlices[seat], card)
+		hands[seat] = append(hands[seat], card)
+	}
+	for i := range hands {
+		game.SortCards(hands[i])
 	}
 
-	hands := make(map[protocol.PlayerID][]string, len(state.players))
-	for _, player := range state.players {
-		game.SortCards(handSlices[player.Seat])
-		player.DealCards(handSlices[player.Seat])
-		hands[player.id] = game.CardStrings(player.Hand())
-	}
-
-	state.round = &roundState{
-		Phase:         roundPhasePassing,
-		PassDirection: passDirection,
-	}
-
-	return hands
+	return game.NewRound(hands, passDirection)
 }
 
 func defaultShuffledDeck() []game.Card {
@@ -1039,82 +944,38 @@ func defaultShuffledDeck() []game.Card {
 	return deck
 }
 
-func (r *Runtime) publishRoundStart(state *tableState, hands map[protocol.PlayerID][]string) {
+func (r *Table) publishRoundStart(state *tableState, hands map[protocol.PlayerID][]string) {
 	r.publishPublic(protocol.EventGameStarted, struct{}{})
 	for playerID, cards := range hands {
 		r.publishPrivate(playerID, protocol.EventHandUpdated, protocol.HandUpdatedData{Cards: cards})
 	}
 
-	if state.round != nil && state.round.PassDirection != game.PassDirectionHold {
+	if state.round != nil && state.round.PassDirection() != game.PassDirectionHold {
 		r.publishPublic(protocol.EventPassSubmitted, protocol.PassStatusData{
 			Submitted: 0,
 			Total:     game.PlayersPerTable,
-			Direction: state.round.PassDirection,
+			Direction: state.round.PassDirection(),
 		})
 	}
 }
 
-func currentTrickCards(round *roundState) []game.Card {
-	cards := make([]game.Card, len(round.Trick))
-	for i, played := range round.Trick {
-		cards[i] = played.Card
-	}
-	return cards
-}
-
-func currentTrickPlays(round *roundState) []game.Play {
-	plays := make([]game.Play, len(round.Trick))
-	for i, played := range round.Trick {
-		plays[i] = game.Play{Player: played.Player, Card: played.Card}
-	}
-	return plays
-}
-
-func (r *Runtime) applyValidatedPlay(round *roundState, player *playerState, card game.Card) (playUpdate, error) {
-	if !player.PlayCard(card) {
-		return playUpdate{}, fmt.Errorf("card not found in hand")
-	}
-
-	breaksHearts := card.Suit == game.SuitHearts && !round.HeartsBroken
-	if card.Suit == game.SuitHearts {
-		round.HeartsBroken = true
-	}
-
-	round.Trick = append(round.Trick, trickPlay{Seat: player.Seat, Player: player.Participant, Card: card})
-
-	return playUpdate{
-		playerID:    player.id,
-		cardPlayed:  protocol.CardPlayedData{PlayerID: player.id, Card: card.String(), BreaksHearts: breaksHearts},
-		handUpdated: protocol.HandUpdatedData{Cards: game.CardStrings(player.Hand())},
-	}, nil
-}
-
-func (r *Runtime) publishPlayAndHand(update playUpdate) {
-	r.publishPublic(protocol.EventCardPlayed, update.cardPlayed)
-	r.publishPrivate(update.playerID, protocol.EventHandUpdated, update.handUpdated)
-}
-
-func (r *Runtime) publishTurn(playerID protocol.PlayerID, trickNumber int) {
+func (r *Table) publishTurn(playerID protocol.PlayerID, trickNumber int) {
 	r.publishPublic(protocol.EventTurnChanged, protocol.TurnChangedData{PlayerID: playerID, TrickNumber: trickNumber})
 	r.publishPrivate(playerID, protocol.EventYourTurn, protocol.YourTurnData{PlayerID: playerID, TrickNumber: trickNumber})
 }
 
-func (r *Runtime) completeRound(state *tableState) protocol.RoundCompletedData {
-	var rawPoints [game.PlayersPerTable]game.Points
-	for i, player := range state.players {
-		rawPoints[i] = player.RoundPoints()
-	}
-	adjusted := game.ApplyShootTheMoon(rawPoints)
+func (r *Table) completeRound(state *tableState) protocol.RoundCompletedData {
+	scores := state.round.Scores()
 	adjustedRound := make(map[protocol.PlayerID]game.Points, len(state.players))
 	for i, player := range state.players {
-		player.FinalizeRound(adjusted[i])
-		adjustedRound[player.id] = adjusted[i]
+		player.cumulativePoints += scores.Adjusted[i]
+		adjustedRound[player.id] = scores.Adjusted[i]
 	}
 	state.roundHistory = append(state.roundHistory, adjustedRound)
 
 	totals := make(map[protocol.PlayerID]game.Points, len(state.players))
 	for _, player := range state.players {
-		totals[player.id] = player.CumulativePoints()
+		totals[player.id] = player.cumulativePoints
 	}
 	return protocol.RoundCompletedData{
 		RoundPoints: copyPoints(adjustedRound),
@@ -1144,13 +1005,13 @@ func computeWinners(totals map[protocol.PlayerID]game.Points) []protocol.PlayerI
 	return winners
 }
 
-func (r *Runtime) maybeEndGame(state *tableState) {
+func (r *Table) maybeEndGame(state *tableState) {
 	for _, player := range state.players {
-		if player.CumulativePoints() >= gameOverThreshold {
+		if player.cumulativePoints >= gameOverThreshold {
 			state.gameOver = true
 			totals := make(map[protocol.PlayerID]game.Points, len(state.players))
 			for _, p := range state.players {
-				totals[p.id] = p.CumulativePoints()
+				totals[p.id] = p.cumulativePoints
 			}
 			r.publishPublic(protocol.EventGameOver, protocol.GameOverData{
 				FinalScores: copyPoints(totals),
@@ -1161,30 +1022,33 @@ func (r *Runtime) maybeEndGame(state *tableState) {
 	}
 }
 
-func (r *Runtime) buildBotHands(state *tableState) []BotHandSnapshot {
+func (r *Table) buildBotHands(state *tableState) []BotHandSnapshot {
 	var out []BotHandSnapshot
 	for _, p := range state.players {
-		if _, isBot := p.Participant.(bot.Bot); !isBot {
+		if p.bot == nil {
 			continue
 		}
-		cards := make([]string, 0, len(p.Hand()))
-		for _, c := range p.Hand() {
+		var hand []game.Card
+		if state.round != nil {
+			hand = state.round.Hand(p.position)
+		}
+		cards := make([]string, 0, len(hand))
+		for _, c := range hand {
 			cards = append(cards, c.String())
 		}
-		out = append(out, BotHandSnapshot{Name: p.Name, Seat: p.Seat, Cards: cards})
+		out = append(out, BotHandSnapshot{Name: p.Name, Seat: p.position, Cards: cards})
 	}
 	return out
 }
 
-func (r *Runtime) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) Snapshot {
+func (r *Table) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) Snapshot {
 	playerSnapshots := make([]PlayerSnapshot, 0, len(state.players))
 	for _, player := range state.players {
-		_, isBot := player.Participant.(bot.Bot)
 		playerSnapshots = append(playerSnapshots, PlayerSnapshot{
 			PlayerID: player.id,
 			Name:     player.Name,
-			Seat:     player.Seat,
-			IsBot:    isBot,
+			Seat:     player.position,
+			IsBot:    player.bot != nil,
 		})
 	}
 	sort.Slice(playerSnapshots, func(i, j int) bool {
@@ -1193,7 +1057,7 @@ func (r *Runtime) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) 
 
 	totals := make(map[protocol.PlayerID]game.Points, len(state.players))
 	for _, player := range state.players {
-		totals[player.id] = player.CumulativePoints()
+		totals[player.id] = player.cumulativePoints
 	}
 
 	snapshot := Snapshot{
@@ -1212,35 +1076,36 @@ func (r *Runtime) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) 
 		snapshot.Winners = computeWinners(totals)
 	}
 
-	for _, player := range state.players {
-		snapshot.HandSizes[player.id] = len(player.Hand())
-	}
-
 	if state.round != nil {
-		snapshot.Phase = string(state.round.Phase)
-		snapshot.TrickNumber = state.round.TrickNumber
-		if state.round.Phase == roundPhasePlaying {
-			snapshot.TurnPlayerID = state.players[state.round.TurnSeat].id
+		for _, player := range state.players {
+			snapshot.HandSizes[player.id] = len(state.round.Hand(player.position))
 		}
-		snapshot.HeartsBroken = state.round.HeartsBroken
-		snapshot.PassDirection = state.round.PassDirection
+
+		snapshot.Phase = roundPhaseString(state.round.Phase())
+		snapshot.TrickNumber = state.round.TrickNumber()
+		if state.round.Phase() == game.PhasePlaying {
+			snapshot.TurnPlayerID = state.players[state.round.TurnSeat()].id
+		}
+		snapshot.HeartsBroken = state.round.HeartsBroken()
+		snapshot.PassDirection = state.round.PassDirection()
 
 		submitted := 0
 		readyCount := 0
-		for _, p := range state.players {
-			if p.HasSubmittedPass() {
+		for i := 0; i < game.PlayersPerTable; i++ {
+			if state.round.HasSubmittedPass(i) {
 				submitted++
 			}
-			if p.PassReady() {
+			if state.round.IsPassReady(i) {
 				readyCount++
 			}
 		}
 		snapshot.PassSubmittedCount = submitted
 		snapshot.PassReadyCount = readyCount
 
-		snapshot.CurrentTrick = make([]string, 0, len(state.round.Trick))
-		snapshot.TrickPlays = make([]TrickPlaySnapshot, 0, len(state.round.Trick))
-		for _, played := range state.round.Trick {
+		trick := state.round.CurrentTrick()
+		snapshot.CurrentTrick = make([]string, 0, len(trick))
+		snapshot.TrickPlays = make([]TrickPlaySnapshot, 0, len(trick))
+		for _, played := range trick {
 			snapshot.CurrentTrick = append(snapshot.CurrentTrick, played.Card.String())
 			p := state.players[played.Seat]
 			snapshot.TrickPlays = append(snapshot.TrickPlays, TrickPlaySnapshot{
@@ -1252,36 +1117,49 @@ func (r *Runtime) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) 
 		}
 
 		roundPoints := make(map[protocol.PlayerID]game.Points, len(state.players))
-		for _, p := range state.players {
-			roundPoints[p.id] = p.RoundPoints()
+		for i, p := range state.players {
+			roundPoints[p.id] = state.round.RoundPoints(i)
 		}
 		snapshot.RoundPoints = roundPoints
 	}
 
 	if forPlayer != "" {
-		if player := state.playersByID[forPlayer]; player != nil {
-			snapshot.Hand = game.CardStrings(player.Hand())
-			if state.round != nil {
-				snapshot.PassSubmitted = player.HasSubmittedPass()
-				snapshot.PassReady = player.PassReady()
-				snapshot.PassSent = game.CardStrings(player.PassSent())
-				snapshot.PassReceived = game.CardStrings(player.PassReceived())
-			}
+		if player := state.playersByID[forPlayer]; player != nil && state.round != nil {
+			snapshot.Hand = game.CardStrings(state.round.Hand(player.position))
+			snapshot.PassSubmitted = state.round.HasSubmittedPass(player.position)
+			snapshot.PassReady = state.round.IsPassReady(player.position)
+			snapshot.PassSent = game.CardStrings(state.round.PassSent(player.position))
+			snapshot.PassReceived = game.CardStrings(state.round.PassReceived(player.position))
 		}
 	}
 
 	return snapshot
 }
 
-func (r *Runtime) publishPublic(eventType protocol.EventType, payload any) {
+func roundPhaseString(phase game.RoundPhase) string {
+	switch phase {
+	case game.PhasePassing:
+		return "passing"
+	case game.PhasePassReview:
+		return "pass_review"
+	case game.PhasePlaying:
+		return "playing"
+	case game.PhaseComplete:
+		return "complete"
+	default:
+		return ""
+	}
+}
+
+func (r *Table) publishPublic(eventType protocol.EventType, payload any) {
 	r.emit(StreamEvent{Type: eventType, Data: payload})
 }
 
-func (r *Runtime) publishPrivate(playerID protocol.PlayerID, eventType protocol.EventType, payload any) {
+func (r *Table) publishPrivate(playerID protocol.PlayerID, eventType protocol.EventType, payload any) {
 	r.emit(StreamEvent{Type: eventType, Data: payload, PrivateTo: playerID})
 }
 
-func (r *Runtime) emit(event StreamEvent) {
+func (r *Table) emit(event StreamEvent) {
 	r.subsMu.RLock()
 	defer r.subsMu.RUnlock()
 

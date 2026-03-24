@@ -7,15 +7,12 @@ import (
 	"github.com/JHK/hearts/internal/game"
 )
 
-type Dumb struct {
-	*game.Player
-}
+type Dumb struct{}
 
 var dumbBotNames = []string{"Linus", "Ken", "Dennis", "Anita", "Bob", "Dave", "Carol", "Ted"}
 
-func (d *Dumb) Kind() StrategyKind   { return StrategyDumb }
-func (d *Dumb) BotName() string      { return randomFrom(dumbBotNames) }
-func (d *Dumb) Unwrap() *game.Player { return d.Player }
+func (d *Dumb) Kind() StrategyKind { return StrategyDumb }
+
 
 func chooseSmartLead(hand []game.Card, legal []game.Card) game.Card {
 	nonHearts := filterCards(legal, func(card game.Card) bool {
@@ -99,10 +96,10 @@ func chooseSmartDiscard(legal []game.Card) game.Card {
 
 // NewDumbBot creates a dumb bot for testing.
 func NewDumbBot() *Dumb {
-	return &Dumb{Player: game.NewPlayer()}
+	return &Dumb{}
 }
 
-func (s *Dumb) ChoosePlay(input TurnInput) (game.Card, error) {
+func (s *Dumb) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
 	if len(legal) == 0 {
 		return game.Card{}, fmt.Errorf("no legal plays")
@@ -120,7 +117,7 @@ func (s *Dumb) ChoosePlay(input TurnInput) (game.Card, error) {
 	return chooseSmartDiscard(legal), nil
 }
 
-func (s *Dumb) ChoosePass(input PassInput) ([]game.Card, error) {
+func (s *Dumb) ChoosePass(input game.PassInput) ([]game.Card, error) {
 	if len(input.Hand) < 3 {
 		return nil, fmt.Errorf("not enough cards to pass")
 	}

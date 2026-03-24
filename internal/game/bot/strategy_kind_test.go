@@ -52,17 +52,3 @@ func TestStrategyKindNew(t *testing.T) {
 		t.Fatalf("expected FirstLegal bot")
 	}
 }
-
-func TestStrategyKindWrapPlayerPreservesState(t *testing.T) {
-	b := StrategyDumb.NewBot()
-	b.DealCards(mustParseCards(t, []string{"AC", "KH"}))
-	b.AddTrickPoints(5)
-
-	wrapped := StrategyRandom.WrapPlayer(b.Unwrap())
-	if len(wrapped.Hand()) != 2 {
-		t.Fatalf("expected 2 cards in hand, got %d", len(wrapped.Hand()))
-	}
-	if wrapped.RoundPoints() != 5 {
-		t.Fatalf("expected round points 5, got %d", wrapped.RoundPoints())
-	}
-}

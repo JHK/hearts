@@ -17,7 +17,7 @@ func TestSmartPassSelectsMoonShotStrategy(t *testing.T) {
 		"2S", "3S", "4S",
 	})
 
-	cards, err := NewSmartBot().ChoosePass(PassInput{Hand: hand, Direction: game.PassDirectionLeft})
+	cards, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand, Direction: game.PassDirectionLeft})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestSmartPassSelectsDefensiveStrategyForShortSuit(t *testing.T) {
 		"2H", "4H", "6H", "8H",
 	})
 
-	cards, err := NewSmartBot().ChoosePass(PassInput{Hand: hand, Direction: "left"})
+	cards, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand, Direction: "left"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestSmartPassSelectsDefensiveStrategy(t *testing.T) {
 		"QS", "AS", "KH", "2C", "3C", "4D", "5D", "6H", "7H", "8S", "9S", "TC", "JD",
 	})
 
-	cards, err := NewSmartBot().ChoosePass(PassInput{Hand: hand, Direction: "left"})
+	cards, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand, Direction: "left"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestSmartPlaysAceWhenOnlyLegalOption(t *testing.T) {
 	hand := parseCards(t, []string{"AC", "7H"})
 	played := parseCards(t, []string{"KC", "QC"})
 
-	card, err := NewSmartBot().ChoosePlay(TurnInput{
+	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
 		Trick:       nil,
 		PlayedCards: played,
@@ -114,7 +114,7 @@ func TestSmartDoesNotLeadUnsafeKing(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "2D", "3D", "4D"})
 	played := parseCards(t, []string{"QC"}) // A♣ still outstanding
 
-	card, err := NewSmartBot().ChoosePlay(TurnInput{
+	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
 		Trick:       nil,
 		PlayedCards: played,
@@ -139,7 +139,7 @@ func TestSmartDefensiveLeadPrefersLowestRankOverShortestSuit(t *testing.T) {
 		"4H", "KH",
 	})
 
-	card, err := NewSmartBot().ChoosePlay(TurnInput{
+	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
 		Trick:       nil,
 		PlayedCards: nil,
@@ -158,7 +158,7 @@ func TestSmartDefensiveLeadPrefersLowHeartOverHighSpade(t *testing.T) {
 	// highest non-winning heart (shed borderline cards first).
 	hand := parseCards(t, []string{"KS", "2H", "3H", "5H", "6H"})
 
-	card, err := NewSmartBot().ChoosePlay(TurnInput{
+	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        nil,
 		HeartsBroken: true,
@@ -184,7 +184,7 @@ func TestSmartDefensiveLeadAvoidsGuaranteedWinner(t *testing.T) {
 	// Defensive mode must prefer 5♦ to avoid inviting Q♠ dumps from void opponents.
 	hand := parseCards(t, []string{"AC", "KC", "5D"})
 
-	card, err := NewSmartBot().ChoosePlay(TurnInput{
+	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
 		Trick:       nil,
 		PlayedCards: nil,
@@ -203,7 +203,7 @@ func TestSmartDiscardsQueenOfSpadesWhenVoid(t *testing.T) {
 	// Can't follow clubs → should dump Q♠
 	hand := parseCards(t, []string{"QS", "AH", "2D"})
 
-	card, err := NewSmartBot().ChoosePlay(TurnInput{
+	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        parseCards(t, []string{"5C"}),
 		HeartsBroken: true,
@@ -220,7 +220,7 @@ func TestSmartDiscardsHighHeartWhenVoidAndNoQueenSpades(t *testing.T) {
 	// Can't follow clubs, no Q♠ → discard highest heart
 	hand := parseCards(t, []string{"AH", "KH", "2D"})
 
-	card, err := NewSmartBot().ChoosePlay(TurnInput{
+	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        parseCards(t, []string{"5C"}),
 		HeartsBroken: true,
@@ -288,7 +288,7 @@ func TestSmartAbortsMoonShotWhenOtherLeads(t *testing.T) {
 	// Not first trick; trick already has a card (someone else led) → abort
 	hand := parseCards(t, []string{"AH", "KH"})
 
-	_, err := bot.ChoosePlay(TurnInput{
+	_, err := bot.ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        parseCards(t, []string{"3D"}), // someone else led
 		HeartsBroken: false,
@@ -310,7 +310,7 @@ func TestSmartContinuesMoonShotWhenLeadingEveryTrick(t *testing.T) {
 	// Bot is leading (trick is empty), not first trick → should NOT abort
 	hand := parseCards(t, []string{"AH", "KH", "QH", "JH"})
 
-	_, err := bot.ChoosePlay(TurnInput{
+	_, err := bot.ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        nil, // bot is leading
 		HeartsBroken: true,
@@ -331,7 +331,7 @@ func TestSmartContinuesMoonShotWhenLeadingEveryTrick(t *testing.T) {
 func TestSmartChoosePassRequiresThreeCards(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "3D"})
 
-	_, err := NewSmartBot().ChoosePass(PassInput{Hand: hand})
+	_, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand})
 	if err == nil {
 		t.Fatal("expected not enough cards error")
 	}

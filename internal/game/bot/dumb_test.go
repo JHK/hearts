@@ -1,11 +1,15 @@
 package bot
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/JHK/hearts/internal/game"
+)
 
 func TestDumbChoosePlayLeadsShortestNonHeartSuit(t *testing.T) {
 	hand := parseCards(t, []string{"3D", "9D", "2S", "KH"})
 
-	card, err := NewDumbBot().ChoosePlay(TurnInput{
+	card, err := NewDumbBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        nil,
 		HeartsBroken: false,
@@ -23,7 +27,7 @@ func TestDumbChoosePlayLeadsShortestNonHeartSuit(t *testing.T) {
 func TestDumbChoosePlayAvoidsTakingPenaltyTrick(t *testing.T) {
 	hand := parseCards(t, []string{"TS", "KS", "3C"})
 
-	card, err := NewDumbBot().ChoosePlay(TurnInput{
+	card, err := NewDumbBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        parseCards(t, []string{"JS", "QS"}),
 		HeartsBroken: true,
@@ -41,7 +45,7 @@ func TestDumbChoosePlayAvoidsTakingPenaltyTrick(t *testing.T) {
 func TestDumbChoosePlayDiscardsQueenOfSpades(t *testing.T) {
 	hand := parseCards(t, []string{"QS", "AH", "2D"})
 
-	card, err := NewDumbBot().ChoosePlay(TurnInput{
+	card, err := NewDumbBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        parseCards(t, []string{"5C"}),
 		HeartsBroken: true,
@@ -59,7 +63,7 @@ func TestDumbChoosePlayDiscardsQueenOfSpades(t *testing.T) {
 func TestDumbChoosePassPrefersDangerousCards(t *testing.T) {
 	hand := parseCards(t, []string{"QS", "AS", "KH", "2C", "3C", "4D", "5D", "6H", "7H", "8S", "9S", "TC", "JD"})
 
-	cards, err := NewDumbBot().ChoosePass(PassInput{Hand: hand, Direction: "left"})
+	cards, err := NewDumbBot().ChoosePass(game.PassInput{Hand: hand, Direction: "left"})
 	if err != nil {
 		t.Fatalf("expected pass cards, got %v", err)
 	}
@@ -79,7 +83,7 @@ func TestDumbChoosePassPrefersDangerousCards(t *testing.T) {
 func TestDumbChoosePassRequiresThreeCards(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "3D"})
 
-	_, err := NewDumbBot().ChoosePass(PassInput{Hand: hand})
+	_, err := NewDumbBot().ChoosePass(game.PassInput{Hand: hand})
 	if err == nil {
 		t.Fatalf("expected not enough cards error")
 	}

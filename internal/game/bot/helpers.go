@@ -1,15 +1,8 @@
 package bot
 
 import (
-	"math/rand"
-	"time"
-
 	"github.com/JHK/hearts/internal/game"
 )
-
-func randomFrom(pool []string) string {
-	return pool[rand.New(rand.NewSource(time.Now().UnixNano())).Intn(len(pool))]
-}
 
 // filterCards returns cards for which keep returns true.
 func filterCards(cards []game.Card, keep func(card game.Card) bool) []game.Card {

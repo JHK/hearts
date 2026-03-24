@@ -1,4 +1,4 @@
-package table
+package session
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 )
 
 func TestLeaveRemovesPlayerBeforeRoundStart(t *testing.T) {
-	runtime := NewRuntime("leave-before-start")
+	runtime := NewTable("leave-before-start")
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -35,7 +35,7 @@ func TestLeaveRemovesPlayerBeforeRoundStart(t *testing.T) {
 }
 
 func TestLeaveConvertsHumanToBotDuringRound(t *testing.T) {
-	runtime := NewRuntime("leave-during-round")
+	runtime := NewTable("leave-during-round")
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -79,7 +79,7 @@ func TestLeaveConvertsHumanToBotDuringRound(t *testing.T) {
 }
 
 func TestStartBeginsInPassingPhaseAndBlocksPlay(t *testing.T) {
-	runtime := NewRuntime("passing-phase")
+	runtime := NewTable("passing-phase")
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -120,7 +120,7 @@ func TestStartBeginsInPassingPhaseAndBlocksPlay(t *testing.T) {
 }
 
 func TestPassingAndReviewFlowTransitionsToPlay(t *testing.T) {
-	runtime := NewRuntime("pass-review")
+	runtime := NewTable("pass-review")
 	defer runtime.Close()
 
 	players := make([]protocol.PlayerID, 0, 4)
@@ -217,16 +217,16 @@ func TestPassDirectionCycle(t *testing.T) {
 }
 
 func TestCompleteRoundUpdatesTotalsAndHistory(t *testing.T) {
-	runtime := &Runtime{}
+	runtime := &Table{}
 	players := []*playerState{
-		{id: "p1", Participant: game.NewPlayerState(5, 10)},
-		{id: "p2", Participant: game.NewPlayerState(7, 15)},
-		{id: "p3", Participant: game.NewPlayerState(3, 2)},
-		{id: "p4", Participant: game.NewPlayerState(11, 8)},
+		{id: "p1", cumulativePoints: 10},
+		{id: "p2", cumulativePoints: 15},
+		{id: "p3", cumulativePoints: 2},
+		{id: "p4", cumulativePoints: 8},
 	}
 	state := &tableState{
 		players: players,
-		round:   &roundState{},
+		round:   game.NewTestRound([game.PlayersPerTable]game.Points{5, 7, 3, 11}),
 	}
 
 	completed := runtime.completeRound(state)
@@ -240,9 +240,9 @@ func TestCompleteRoundUpdatesTotalsAndHistory(t *testing.T) {
 		t.Fatalf("unexpected history entry: %#v", historyEntry)
 	}
 
-	if players[0].CumulativePoints() != 15 || players[1].CumulativePoints() != 22 || players[2].CumulativePoints() != 5 || players[3].CumulativePoints() != 19 {
+	if players[0].cumulativePoints != 15 || players[1].cumulativePoints != 22 || players[2].cumulativePoints != 5 || players[3].cumulativePoints != 19 {
 		t.Fatalf("unexpected cumulative points: p1=%d p2=%d p3=%d p4=%d",
-			players[0].CumulativePoints(), players[1].CumulativePoints(), players[2].CumulativePoints(), players[3].CumulativePoints())
+			players[0].cumulativePoints, players[1].cumulativePoints, players[2].cumulativePoints, players[3].cumulativePoints)
 	}
 
 	if completed.RoundPoints["p1"] != 5 || completed.RoundPoints["p2"] != 7 || completed.RoundPoints["p3"] != 3 || completed.RoundPoints["p4"] != 11 {
@@ -255,10 +255,10 @@ func TestCompleteRoundUpdatesTotalsAndHistory(t *testing.T) {
 }
 
 func TestBuildSnapshotCopiesRoundHistory(t *testing.T) {
-	runtime := &Runtime{tableID: "history-copy"}
+	runtime := &Table{tableID: "history-copy"}
 	state := &tableState{
 		players: []*playerState{
-			{id: "p1", Participant: game.NewPlayerState(0, 1)},
+			{id: "p1", cumulativePoints: 1},
 		},
 		roundHistory: []map[protocol.PlayerID]game.Points{
 			{"p1": 1, "p2": 2, "p3": 3, "p4": 4},

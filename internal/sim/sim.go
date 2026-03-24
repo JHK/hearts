@@ -45,148 +45,72 @@ func (s *Simulation) Run() Result {
 	return result
 }
 
-// runGame plays one complete game and returns the winning slot index/indices and
-// moon-shot counts per slot for the game.
 func (s *Simulation) runGame(rng *rand.Rand) ([]int, [game.PlayersPerTable]int) {
-	var players [game.PlayersPerTable]bot.Bot
+	var bots [game.PlayersPerTable]bot.Bot
 	for i, strategy := range s.strategies {
-		players[i] = strategy.NewBot()
+		bots[i] = strategy.NewBot()
 	}
+	var cumulative [game.PlayersPerTable]game.Points
 	var moonShots [game.PlayersPerTable]int
 
 	for roundIndex := 0; ; roundIndex++ {
-		s.runRound(rng, players, roundIndex, &moonShots)
+		hands := game.Deal(rng)
+		passDir := game.PassDirectionForRound(roundIndex)
+		round := game.NewRound(hands, passDir)
 
-		for _, p := range players {
-			if p.CumulativePoints() >= gameOverThreshold {
-				return winners(players), moonShots
+		if passDir != game.PassDirectionHold {
+			for i := range bots {
+				cards, err := bots[i].ChoosePass(round.PassInput(i))
+				if err != nil || len(cards) != 3 {
+					cards = round.Hand(i)[:3]
+				}
+				_ = round.SubmitPass(i, cards)
+			}
+			_ = round.ApplyPasses()
+			for i := range bots {
+				_ = round.MarkReady(i)
 			}
 		}
-	}
-}
+		_ = round.StartPlaying()
 
-func (s *Simulation) runRound(rng *rand.Rand, players [game.PlayersPerTable]bot.Bot, roundIndex int, moonShots *[game.PlayersPerTable]int) {
-	hands := game.Deal(rng)
-	for i, p := range players {
-		p.DealCards(hands[i])
-	}
+		for round.Phase() == game.PhasePlaying {
+			seat := round.TurnSeat()
+			input := round.TurnInput(seat)
+			legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
 
-	dir := game.PassDirectionForRound(roundIndex)
-	if dir != game.PassDirectionHold {
-		applyPasses(players, dir)
-	}
-
-	playRound(players)
-
-	var rawPoints [game.PlayersPerTable]game.Points
-	for i, p := range players {
-		rawPoints[i] = p.RoundPoints()
-	}
-	adjusted := game.ApplyShootTheMoon(rawPoints)
-	for i, p := range players {
-		if p.RoundPoints() == game.ShootTheMoonPoints {
-			moonShots[i]++
-		}
-		p.FinalizeRound(adjusted[i])
-	}
-}
-
-// applyPasses asks each bot which cards to pass, then delegates the exchange to the game.
-func applyPasses(players [game.PlayersPerTable]bot.Bot, dir game.PassDirection) {
-	var passes [game.PlayersPerTable][]game.Card
-	for i, p := range players {
-		passed, err := p.ChoosePass(bot.PassInput{Hand: p.Hand(), Direction: dir})
-		if err != nil || len(passed) != 3 {
-			passed = p.Hand()[:3]
-		}
-		p.SubmitPass(passed)
-		passes[i] = p.PassSent()
-	}
-	received := game.ExchangePasses(passes, dir)
-	for i, p := range players {
-		p.SendPassCards()
-		p.ReceivePassCards(received[i])
-	}
-}
-
-// playRound plays all 13 tricks, accumulating trick points on each player.
-func playRound(players [game.PlayersPerTable]bot.Bot) {
-	twoClubs := game.Card{Suit: game.SuitClubs, Rank: 2}
-	currentSeat := 0
-	for i, p := range players {
-		if game.ContainsCard(p.Hand(), twoClubs) {
-			currentSeat = i
-			break
-		}
-	}
-
-	heartsBroken := false
-	var playedCards []game.Card
-
-	for trick := 0; trick < 13; trick++ {
-		firstTrick := trick == 0
-		var plays []game.Play
-
-		for p := 0; p < game.PlayersPerTable; p++ {
-			seat := (currentSeat + p) % game.PlayersPerTable
-			player := players[seat]
-			trickCards := playsToCards(plays)
-
-			legal := game.LegalPlays(player.Hand(), trickCards, heartsBroken, firstTrick)
-
-			card, err := player.ChoosePlay(bot.TurnInput{
-				Hand:         player.Hand(),
-				Trick:        trickCards,
-				HeartsBroken: heartsBroken,
-				FirstTrick:   firstTrick,
-				PlayedCards:  playedCards,
-			})
+			card, err := bots[seat].ChoosePlay(input)
 			if err != nil || !game.ContainsCard(legal, card) {
 				card = legal[0]
 			}
+			_, _ = round.Play(seat, card)
+		}
 
-			player.PlayCard(card)
-			plays = append(plays, game.Play{Player: player, Card: card})
-
-			if card.Suit == game.SuitHearts {
-				heartsBroken = true
+		scores := round.Scores()
+		for i := range cumulative {
+			if scores.Raw[i] == game.ShootTheMoonPoints {
+				moonShots[i]++
 			}
+			cumulative[i] += scores.Adjusted[i]
 		}
 
-		winner, points, _ := game.TrickWinner(plays)
-		winner.AddTrickPoints(points)
-
-		for _, p := range plays {
-			playedCards = append(playedCards, p.Card)
-		}
-
-		for i, p := range players {
-			if p == winner {
-				currentSeat = i
-				break
+		for _, pts := range cumulative {
+			if pts >= gameOverThreshold {
+				return winners(cumulative), moonShots
 			}
 		}
 	}
 }
 
-func playsToCards(plays []game.Play) []game.Card {
-	cards := make([]game.Card, len(plays))
-	for i, p := range plays {
-		cards[i] = p.Card
-	}
-	return cards
-}
-
-func winners(players [game.PlayersPerTable]bot.Bot) []int {
-	min := players[0].CumulativePoints()
-	for _, p := range players {
-		if p.CumulativePoints() < min {
-			min = p.CumulativePoints()
+func winners(cumulative [game.PlayersPerTable]game.Points) []int {
+	min := cumulative[0]
+	for _, pts := range cumulative {
+		if pts < min {
+			min = pts
 		}
 	}
 	var out []int
-	for i, p := range players {
-		if p.CumulativePoints() == min {
+	for i, pts := range cumulative {
+		if pts == min {
 			out = append(out, i)
 		}
 	}

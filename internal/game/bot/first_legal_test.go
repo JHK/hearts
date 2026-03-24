@@ -9,7 +9,7 @@ import (
 func TestFirstLegalChoosePlayUsesHandOrder(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "3D", "2S"})
 
-	card, err := NewFirstLegalBot().ChoosePlay(TurnInput{
+	card, err := NewFirstLegalBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        nil,
 		HeartsBroken: true,
@@ -27,7 +27,7 @@ func TestFirstLegalChoosePlayUsesHandOrder(t *testing.T) {
 func TestFirstLegalChoosePlayFollowsSuit(t *testing.T) {
 	hand := parseCards(t, []string{"AH", "3C", "KS"})
 
-	card, err := NewFirstLegalBot().ChoosePlay(TurnInput{
+	card, err := NewFirstLegalBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        parseCards(t, []string{"2S"}),
 		HeartsBroken: true,
@@ -45,7 +45,7 @@ func TestFirstLegalChoosePlayFollowsSuit(t *testing.T) {
 func TestFirstLegalChoosePlayFirstTrickLead(t *testing.T) {
 	hand := parseCards(t, []string{"3D", "2C", "AS"})
 
-	card, err := NewFirstLegalBot().ChoosePlay(TurnInput{
+	card, err := NewFirstLegalBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        nil,
 		HeartsBroken: false,
@@ -61,7 +61,7 @@ func TestFirstLegalChoosePlayFirstTrickLead(t *testing.T) {
 }
 
 func TestFirstLegalChoosePlayNoLegalCards(t *testing.T) {
-	_, err := NewFirstLegalBot().ChoosePlay(TurnInput{})
+	_, err := NewFirstLegalBot().ChoosePlay(game.TurnInput{})
 	if err == nil {
 		t.Fatalf("expected no legal plays error")
 	}
@@ -70,7 +70,7 @@ func TestFirstLegalChoosePlayNoLegalCards(t *testing.T) {
 func TestFirstLegalChoosePassUsesFirstThreeInOrder(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "3D", "2S", "AH"})
 
-	cards, err := NewFirstLegalBot().ChoosePass(PassInput{Hand: hand, Direction: game.PassDirectionLeft})
+	cards, err := NewFirstLegalBot().ChoosePass(game.PassInput{Hand: hand, Direction: game.PassDirectionLeft})
 	if err != nil {
 		t.Fatalf("expected pass cards, got %v", err)
 	}
@@ -87,7 +87,7 @@ func TestFirstLegalChoosePassUsesFirstThreeInOrder(t *testing.T) {
 func TestFirstLegalChoosePassRequiresThreeCards(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "3D"})
 
-	_, err := NewFirstLegalBot().ChoosePass(PassInput{Hand: hand})
+	_, err := NewFirstLegalBot().ChoosePass(game.PassInput{Hand: hand})
 	if err == nil {
 		t.Fatalf("expected not enough cards error")
 	}

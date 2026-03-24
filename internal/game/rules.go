@@ -55,8 +55,8 @@ func ExchangePasses(passes [PlayersPerTable][]Card, dir PassDirection) [PlayersP
 }
 
 type Play struct {
-	Player Participant
-	Card   Card
+	Seat int
+	Card Card
 }
 
 type ValidatePlayInput struct {
@@ -120,9 +120,9 @@ func LegalPlays(hand []Card, trick []Card, heartsBroken bool, firstTrick bool) [
 	return legal
 }
 
-func TrickWinner(plays []Play) (Participant, Points, error) {
+func TrickWinner(plays []Play) (int, Points, error) {
 	if len(plays) == 0 {
-		return nil, Points(0), fmt.Errorf("trick has no plays")
+		return 0, Points(0), fmt.Errorf("trick has no plays")
 	}
 
 	leadSuit := plays[0].Card.Suit
@@ -136,7 +136,7 @@ func TrickWinner(plays []Play) (Participant, Points, error) {
 		}
 	}
 
-	return winner.Player, points, nil
+	return winner.Seat, points, nil
 }
 
 func ApplyShootTheMoon(roundPoints [PlayersPerTable]Points) [PlayersPerTable]Points {

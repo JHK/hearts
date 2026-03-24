@@ -1,4 +1,4 @@
-package table
+package session
 
 import (
 	"crypto/rand"
@@ -14,14 +14,14 @@ import (
 
 type Manager struct {
 	mu     sync.RWMutex
-	tables map[string]*Runtime
+	tables map[string]*Table
 }
 
 func NewManager() *Manager {
-	return &Manager{tables: make(map[string]*Runtime)}
+	return &Manager{tables: make(map[string]*Table)}
 }
 
-func (m *Manager) Get(tableID string) (*Runtime, bool) {
+func (m *Manager) Get(tableID string) (*Table, bool) {
 	id, err := normalizeTableID(tableID)
 	if err != nil || id == "" {
 		return nil, false
@@ -33,7 +33,7 @@ func (m *Manager) Get(tableID string) (*Runtime, bool) {
 	return table, ok
 }
 
-func (m *Manager) Create(tableID string) (*Runtime, bool, error) {
+func (m *Manager) Create(tableID string) (*Table, bool, error) {
 	id, err := normalizeTableID(tableID)
 	if err != nil {
 		return nil, false, err
@@ -63,7 +63,7 @@ func (m *Manager) Create(tableID string) (*Runtime, bool, error) {
 		return existing, false, nil
 	}
 
-	created := NewRuntime(id)
+	created := NewTable(id)
 	m.tables[id] = created
 	slog.Info("table created", "event", "table_created", "table_id", id)
 	return created, true, nil
@@ -71,7 +71,7 @@ func (m *Manager) Create(tableID string) (*Runtime, bool, error) {
 
 func (m *Manager) List() []protocol.TableInfo {
 	m.mu.RLock()
-	tables := make([]*Runtime, 0, len(m.tables))
+	tables := make([]*Table, 0, len(m.tables))
 	for _, runtime := range m.tables {
 		tables = append(tables, runtime)
 	}
@@ -95,7 +95,7 @@ func (m *Manager) List() []protocol.TableInfo {
 
 func (m *Manager) Close() {
 	m.mu.Lock()
-	tables := make([]*Runtime, 0, len(m.tables))
+	tables := make([]*Table, 0, len(m.tables))
 	for id, runtime := range m.tables {
 		tables = append(tables, runtime)
 		delete(m.tables, id)
@@ -114,7 +114,7 @@ func (m *Manager) CloseTable(tableID string) bool {
 		return false
 	}
 
-	var toClose *Runtime
+	var toClose *Table
 
 	m.mu.Lock()
 	if current, ok := m.tables[id]; ok {

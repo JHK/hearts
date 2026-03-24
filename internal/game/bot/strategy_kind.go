@@ -2,9 +2,9 @@ package bot
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
-
-	"github.com/JHK/hearts/internal/game"
+	"time"
 )
 
 type StrategyKind string
@@ -41,27 +41,37 @@ func (k StrategyKind) Valid() bool {
 
 // NewBot creates a fresh bot of this strategy kind.
 func (k StrategyKind) NewBot() Bot {
-	return k.WrapPlayer(game.NewPlayer())
-}
-
-// WrapPlayer wraps an existing *game.Player with this strategy kind's bot logic.
-// Use this when converting a human player to a bot mid-round to preserve game state.
-func (k StrategyKind) WrapPlayer(p *game.Player) Bot {
 	switch k {
 	case StrategySmart:
-		return &Smart{Player: p}
+		return &Smart{}
 	case StrategyDumb:
-		return &Dumb{Player: p}
+		return &Dumb{}
 	case StrategyFirstLegal:
-		return &FirstLegal{Player: p}
+		return &FirstLegal{}
 	case StrategyRandom:
 		fallthrough
 	default:
-		return newRandomBot(p, nil)
+		return newRandomBot(nil)
 	}
 }
 
 // New returns a new bot of this strategy kind.
 func (k StrategyKind) New() Bot {
 	return k.NewBot()
+}
+
+var botNames = map[StrategyKind][]string{
+	StrategySmart:      smartBotNames,
+	StrategyDumb:       dumbBotNames,
+	StrategyRandom:     randomBotNames,
+	StrategyFirstLegal: firstLegalBotNames,
+}
+
+// BotName returns a randomly chosen name for a bot of this strategy.
+func (k StrategyKind) BotName() string {
+	pool := botNames[k]
+	if len(pool) == 0 {
+		return "Bot"
+	}
+	return pool[rand.New(rand.NewSource(time.Now().UnixNano())).Intn(len(pool))]
 }

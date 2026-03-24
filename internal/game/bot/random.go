@@ -9,29 +9,27 @@ import (
 )
 
 type Random struct {
-	*game.Player
 	rng *rand.Rand
 }
 
 var randomBotNames = []string{"Lucky", "Dice", "Chance", "Jinx", "Hazard", "Wild", "Shuffle", "Rando"}
 
-func (r *Random) Kind() StrategyKind   { return StrategyRandom }
-func (r *Random) BotName() string      { return randomFrom(randomBotNames) }
-func (r *Random) Unwrap() *game.Player { return r.Player }
+func (r *Random) Kind() StrategyKind { return StrategyRandom }
 
-func newRandomBot(p *game.Player, rng *rand.Rand) *Random {
+
+func newRandomBot(rng *rand.Rand) *Random {
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
-	return &Random{Player: p, rng: rng}
+	return &Random{rng: rng}
 }
 
 // NewRandomBot creates a random bot for testing with a seeded RNG.
 func NewRandomBot(rng *rand.Rand) *Random {
-	return newRandomBot(game.NewPlayer(), rng)
+	return newRandomBot(rng)
 }
 
-func (r *Random) ChoosePlay(input TurnInput) (game.Card, error) {
+func (r *Random) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
 	if len(legal) == 0 {
 		return game.Card{}, fmt.Errorf("no legal plays")
@@ -40,7 +38,7 @@ func (r *Random) ChoosePlay(input TurnInput) (game.Card, error) {
 	return legal[r.rng.Intn(len(legal))], nil
 }
 
-func (r *Random) ChoosePass(input PassInput) ([]game.Card, error) {
+func (r *Random) ChoosePass(input game.PassInput) ([]game.Card, error) {
 	if len(input.Hand) < 3 {
 		return nil, fmt.Errorf("not enough cards to pass")
 	}

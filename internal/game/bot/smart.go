@@ -18,7 +18,6 @@ const (
 // Smart is a stateful bot that selects a per-round strategy during the pass
 // phase and maintains moon-shot state across tricks.
 type Smart struct {
-	*game.Player
 	moonShotActive   bool
 	moonShotAborted  bool
 	winningAllTricks bool // true while bot has won every trick this round
@@ -27,17 +26,15 @@ type Smart struct {
 
 var smartBotNames = []string{"Ada", "Grace", "Alan", "Radia", "Margaret", "Barbara", "Edsger", "Claude"}
 
-func (s *Smart) Kind() StrategyKind   { return StrategySmart }
-func (s *Smart) BotName() string      { return randomFrom(smartBotNames) }
-func (s *Smart) Unwrap() *game.Player { return s.Player }
+func (s *Smart) Kind() StrategyKind { return StrategySmart }
+
 
 // NewSmartBot creates a smart bot for testing.
 func NewSmartBot() *Smart {
-	return &Smart{Player: game.NewPlayer()}
+	return &Smart{}
 }
 
-// ChoosePass selects a strategy for the round and passes accordingly.
-func (s *Smart) ChoosePass(input PassInput) ([]game.Card, error) {
+func (s *Smart) ChoosePass(input game.PassInput) ([]game.Card, error) {
 	if len(input.Hand) < 3 {
 		return nil, fmt.Errorf("not enough cards to pass")
 	}
@@ -56,14 +53,13 @@ func (s *Smart) ChoosePass(input PassInput) ([]game.Card, error) {
 	}
 }
 
-// ChoosePlay plays a card based on current round strategy and tracked state.
-func (s *Smart) ChoosePlay(input TurnInput) (game.Card, error) {
+func (s *Smart) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
 	if len(legal) == 0 {
 		return game.Card{}, fmt.Errorf("no legal plays")
 	}
 
-	// Detect hold round: PlayedCards just reset to 0 but ChoosePass wasn't
+	// Detect hold round: PlayedCards just reset to 0 but choosePass wasn't
 	// called (prevPlayedCount > 0 means we were mid-round last call, not a
 	// pass-phase reset). Re-evaluate hand once at round start.
 	if len(input.PlayedCards) == 0 && s.prevPlayedCount > 0 {
@@ -73,7 +69,7 @@ func (s *Smart) ChoosePlay(input TurnInput) (game.Card, error) {
 	}
 
 	// Re-evaluate at trick 1 of a passing round with the actual post-pass hand.
-	// ChoosePass saw the pre-pass hand; received cards can change viability —
+	// choosePass saw the pre-pass hand; received cards can change viability —
 	// e.g., receiving A♥ might complete a qualifying run that wasn't there before.
 	if len(input.PlayedCards) == 0 && s.prevPlayedCount == 0 {
 		s.moonShotActive = evaluateMoonShot(input.Hand)
@@ -332,7 +328,7 @@ func chooseDefensivePass(hand []game.Card) []game.Card {
 func smartChooseLead(hand []game.Card, legal []game.Card, playedCards []game.Card, pursuing bool) game.Card {
 	if pursuing {
 		// Lead the highest guaranteed-winner (all higher cards gone/held).
-		// The self-abort in ChoosePlay ensures safeLeads is non-empty here.
+		// The self-abort in choosePlay ensures safeLeads is non-empty here.
 		safeLeads := filterCards(legal, func(c game.Card) bool {
 			return isSafeHighCard(c, hand, playedCards)
 		})

@@ -5,7 +5,7 @@ This document defines the architecture for the web-only Hearts application.
 ## Core principles
 
 - Web-only interaction model: players use the browser UI.
-- No NATS transport: server and table runtime are in-process.
+- No NATS transport: server and session runtime are in-process.
 - The table is the single authoritative owner of Hearts rules, game loop, and scoring.
 - Human players and bots use the same command path and validation rules.
 - Concurrency uses actor-style goroutines for owned mutable state.
@@ -36,42 +36,42 @@ Each browser instance represents one player identity for a table.
 - Manages WebSocket lifecycle and message IO.
 - Does not decide card legality or game outcomes.
 
-### Table manager (`internal/table`)
+### Session manager (`internal/session`)
 
-- Creates and tracks in-memory table runtimes.
-- Provides table discovery/listing for lobby UX.
-- Routes commands to the correct table runtime.
+- `session.Table` is the authoritative runtime for one game session.
+- `session.Manager` creates and tracks in-memory sessions; provides discovery/listing for lobby UX.
+- Routes commands to the correct `Table` via its command channel.
 - Owns no Hearts rule decisions directly.
 
 ### Table runtime (authoritative agent)
 
-- Owns table, round, and trick mutable state.
-- Validates all player inputs (card legality, pass card count, turn order) using `internal/game`.
-- Delegates per-player game state (hand, points, pass state) to `game.Player`.
-- Assigns canonical `player_id` values and seats. A `player_id` is the stable string identity used across all protocol events; it is owned by the runtime and lives in `internal/protocol`.
+- Owns table-level mutable state; delegates round state to `game.Round`.
+- Validates player inputs by calling `game.Round` methods, which apply game rules internally.
+- Assigns canonical `player_id` values and seat positions. A `player_id` is the stable string identity used across all protocol events; it is owned by the session and lives in `internal/protocol`.
+- Each seat is represented by `playerState`, which carries: web-transport state (`id`, `Token`), seated identity (`Name`, `position`), cumulative scoring, and a `bot.Bot` for bot seats (nil for humans).
 - Emits public table events and private player events.
-- Accepts commands from browser players and bots.
+- Accepts commands from browser players; drives bot seats via `bot.Bot.ChoosePlay`/`ChoosePass`.
 
 ### Bot automation (`internal/game/bot`)
 
-- Implements the `game.Participant` interface via `bot.Bot`, which extends it with `ChoosePlay`, `ChoosePass`, and strategy metadata.
-- Each concrete bot embeds `*game.Player`, making it the authoritative owner of its own game state.
-- Runs as local server-side agents using the same command/event contract as human players.
-- Never bypasses table authority.
-- Bot detection in the runtime is a type assertion: `player.Participant.(bot.Bot)`.
+- `bot.Bot` is the decision interface: `ChoosePlay(TurnInput)` and `ChoosePass(PassInput)` return decisions directly (no callbacks). `Kind()` provides strategy metadata. Bots hold no player state — game state is managed by `game.Round`.
+- Bot names are assigned at the table layer via `StrategyKind.BotName()`; name pools live in each strategy file.
+- Runs as local server-side agents; never bypasses table authority.
+- Bot detection in the session is `player.bot != nil` (set in `playerState` when a bot occupies the seat).
 
 ### Domain logic (`internal/game`)
 
-- Owns Hearts rules, scoring, and per-player game state.
-- `game.Player` is the authoritative struct for a player's hand, round points, cumulative points, and pass state (cards sent/received, ready flag).
+- Owns Hearts rules, scoring, and per-round game state.
+- `game.Round` is a step-at-a-time state machine for one round: owns hands, trick state, pass state, and scoring. Callers drive phase transitions (`SubmitPass` → `ApplyPasses` → `MarkReady` → `StartPlaying` → `Play`), giving the session hooks for event emission.
+- `game.TurnInput`/`game.PassInput` are pure data types that carry decision context (hand, trick, flags) to bots and UIs.
 - Pure functions handle card validation, trick resolution, and pass direction.
 - Contains no networking, persistence, or websocket concerns.
 
 ## Concurrency model
 
-- Each table runtime runs in a dedicated goroutine.
-- Commands are serialized through the table runtime loop.
-- Websocket clients and bots communicate with table runtimes via messages.
+- Each session runtime runs in a dedicated goroutine.
+- Commands are serialized through the session runtime loop.
+- Websocket clients and bots communicate with session runtimes via messages.
 - Mutable game state stays inside the owning runtime.
 
 ## State model
@@ -82,8 +82,8 @@ Each browser instance represents one player identity for a table.
 
 ## Authority rules
 
-- Only the table runtime validates and commits game actions.
-- Only the table runtime assigns canonical player IDs and seats.
+- Only the session runtime validates and commits game actions.
+- Only the session runtime assigns canonical player IDs and seats.
 - Clients may pre-validate for UX, but server validation is final.
 
 ## Logging

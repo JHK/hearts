@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/JHK/hearts/internal/protocol"
-	"github.com/JHK/hearts/internal/table"
+	"github.com/JHK/hearts/internal/session"
 	"github.com/gorilla/websocket"
 )
 
@@ -89,9 +89,9 @@ func Run(cfg Config) error {
 	return http.ListenAndServe(cfg.Addr, handler)
 }
 
-func NewHandler(cfg Config, manager *table.Manager) (http.Handler, error) {
+func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 	if manager == nil {
-		manager = table.NewManager()
+		manager = session.NewManager()
 	}
 
 	indexHTML, err := assetsFS.ReadFile("assets/index.html")
@@ -242,7 +242,7 @@ console.log('[dev] debugBot() available — call debugBot() to see bot hands');
 	return mux, nil
 }
 
-func handleTablesAPI(manager *table.Manager, w http.ResponseWriter, r *http.Request) {
+func handleTablesAPI(manager *session.Manager, w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		writeJSON(w, map[string]any{"tables": manager.List()})
@@ -268,7 +268,7 @@ func handleTablesAPI(manager *table.Manager, w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func handleTableWebSocket(manager *table.Manager, presence *humanPresenceTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
+func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
 	tableID := strings.TrimPrefix(r.URL.Path, "/ws/table/")
 	tableID = strings.TrimSpace(tableID)
 	if tableID == "" || strings.Contains(tableID, "/") {

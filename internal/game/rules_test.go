@@ -39,18 +39,17 @@ func TestValidatePlayMustFollowSuit(t *testing.T) {
 }
 
 func TestTrickWinnerAndPoints(t *testing.T) {
-	p1, p2, p3, p4 := NewPlayer(), NewPlayer(), NewPlayer(), NewPlayer()
 	winner, points, err := TrickWinner([]Play{
-		{Player: p1, Card: Card{Suit: SuitSpades, Rank: 10}},
-		{Player: p2, Card: Card{Suit: SuitSpades, Rank: 14}},
-		{Player: p3, Card: Card{Suit: SuitHearts, Rank: 2}},
-		{Player: p4, Card: Card{Suit: SuitSpades, Rank: 12}},
+		{Seat: 0, Card: Card{Suit: SuitSpades, Rank: 10}},
+		{Seat: 1, Card: Card{Suit: SuitSpades, Rank: 14}},
+		{Seat: 2, Card: Card{Suit: SuitHearts, Rank: 2}},
+		{Seat: 3, Card: Card{Suit: SuitSpades, Rank: 12}},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if winner != p2 {
-		t.Fatalf("expected p2 to win")
+	if winner != 1 {
+		t.Fatalf("expected seat 1 to win, got %d", winner)
 	}
 	if points != 14 {
 		t.Fatalf("expected 14 points, got %d", points)

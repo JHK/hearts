@@ -1,4 +1,4 @@
-package table
+package session
 
 import (
 	"strings"
