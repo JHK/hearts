@@ -91,6 +91,7 @@ type tableState struct {
 	players        []*playerState
 	playersByID    map[protocol.PlayerID]*playerState
 	playersByToken map[string]*playerState
+	departedTokens map[string]protocol.PlayerID // token → last player ID for pre-round leavers
 	roundHistory   []map[protocol.PlayerID]game.Points
 
 	round         *roundState
@@ -358,6 +359,7 @@ func (r *Runtime) run() {
 	state := &tableState{
 		playersByID:    make(map[protocol.PlayerID]*playerState),
 		playersByToken: make(map[string]*playerState),
+		departedTokens: make(map[string]protocol.PlayerID),
 	}
 
 	for {
@@ -441,6 +443,7 @@ func (r *Runtime) handleLeave(state *tableState, playerID protocol.PlayerID) {
 	delete(state.playersByID, playerID)
 	if player.Token != "" {
 		delete(state.playersByToken, player.Token)
+		state.departedTokens[player.Token] = playerID
 	}
 
 	for index, seated := range state.players {
@@ -491,7 +494,12 @@ func (r *Runtime) handleJoin(state *tableState, name, token string) protocol.Joi
 		name = "Player"
 	}
 
-	id := r.nextPlayerID(state)
+	id, reused := state.departedTokens[token]
+	if reused {
+		delete(state.departedTokens, token)
+	} else {
+		id = r.nextPlayerID(state)
+	}
 	player := r.addPlayer(state, id, name, game.NewPlayer(), token)
 
 	slog.Info("player joined table", "event", "player_joined", "table_id", r.tableID, "player_id", player.id, "name", player.Name, "seat", player.Seat)

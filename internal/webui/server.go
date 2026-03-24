@@ -421,8 +421,11 @@ func handleTableWebSocket(manager *table.Manager, presence *humanPresenceTracker
 	if humanJoined && presence.Leave(runtime.ID()) == 0 {
 		slog.Warn("table orphaned", "event", "table_orphaned", "table_id", runtime.ID())
 		tableID := runtime.ID()
+		gracePeriod := 60 * time.Second
+		if info := runtime.Info(); !info.Started {
+			gracePeriod = 500 * time.Millisecond
+		}
 		go func() {
-			const gracePeriod = 60 * time.Second
 			timer := time.NewTimer(gracePeriod)
 			defer timer.Stop()
 			<-timer.C
