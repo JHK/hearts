@@ -3,6 +3,8 @@ package session
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateGeneratedTableIDUsesNamePools(t *testing.T) {
@@ -10,23 +12,13 @@ func TestCreateGeneratedTableIDUsesNamePools(t *testing.T) {
 	defer manager.Close()
 
 	runtime, created, err := manager.Create("")
-	if err != nil {
-		t.Fatalf("create table: %v", err)
-	}
-	if !created {
-		t.Fatalf("expected newly created table")
-	}
+	require.NoError(t, err, "create table")
+	require.True(t, created, "expected newly created table")
 
 	parts := strings.Split(runtime.ID(), "-")
-	if len(parts) != 2 {
-		t.Fatalf("expected generated id with 2 parts, got %q", runtime.ID())
-	}
-	if !contains(tableIDAdjectives, parts[0]) {
-		t.Fatalf("expected adjective part from pool, got %q", parts[0])
-	}
-	if !contains(tableIDNouns, parts[1]) {
-		t.Fatalf("expected noun part from pool, got %q", parts[1])
-	}
+	require.Len(t, parts, 2, "expected generated id with 2 parts, got %q", runtime.ID())
+	require.True(t, contains(tableIDAdjectives, parts[0]), "expected adjective part from pool, got %q", parts[0])
+	require.True(t, contains(tableIDNouns, parts[1]), "expected noun part from pool, got %q", parts[1])
 }
 
 func TestCreateFailsAfterThreeNameCollisions(t *testing.T) {
@@ -42,13 +34,11 @@ func TestCreateFailsAfterThreeNameCollisions(t *testing.T) {
 		tableIDNouns = originalNouns
 	}()
 
-	if _, _, err := manager.Create(""); err != nil {
-		t.Fatalf("first create should succeed: %v", err)
-	}
+	_, _, err := manager.Create("")
+	require.NoError(t, err, "first create should succeed")
 
-	if _, _, err := manager.Create(""); err == nil {
-		t.Fatalf("expected create to fail after repeated collisions")
-	}
+	_, _, err = manager.Create("")
+	require.Error(t, err, "expected create to fail after repeated collisions")
 }
 
 func contains(items []string, target string) bool {

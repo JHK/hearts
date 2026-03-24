@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/JHK/hearts/internal/game"
+	"github.com/stretchr/testify/require"
 )
 
 // --- Trade strategy selection ---
@@ -18,12 +19,8 @@ func TestSmartPassSelectsMoonShotStrategy(t *testing.T) {
 	})
 
 	cards, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand, Direction: game.PassDirectionLeft})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(cards) != 3 {
-		t.Fatalf("expected 3 cards, got %d", len(cards))
-	}
+	require.NoError(t, err)
+	require.Len(t, cards, 3)
 
 	// Should not pass any of the run cards (the moon-shot backbone)
 	moonShotKeep := map[string]struct{}{
@@ -32,9 +29,8 @@ func TestSmartPassSelectsMoonShotStrategy(t *testing.T) {
 		"AD": {}, "KD": {},
 	}
 	for _, c := range cards {
-		if _, ok := moonShotKeep[c.String()]; ok {
-			t.Fatalf("moon-shot pass should not include run card %s", c)
-		}
+		_, ok := moonShotKeep[c.String()]
+		require.False(t, ok, "moon-shot pass should not include run card %s", c)
 	}
 }
 
@@ -49,19 +45,13 @@ func TestSmartPassSelectsDefensiveStrategyForShortSuit(t *testing.T) {
 	})
 
 	cards, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand, Direction: "left"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(cards) != 3 {
-		t.Fatalf("expected 3 cards, got %d", len(cards))
-	}
+	require.NoError(t, err)
+	require.Len(t, cards, 3)
 
 	// Defensive pass: highest-risk cards. JD (rank 11) and 8S/8H are the riskiest non-penalty cards.
 	// Just verify 3 cards are returned and none is an obviously wrong choice (e.g. a 2).
 	for _, c := range cards {
-		if c.Rank == 2 || c.Rank == 3 {
-			t.Fatalf("defensive pass should not include very low card %s", c)
-		}
+		require.False(t, c.Rank == 2 || c.Rank == 3, "defensive pass should not include very low card %s", c)
 	}
 }
 
@@ -72,19 +62,14 @@ func TestSmartPassSelectsDefensiveStrategy(t *testing.T) {
 	})
 
 	cards, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand, Direction: "left"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(cards) != 3 {
-		t.Fatalf("expected 3 cards, got %d", len(cards))
-	}
+	require.NoError(t, err)
+	require.Len(t, cards, 3)
 
 	// Defensive: most dangerous cards (QS, AS, KH)
 	want := map[string]struct{}{"QS": {}, "AS": {}, "KH": {}}
 	for _, c := range cards {
-		if _, ok := want[c.String()]; !ok {
-			t.Fatalf("defensive pass expected QS/AS/KH, got unexpected %s", c)
-		}
+		_, ok := want[c.String()]
+		require.True(t, ok, "defensive pass expected QS/AS/KH, got unexpected %s", c)
 	}
 }
 
@@ -100,12 +85,8 @@ func TestSmartPlaysAceWhenOnlyLegalOption(t *testing.T) {
 		Trick:       nil,
 		PlayedCards: played,
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if card.String() != "AC" {
-		t.Fatalf("expected safe lead AC (only legal non-heart), got %s", card)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "AC", card.String())
 }
 
 func TestSmartDoesNotLeadUnsafeKing(t *testing.T) {
@@ -119,13 +100,9 @@ func TestSmartDoesNotLeadUnsafeKing(t *testing.T) {
 		Trick:       nil,
 		PlayedCards: played,
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	// Should prefer leading a diamond (shorter/safer) over K♣ when A♣ is still out
-	if card.String() == "KC" {
-		t.Fatalf("should not lead unsafe K♣ when A♣ is still outstanding")
-	}
+	require.NotEqual(t, "KC", card.String(), "should not lead unsafe K♣ when A♣ is still outstanding")
 }
 
 func TestSmartDefensiveLeadPrefersLowestRankOverShortestSuit(t *testing.T) {
@@ -144,12 +121,8 @@ func TestSmartDefensiveLeadPrefersLowestRankOverShortestSuit(t *testing.T) {
 		Trick:       nil,
 		PlayedCards: nil,
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if card.Rank >= 10 {
-		t.Fatalf("defensive lead should prefer low-rank card over short-suit heuristic, got %s (rank %d)", card, card.Rank)
-	}
+	require.NoError(t, err)
+	require.Less(t, card.Rank, 10, "defensive lead should prefer low-rank card over short-suit heuristic, got %s (rank %d)", card, card.Rank)
 }
 
 func TestSmartDefensiveLeadPrefersLowHeartOverHighSpade(t *testing.T) {
@@ -164,18 +137,12 @@ func TestSmartDefensiveLeadPrefersLowHeartOverHighSpade(t *testing.T) {
 		HeartsBroken: true,
 		PlayedCards:  nil,
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if card.Suit == game.SuitSpades {
-		t.Fatalf("should not lead %s when low hearts are available", card)
-	}
+	require.NoError(t, err)
+	require.NotEqual(t, game.SuitSpades, card.Suit, "should not lead %s when low hearts are available", card)
 	// 6H is the highest non-winning heart — shed it first while opponents
 	// still hold 7H–AH to beat it.
 	want := game.Card{Suit: game.SuitHearts, Rank: 6}
-	if card != want {
-		t.Fatalf("expected %s (highest safe heart), got %s", want, card)
-	}
+	require.Equal(t, want, card, "expected highest safe heart")
 }
 
 func TestSmartDefensiveLeadAvoidsGuaranteedWinner(t *testing.T) {
@@ -189,12 +156,9 @@ func TestSmartDefensiveLeadAvoidsGuaranteedWinner(t *testing.T) {
 		Trick:       nil,
 		PlayedCards: nil,
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if card.String() == "AC" || card.String() == "KC" {
-		t.Fatalf("defensive lead should avoid guaranteed-winner %s when 5D is available", card)
-	}
+	require.NoError(t, err)
+	require.NotEqual(t, "AC", card.String(), "defensive lead should avoid guaranteed-winner when 5D is available")
+	require.NotEqual(t, "KC", card.String(), "defensive lead should avoid guaranteed-winner when 5D is available")
 }
 
 // --- Void exploitation ---
@@ -208,12 +172,8 @@ func TestSmartDiscardsQueenOfSpadesWhenVoid(t *testing.T) {
 		Trick:        parseCards(t, []string{"5C"}),
 		HeartsBroken: true,
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if card.String() != "QS" {
-		t.Fatalf("expected void exploitation QS discard, got %s", card)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "QS", card.String())
 }
 
 func TestSmartDiscardsHighHeartWhenVoidAndNoQueenSpades(t *testing.T) {
@@ -225,12 +185,8 @@ func TestSmartDiscardsHighHeartWhenVoidAndNoQueenSpades(t *testing.T) {
 		Trick:        parseCards(t, []string{"5C"}),
 		HeartsBroken: true,
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if card.String() != "AH" {
-		t.Fatalf("expected discard AH, got %s", card)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "AH", card.String())
 }
 
 // --- Moon-shot triggering and pursuit ---
@@ -243,9 +199,7 @@ func TestSmartEvaluatesMoonShotFromHand(t *testing.T) {
 		"AD", "KD",
 		"2S", "3S", "4S",
 	})
-	if !evaluateMoonShot(hand) {
-		t.Fatal("expected moon-shot potential, got false")
-	}
+	require.True(t, evaluateMoonShot(hand), "expected moon-shot potential")
 }
 
 func TestSmartDoesNotTriggerMoonShotOnWeakHand(t *testing.T) {
@@ -254,9 +208,7 @@ func TestSmartDoesNotTriggerMoonShotOnWeakHand(t *testing.T) {
 		"2C", "3C", "4C", "5C", "6C",
 		"2D", "3D", "4D", "5D", "6D",
 	})
-	if evaluateMoonShot(hand) {
-		t.Fatal("weak hand should not trigger moon shot")
-	}
+	require.False(t, evaluateMoonShot(hand), "weak hand should not trigger moon shot")
 }
 
 func TestSmartPursueMoonShotLeadsHighCards(t *testing.T) {
@@ -264,9 +216,7 @@ func TestSmartPursueMoonShotLeadsHighCards(t *testing.T) {
 	legal := hand
 
 	card := smartChooseLead(hand, legal, nil, true)
-	if card.Rank != 14 {
-		t.Fatalf("moon shot should lead highest card (A), got %s", card)
-	}
+	require.Equal(t, 14, card.Rank, "moon shot should lead highest card (A), got %s", card)
 }
 
 func TestSmartPursueMoonShotWinsFollowTrick(t *testing.T) {
@@ -275,9 +225,7 @@ func TestSmartPursueMoonShotWinsFollowTrick(t *testing.T) {
 	legal := parseCards(t, []string{"QS"}) // must follow spades
 
 	card := smartChooseFollow(trick, legal, nil, nil, true)
-	if card.String() != "QS" {
-		t.Fatalf("moon shot follow should win trick, got %s", card)
-	}
+	require.Equal(t, "QS", card.String(), "moon shot follow should win trick")
 }
 
 // --- Moon-shot abort on penalty leak ---
@@ -295,13 +243,8 @@ func TestSmartAbortsMoonShotWhenOtherLeads(t *testing.T) {
 		FirstTrick:   false,
 		PlayedCards:  parseCards(t, []string{"2C", "5D", "7S", "8H"}), // 1 completed trick
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if !bot.moonShotAborted {
-		t.Fatal("expected moon shot to be aborted when another player leads")
-	}
+	require.NoError(t, err)
+	require.True(t, bot.moonShotAborted, "expected moon shot to be aborted when another player leads")
 }
 
 func TestSmartContinuesMoonShotWhenLeadingEveryTrick(t *testing.T) {
@@ -317,13 +260,8 @@ func TestSmartContinuesMoonShotWhenLeadingEveryTrick(t *testing.T) {
 		FirstTrick:   false,
 		PlayedCards:  parseCards(t, []string{"2C", "5D", "7S", "8H"}),
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if bot.moonShotAborted {
-		t.Fatal("moon shot should not abort when bot is leading every trick")
-	}
+	require.NoError(t, err)
+	require.False(t, bot.moonShotAborted, "moon shot should not abort when bot is leading every trick")
 }
 
 // --- Pass requires three cards ---
@@ -332,7 +270,5 @@ func TestSmartChoosePassRequiresThreeCards(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "3D"})
 
 	_, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand})
-	if err == nil {
-		t.Fatal("expected not enough cards error")
-	}
+	require.ErrorIs(t, err, ErrNotEnoughCards)
 }

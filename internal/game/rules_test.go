@@ -1,6 +1,10 @@
 package game
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestValidatePlayFirstTrickLeadMustBeTwoClubs(t *testing.T) {
 	hand := []Card{{Suit: SuitClubs, Rank: 2}, {Suit: SuitHearts, Rank: 5}}
@@ -10,18 +14,14 @@ func TestValidatePlayFirstTrickLeadMustBeTwoClubs(t *testing.T) {
 		Card:       Card{Suit: SuitHearts, Rank: 5},
 		FirstTrick: true,
 	})
-	if err == nil {
-		t.Fatalf("expected 5H lead to be rejected on first trick")
-	}
+	require.ErrorIs(t, err, ErrMustLeadTwoClubs)
 
 	err = ValidatePlay(ValidatePlayInput{
 		Hand:       hand,
 		Card:       Card{Suit: SuitClubs, Rank: 2},
 		FirstTrick: true,
 	})
-	if err != nil {
-		t.Fatalf("expected 2C lead to be accepted, got %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestValidatePlayMustFollowSuit(t *testing.T) {
@@ -33,9 +33,7 @@ func TestValidatePlayMustFollowSuit(t *testing.T) {
 		Trick:      []Card{{Suit: SuitClubs, Rank: 2}},
 		FirstTrick: false,
 	})
-	if err == nil {
-		t.Fatalf("expected follow-suit validation error")
-	}
+	require.ErrorIs(t, err, ErrMustFollowSuit)
 }
 
 func TestTrickWinnerAndPoints(t *testing.T) {
@@ -45,21 +43,16 @@ func TestTrickWinnerAndPoints(t *testing.T) {
 		{Seat: 2, Card: Card{Suit: SuitHearts, Rank: 2}},
 		{Seat: 3, Card: Card{Suit: SuitSpades, Rank: 12}},
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if winner != 1 {
-		t.Fatalf("expected seat 1 to win, got %d", winner)
-	}
-	if points != 14 {
-		t.Fatalf("expected 14 points, got %d", points)
-	}
+	require.NoError(t, err)
+	require.Equal(t, 1, winner)
+	require.Equal(t, Points(14), points)
 }
 
 func TestApplyShootTheMoon(t *testing.T) {
 	adjusted := ApplyShootTheMoon([PlayersPerTable]Points{26, 0, 0, 0})
 
-	if adjusted[0] != 0 || adjusted[1] != 26 || adjusted[2] != 26 || adjusted[3] != 26 {
-		t.Fatalf("unexpected adjusted scores: %v", adjusted)
-	}
+	require.Equal(t, Points(0), adjusted[0])
+	require.Equal(t, Points(26), adjusted[1])
+	require.Equal(t, Points(26), adjusted[2])
+	require.Equal(t, Points(26), adjusted[3])
 }

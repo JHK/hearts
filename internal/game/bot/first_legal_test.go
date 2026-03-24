@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/JHK/hearts/internal/game"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFirstLegalChoosePlayUsesHandOrder(t *testing.T) {
@@ -15,13 +16,8 @@ func TestFirstLegalChoosePlayUsesHandOrder(t *testing.T) {
 		HeartsBroken: true,
 		FirstTrick:   false,
 	})
-	if err != nil {
-		t.Fatalf("expected valid play, got %v", err)
-	}
-
-	if card.String() != "KC" {
-		t.Fatalf("expected first legal card KC, got %s", card)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "KC", card.String())
 }
 
 func TestFirstLegalChoosePlayFollowsSuit(t *testing.T) {
@@ -33,13 +29,8 @@ func TestFirstLegalChoosePlayFollowsSuit(t *testing.T) {
 		HeartsBroken: true,
 		FirstTrick:   false,
 	})
-	if err != nil {
-		t.Fatalf("expected valid play, got %v", err)
-	}
-
-	if card.String() != "KS" {
-		t.Fatalf("expected first legal card KS, got %s", card)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "KS", card.String())
 }
 
 func TestFirstLegalChoosePlayFirstTrickLead(t *testing.T) {
@@ -51,55 +42,38 @@ func TestFirstLegalChoosePlayFirstTrickLead(t *testing.T) {
 		HeartsBroken: false,
 		FirstTrick:   true,
 	})
-	if err != nil {
-		t.Fatalf("expected valid play, got %v", err)
-	}
-
-	if card.String() != "2C" {
-		t.Fatalf("expected first legal card 2C, got %s", card)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "2C", card.String())
 }
 
 func TestFirstLegalChoosePlayNoLegalCards(t *testing.T) {
 	_, err := NewFirstLegalBot().ChoosePlay(game.TurnInput{})
-	if err == nil {
-		t.Fatalf("expected no legal plays error")
-	}
+	require.ErrorIs(t, err, ErrNoLegalPlays)
 }
 
 func TestFirstLegalChoosePassUsesFirstThreeInOrder(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "3D", "2S", "AH"})
 
 	cards, err := NewFirstLegalBot().ChoosePass(game.PassInput{Hand: hand, Direction: game.PassDirectionLeft})
-	if err != nil {
-		t.Fatalf("expected pass cards, got %v", err)
-	}
-
-	if len(cards) != 3 {
-		t.Fatalf("expected 3 pass cards, got %d", len(cards))
-	}
-
-	if cards[0].String() != "KC" || cards[1].String() != "3D" || cards[2].String() != "2S" {
-		t.Fatalf("expected first three cards KC,3D,2S got %s,%s,%s", cards[0], cards[1], cards[2])
-	}
+	require.NoError(t, err)
+	require.Len(t, cards, 3)
+	require.Equal(t, "KC", cards[0].String())
+	require.Equal(t, "3D", cards[1].String())
+	require.Equal(t, "2S", cards[2].String())
 }
 
 func TestFirstLegalChoosePassRequiresThreeCards(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "3D"})
 
 	_, err := NewFirstLegalBot().ChoosePass(game.PassInput{Hand: hand})
-	if err == nil {
-		t.Fatalf("expected not enough cards error")
-	}
+	require.ErrorIs(t, err, ErrNotEnoughCards)
 }
 
 func parseCards(t *testing.T, raw []string) []game.Card {
 	t.Helper()
 
 	cards, err := game.ParseCards(raw)
-	if err != nil {
-		t.Fatalf("parse cards: %v", err)
-	}
+	require.NoError(t, err, "parse cards")
 
 	return cards
 }

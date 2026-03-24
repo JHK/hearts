@@ -11,6 +11,7 @@ import (
 	"github.com/JHK/hearts/internal/protocol"
 	"github.com/JHK/hearts/internal/session"
 	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/require"
 )
 
 type testWSMessage struct {
@@ -24,9 +25,7 @@ func TestServesExtractedScripts(t *testing.T) {
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
-	if err != nil {
-		t.Fatalf("new handler: %v", err)
-	}
+	require.NoError(t, err, "new handler")
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -39,28 +38,17 @@ func TestServesExtractedScripts(t *testing.T) {
 		"/assets/js/table/cards.js",
 	} {
 		resp, err := srv.Client().Get(srv.URL + path)
-		if err != nil {
-			t.Fatalf("get %s: %v", path, err)
-		}
-		if resp.StatusCode != http.StatusOK {
-			_ = resp.Body.Close()
-			t.Fatalf("expected status 200 for %s, got %d", path, resp.StatusCode)
-		}
-		if contentType := resp.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "text/javascript") {
-			_ = resp.Body.Close()
-			t.Fatalf("expected JavaScript content type for %s, got %q", path, contentType)
-		}
+		require.NoError(t, err, "get %s", path)
+		require.Equal(t, http.StatusOK, resp.StatusCode, "status for %s", path)
+		require.True(t, strings.HasPrefix(resp.Header.Get("Content-Type"), "text/javascript"),
+			"expected JavaScript content type for %s, got %q", path, resp.Header.Get("Content-Type"))
 		_ = resp.Body.Close()
 	}
 
 	missing, err := srv.Client().Get(srv.URL + "/assets/js/unknown/main.js")
-	if err != nil {
-		t.Fatalf("get missing script: %v", err)
-	}
+	require.NoError(t, err, "get missing script")
 	defer missing.Body.Close()
-	if missing.StatusCode != http.StatusNotFound {
-		t.Fatalf("expected 404 for unknown script, got %d", missing.StatusCode)
-	}
+	require.Equal(t, http.StatusNotFound, missing.StatusCode)
 }
 
 func TestWebSocketJoinAndStateFlow(t *testing.T) {
@@ -68,9 +56,7 @@ func TestWebSocketJoinAndStateFlow(t *testing.T) {
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
-	if err != nil {
-		t.Fatalf("new handler: %v", err)
-	}
+	require.NoError(t, err, "new handler")
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -80,59 +66,33 @@ func TestWebSocketJoinAndStateFlow(t *testing.T) {
 
 	_ = readMessage(t, ws)
 
-	if err := ws.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "token-a"}); err != nil {
-		t.Fatalf("join write: %v", err)
-	}
+	require.NoError(t, ws.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "token-a"}), "join write")
 
 	joinMsg := readMessageType(t, ws, "join_result")
 	var joinResp protocol.JoinResponse
-	if err := json.Unmarshal(joinMsg.Data, &joinResp); err != nil {
-		t.Fatalf("decode join result: %v", err)
-	}
-	if !joinResp.Accepted {
-		t.Fatalf("expected join accepted, got rejected: %s", joinResp.Reason)
-	}
-	if joinResp.PlayerID == "" {
-		t.Fatalf("expected player id")
-	}
+	require.NoError(t, json.Unmarshal(joinMsg.Data, &joinResp), "decode join result")
+	require.True(t, joinResp.Accepted, "expected join accepted, got rejected: %s", joinResp.Reason)
+	require.NotEmpty(t, joinResp.PlayerID)
 
-	if err := ws.WriteJSON(wsCommand{Type: "state"}); err != nil {
-		t.Fatalf("state write: %v", err)
-	}
+	require.NoError(t, ws.WriteJSON(wsCommand{Type: "state"}), "state write")
 
 	stateMsg := readMessageType(t, ws, "table_state")
 	var snapshot session.Snapshot
-	if err := json.Unmarshal(stateMsg.Data, &snapshot); err != nil {
-		t.Fatalf("decode table state: %v", err)
-	}
-	if snapshot.TableID != "demo" {
-		t.Fatalf("unexpected table id: %s", snapshot.TableID)
-	}
-	if len(snapshot.Players) != 1 {
-		t.Fatalf("expected 1 player, got %d", len(snapshot.Players))
-	}
+	require.NoError(t, json.Unmarshal(stateMsg.Data, &snapshot), "decode table state")
+	require.Equal(t, "demo", snapshot.TableID)
+	require.Len(t, snapshot.Players, 1)
 
-	if err := ws.WriteJSON(wsCommand{Type: "start"}); err != nil {
-		t.Fatalf("start write: %v", err)
-	}
+	require.NoError(t, ws.WriteJSON(wsCommand{Type: "start"}), "start write")
 
 	startMsg := readMessageType(t, ws, "start_result")
 	var startResp protocol.CommandResponse
-	if err := json.Unmarshal(startMsg.Data, &startResp); err != nil {
-		t.Fatalf("decode start response: %v", err)
-	}
-	if startResp.Accepted {
-		t.Fatalf("expected start rejected with insufficient players")
-	}
+	require.NoError(t, json.Unmarshal(startMsg.Data, &startResp), "decode start response")
+	require.False(t, startResp.Accepted, "expected start rejected with insufficient players")
 
-	if err := ws.WriteJSON(wsCommand{Type: "unknown"}); err != nil {
-		t.Fatalf("unknown write: %v", err)
-	}
+	require.NoError(t, ws.WriteJSON(wsCommand{Type: "unknown"}), "unknown write")
 
 	errMsg := readMessageType(t, ws, "error")
-	if strings.TrimSpace(errMsg.Error) == "" {
-		t.Fatalf("expected error message for unknown command")
-	}
+	require.NotEmpty(t, strings.TrimSpace(errMsg.Error), "expected error message for unknown command")
 }
 
 func TestWebSocketJoinReusesPlayerByToken(t *testing.T) {
@@ -140,9 +100,7 @@ func TestWebSocketJoinReusesPlayerByToken(t *testing.T) {
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
-	if err != nil {
-		t.Fatalf("new handler: %v", err)
-	}
+	require.NoError(t, err, "new handler")
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -150,42 +108,24 @@ func TestWebSocketJoinReusesPlayerByToken(t *testing.T) {
 	first := mustDialTableSocket(t, srv.URL, "rejoin")
 	defer first.Close()
 	_ = readMessage(t, first)
-	if err := first.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "stable-token"}); err != nil {
-		t.Fatalf("first join write: %v", err)
-	}
+	require.NoError(t, first.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "stable-token"}), "first join write")
 	firstJoin := readMessageType(t, first, "join_result")
 	var firstResp protocol.JoinResponse
-	if err := json.Unmarshal(firstJoin.Data, &firstResp); err != nil {
-		t.Fatalf("decode first join: %v", err)
-	}
-	if !firstResp.Accepted {
-		t.Fatalf("first join rejected: %s", firstResp.Reason)
-	}
-	if err := first.Close(); err != nil {
-		t.Fatalf("close first websocket: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(firstJoin.Data, &firstResp), "decode first join")
+	require.True(t, firstResp.Accepted, "first join rejected: %s", firstResp.Reason)
+	require.NoError(t, first.Close(), "close first websocket")
 
 	second := mustDialTableSocket(t, srv.URL, "rejoin")
 	defer second.Close()
 	_ = readMessage(t, second)
-	if err := second.WriteJSON(wsCommand{Type: "join", Name: "Renamed", Token: "stable-token"}); err != nil {
-		t.Fatalf("second join write: %v", err)
-	}
+	require.NoError(t, second.WriteJSON(wsCommand{Type: "join", Name: "Renamed", Token: "stable-token"}), "second join write")
 	secondJoin := readMessageType(t, second, "join_result")
 	var secondResp protocol.JoinResponse
-	if err := json.Unmarshal(secondJoin.Data, &secondResp); err != nil {
-		t.Fatalf("decode second join: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(secondJoin.Data, &secondResp), "decode second join")
 
-	if !secondResp.Accepted {
-		t.Fatalf("second join rejected: %s", secondResp.Reason)
-	}
-	if secondResp.PlayerID != firstResp.PlayerID {
-		t.Fatalf("expected same player id on reconnect, got %s and %s", firstResp.PlayerID, secondResp.PlayerID)
-	}
-	if secondResp.Seat != firstResp.Seat {
-		t.Fatalf("expected same seat on reconnect, got %d and %d", firstResp.Seat, secondResp.Seat)
-	}
+	require.True(t, secondResp.Accepted, "second join rejected: %s", secondResp.Reason)
+	require.Equal(t, firstResp.PlayerID, secondResp.PlayerID, "expected same player id on reconnect")
+	require.Equal(t, firstResp.Seat, secondResp.Seat, "expected same seat on reconnect")
 }
 
 func TestDisconnectLeavesTableBeforeRoundStart(t *testing.T) {
@@ -193,9 +133,7 @@ func TestDisconnectLeavesTableBeforeRoundStart(t *testing.T) {
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
-	if err != nil {
-		t.Fatalf("new handler: %v", err)
-	}
+	require.NoError(t, err, "new handler")
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -203,22 +141,16 @@ func TestDisconnectLeavesTableBeforeRoundStart(t *testing.T) {
 	alice := mustDialTableSocket(t, srv.URL, "leave-before-start")
 	defer alice.Close()
 	_ = readMessage(t, alice)
-	if err := alice.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "alice-token"}); err != nil {
-		t.Fatalf("alice join write: %v", err)
-	}
+	require.NoError(t, alice.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "alice-token"}), "alice join write")
 	_ = readMessageType(t, alice, "join_result")
 
 	bob := mustDialTableSocket(t, srv.URL, "leave-before-start")
 	defer bob.Close()
 	_ = readMessage(t, bob)
-	if err := bob.WriteJSON(wsCommand{Type: "join", Name: "Bob", Token: "bob-token"}); err != nil {
-		t.Fatalf("bob join write: %v", err)
-	}
+	require.NoError(t, bob.WriteJSON(wsCommand{Type: "join", Name: "Bob", Token: "bob-token"}), "bob join write")
 	_ = readMessageType(t, bob, "join_result")
 
-	if err := alice.Close(); err != nil {
-		t.Fatalf("close alice websocket: %v", err)
-	}
+	require.NoError(t, alice.Close(), "close alice websocket")
 
 	assertEventually(t, 2*time.Second, func() bool {
 		snapshot := requestStateSnapshot(t, bob)
@@ -234,9 +166,7 @@ func TestWebSocketAutoCreatesTable(t *testing.T) {
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
-	if err != nil {
-		t.Fatalf("new handler: %v", err)
-	}
+	require.NoError(t, err, "new handler")
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -246,9 +176,8 @@ func TestWebSocketAutoCreatesTable(t *testing.T) {
 
 	_ = readMessage(t, ws)
 
-	if _, ok := manager.Get("auto-create"); !ok {
-		t.Fatalf("expected table to be created when websocket connected")
-	}
+	_, ok := manager.Get("auto-create")
+	require.True(t, ok, "expected table to be created when websocket connected")
 }
 
 func TestTableClosesWhenLastHumanLeaves(t *testing.T) {
@@ -256,22 +185,16 @@ func TestTableClosesWhenLastHumanLeaves(t *testing.T) {
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
-	if err != nil {
-		t.Fatalf("new handler: %v", err)
-	}
+	require.NoError(t, err, "new handler")
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
 	ws := mustDialTableSocket(t, srv.URL, "close-on-empty")
 	_ = readMessage(t, ws)
-	if err := ws.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "alice-token"}); err != nil {
-		t.Fatalf("join write: %v", err)
-	}
+	require.NoError(t, ws.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "alice-token"}), "join write")
 	_ = readMessageType(t, ws, "join_result")
-	if err := ws.Close(); err != nil {
-		t.Fatalf("close websocket: %v", err)
-	}
+	require.NoError(t, ws.Close(), "close websocket")
 
 	assertEventually(t, 2*time.Second, func() bool {
 		_, ok := manager.Get("close-on-empty")
@@ -284,9 +207,7 @@ func TestPassPhaseAndReviewFlowOverWebSocket(t *testing.T) {
 	defer manager.Close()
 
 	handler, err := NewHandler(Config{}, manager)
-	if err != nil {
-		t.Fatalf("new handler: %v", err)
-	}
+	require.NoError(t, err, "new handler")
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -306,30 +227,19 @@ func TestPassPhaseAndReviewFlowOverWebSocket(t *testing.T) {
 		players[i].conn = mustDialTableSocket(t, srv.URL, "pass-flow")
 		defer players[i].conn.Close()
 		_ = readMessage(t, players[i].conn)
-		if err := players[i].conn.WriteJSON(wsCommand{Type: "join", Name: players[i].name, Token: players[i].token}); err != nil {
-			t.Fatalf("join write for %s: %v", players[i].name, err)
-		}
+		require.NoError(t, players[i].conn.WriteJSON(wsCommand{Type: "join", Name: players[i].name, Token: players[i].token}),
+			"join write for %s", players[i].name)
 		join := readMessageType(t, players[i].conn, "join_result")
 		var joinResp protocol.JoinResponse
-		if err := json.Unmarshal(join.Data, &joinResp); err != nil {
-			t.Fatalf("decode join response for %s: %v", players[i].name, err)
-		}
-		if !joinResp.Accepted {
-			t.Fatalf("join rejected for %s: %s", players[i].name, joinResp.Reason)
-		}
+		require.NoError(t, json.Unmarshal(join.Data, &joinResp), "decode join response for %s", players[i].name)
+		require.True(t, joinResp.Accepted, "join rejected for %s: %s", players[i].name, joinResp.Reason)
 	}
 
-	if err := players[0].conn.WriteJSON(wsCommand{Type: "start"}); err != nil {
-		t.Fatalf("start write: %v", err)
-	}
+	require.NoError(t, players[0].conn.WriteJSON(wsCommand{Type: "start"}), "start write")
 	startMsg := readMessageType(t, players[0].conn, "start_result")
 	var startResp protocol.CommandResponse
-	if err := json.Unmarshal(startMsg.Data, &startResp); err != nil {
-		t.Fatalf("decode start response: %v", err)
-	}
-	if !startResp.Accepted {
-		t.Fatalf("expected start accepted, got %s", startResp.Reason)
-	}
+	require.NoError(t, json.Unmarshal(startMsg.Data, &startResp), "decode start response")
+	require.True(t, startResp.Accepted, "expected start accepted, got %s", startResp.Reason)
 
 	passCardsByPlayer := make([][]string, len(players))
 	for i := range players {
@@ -342,17 +252,12 @@ func TestPassPhaseAndReviewFlowOverWebSocket(t *testing.T) {
 	}
 
 	for i := range players {
-		if err := players[i].conn.WriteJSON(wsCommand{Type: "pass", Cards: passCardsByPlayer[i]}); err != nil {
-			t.Fatalf("pass write for %s: %v", players[i].name, err)
-		}
+		require.NoError(t, players[i].conn.WriteJSON(wsCommand{Type: "pass", Cards: passCardsByPlayer[i]}),
+			"pass write for %s", players[i].name)
 		passMsg := readMessageType(t, players[i].conn, "pass_result")
 		var passResp protocol.CommandResponse
-		if err := json.Unmarshal(passMsg.Data, &passResp); err != nil {
-			t.Fatalf("decode pass response for %s: %v", players[i].name, err)
-		}
-		if !passResp.Accepted {
-			t.Fatalf("pass rejected for %s: %s", players[i].name, passResp.Reason)
-		}
+		require.NoError(t, json.Unmarshal(passMsg.Data, &passResp), "decode pass response for %s", players[i].name)
+		require.True(t, passResp.Accepted, "pass rejected for %s: %s", players[i].name, passResp.Reason)
 	}
 
 	assertEventually(t, 2*time.Second, func() bool {
@@ -361,34 +266,22 @@ func TestPassPhaseAndReviewFlowOverWebSocket(t *testing.T) {
 	})
 
 	for i := 0; i < len(players)-1; i++ {
-		if err := players[i].conn.WriteJSON(wsCommand{Type: "ready_after_pass"}); err != nil {
-			t.Fatalf("ready write for %s: %v", players[i].name, err)
-		}
+		require.NoError(t, players[i].conn.WriteJSON(wsCommand{Type: "ready_after_pass"}),
+			"ready write for %s", players[i].name)
 		readyMsg := readMessageType(t, players[i].conn, "ready_after_pass_result")
 		var readyResp protocol.CommandResponse
-		if err := json.Unmarshal(readyMsg.Data, &readyResp); err != nil {
-			t.Fatalf("decode ready response for %s: %v", players[i].name, err)
-		}
-		if !readyResp.Accepted {
-			t.Fatalf("ready rejected for %s: %s", players[i].name, readyResp.Reason)
-		}
+		require.NoError(t, json.Unmarshal(readyMsg.Data, &readyResp), "decode ready response for %s", players[i].name)
+		require.True(t, readyResp.Accepted, "ready rejected for %s: %s", players[i].name, readyResp.Reason)
 	}
 
-	if phase := requestStateSnapshot(t, players[0].conn).Phase; phase != "pass_review" {
-		t.Fatalf("expected still pass_review before last ready, got %q", phase)
-	}
+	require.Equal(t, "pass_review", requestStateSnapshot(t, players[0].conn).Phase,
+		"expected still pass_review before last ready")
 
-	if err := players[len(players)-1].conn.WriteJSON(wsCommand{Type: "ready_after_pass"}); err != nil {
-		t.Fatalf("last ready write: %v", err)
-	}
+	require.NoError(t, players[len(players)-1].conn.WriteJSON(wsCommand{Type: "ready_after_pass"}), "last ready write")
 	lastReady := readMessageType(t, players[len(players)-1].conn, "ready_after_pass_result")
 	var lastReadyResp protocol.CommandResponse
-	if err := json.Unmarshal(lastReady.Data, &lastReadyResp); err != nil {
-		t.Fatalf("decode last ready response: %v", err)
-	}
-	if !lastReadyResp.Accepted {
-		t.Fatalf("last ready rejected: %s", lastReadyResp.Reason)
-	}
+	require.NoError(t, json.Unmarshal(lastReady.Data, &lastReadyResp), "decode last ready response")
+	require.True(t, lastReadyResp.Accepted, "last ready rejected: %s", lastReadyResp.Reason)
 
 	assertEventually(t, 2*time.Second, func() bool {
 		snapshot := requestStateSnapshot(t, players[0].conn)
@@ -401,9 +294,7 @@ func mustDialTableSocket(t *testing.T, baseURL, tableID string) *websocket.Conn 
 
 	wsURL := "ws" + strings.TrimPrefix(baseURL, "http") + "/ws/table/" + tableID
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	if err != nil {
-		t.Fatalf("dial websocket: %v", err)
-	}
+	require.NoError(t, err, "dial websocket")
 	return conn
 }
 
@@ -425,14 +316,10 @@ func readMessageType(t *testing.T, conn *websocket.Conn, expected string) testWS
 func readMessage(t *testing.T, conn *websocket.Conn) testWSMessage {
 	t.Helper()
 
-	if err := conn.SetReadDeadline(time.Now().Add(4 * time.Second)); err != nil {
-		t.Fatalf("set read deadline: %v", err)
-	}
+	require.NoError(t, conn.SetReadDeadline(time.Now().Add(4*time.Second)), "set read deadline")
 
 	var message testWSMessage
-	if err := conn.ReadJSON(&message); err != nil {
-		t.Fatalf("read websocket message: %v", err)
-	}
+	require.NoError(t, conn.ReadJSON(&message), "read websocket message")
 	return message
 }
 
@@ -453,15 +340,11 @@ func assertEventually(t *testing.T, timeout time.Duration, predicate func() bool
 func requestStateSnapshot(t *testing.T, conn *websocket.Conn) session.Snapshot {
 	t.Helper()
 
-	if err := conn.WriteJSON(wsCommand{Type: "state"}); err != nil {
-		t.Fatalf("state write: %v", err)
-	}
+	require.NoError(t, conn.WriteJSON(wsCommand{Type: "state"}), "state write")
 
 	stateMsg := readMessageType(t, conn, "table_state")
 	var snapshot session.Snapshot
-	if err := json.Unmarshal(stateMsg.Data, &snapshot); err != nil {
-		t.Fatalf("decode table state: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(stateMsg.Data, &snapshot), "decode table state")
 
 	return snapshot
 }

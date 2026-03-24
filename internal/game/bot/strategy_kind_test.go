@@ -3,6 +3,8 @@ package bot
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseStrategyKind(t *testing.T) {
@@ -23,37 +25,25 @@ func TestParseStrategyKind(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ParseStrategyKind(tt.raw)
 			if tt.wantErr {
-				if err == nil {
-					t.Fatalf("expected error")
-				}
+				require.ErrorIs(t, err, ErrUnknownStrategy)
 				return
 			}
 
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if got != tt.want {
-				t.Fatalf("expected %s, got %s", tt.want, got)
-			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
 
 func TestStrategyKindNew(t *testing.T) {
 	bot := StrategySmart.New()
-	if _, ok := bot.(*Smart); !ok {
-		t.Fatalf("expected Smart bot")
-	}
+	require.IsType(t, &Smart{}, bot)
 
 	bot = StrategyRandom.New()
-	if _, ok := bot.(*Random); !ok {
-		t.Fatalf("expected Random bot")
-	}
+	require.IsType(t, &Random{}, bot)
 
 	bot = StrategyFirstLegal.New()
-	if _, ok := bot.(*FirstLegal); !ok {
-		t.Fatalf("expected FirstLegal bot")
-	}
+	require.IsType(t, &FirstLegal{}, bot)
 }
 
 func TestBotNameAvoidsCollisions(t *testing.T) {
@@ -62,9 +52,7 @@ func TestBotNameAvoidsCollisions(t *testing.T) {
 	// Add 4 bots of the same strategy — all names must be unique.
 	for range 4 {
 		name := StrategyRandom.BotName(taken)
-		if taken[name] {
-			t.Fatalf("duplicate bot name: %s", name)
-		}
+		require.False(t, taken[name], "duplicate bot name: %s", name)
 		taken[name] = true
 	}
 }
@@ -73,20 +61,14 @@ func TestBotNameFallsBackToSuffix(t *testing.T) {
 	// FirstLegal has only one name ("Fritz"). Exhaust the pool.
 	taken := map[string]bool{"Fritz": true}
 	name := StrategyFirstLegal.BotName(taken)
-	if name == "Fritz" {
-		t.Fatal("expected a different name when Fritz is taken")
-	}
-	if !strings.HasPrefix(name, "Fritz") {
-		t.Fatalf("expected suffixed Fritz variant, got %s", name)
-	}
+	require.NotEqual(t, "Fritz", name)
+	require.True(t, strings.HasPrefix(name, "Fritz"), "expected suffixed Fritz variant, got %s", name)
 }
 
 func TestBotNameAvoidsHumanNames(t *testing.T) {
 	taken := map[string]bool{"Lucky": true}
 	for range 20 {
 		name := StrategyRandom.BotName(taken)
-		if name == "Lucky" {
-			t.Fatal("bot name collided with human name")
-		}
+		require.NotEqual(t, "Lucky", name, "bot name collided with human name")
 	}
 }

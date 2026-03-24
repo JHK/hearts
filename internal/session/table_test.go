@@ -5,6 +5,7 @@ import (
 
 	"github.com/JHK/hearts/internal/game"
 	"github.com/JHK/hearts/internal/protocol"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLeaveRemovesPlayerBeforeRoundStart(t *testing.T) {
@@ -12,26 +13,16 @@ func TestLeaveRemovesPlayerBeforeRoundStart(t *testing.T) {
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
-	if err != nil {
-		t.Fatalf("join alice: %v", err)
-	}
+	require.NoError(t, err, "join alice")
 	bob, err := runtime.Join("Bob", "bob-token")
-	if err != nil {
-		t.Fatalf("join bob: %v", err)
-	}
+	require.NoError(t, err, "join bob")
 
 	runtime.Leave(alice.PlayerID)
 
 	snapshot := runtime.Snapshot("")
-	if len(snapshot.Players) != 1 {
-		t.Fatalf("expected one player after leave, got %d", len(snapshot.Players))
-	}
-	if snapshot.Players[0].PlayerID != bob.PlayerID {
-		t.Fatalf("expected bob to remain, got %s", snapshot.Players[0].PlayerID)
-	}
-	if snapshot.Players[0].Seat != 0 {
-		t.Fatalf("expected remaining player to be reseated to 0, got %d", snapshot.Players[0].Seat)
-	}
+	require.Len(t, snapshot.Players, 1)
+	require.Equal(t, bob.PlayerID, snapshot.Players[0].PlayerID)
+	require.Equal(t, 0, snapshot.Players[0].Seat)
 }
 
 func TestLeaveConvertsHumanToBotDuringRound(t *testing.T) {
@@ -39,43 +30,31 @@ func TestLeaveConvertsHumanToBotDuringRound(t *testing.T) {
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
-	if err != nil {
-		t.Fatalf("join alice: %v", err)
-	}
+	require.NoError(t, err, "join alice")
 	bob, err := runtime.Join("Bob", "bob-token")
-	if err != nil {
-		t.Fatalf("join bob: %v", err)
-	}
-	if _, err := runtime.AddBot(""); err != nil {
-		t.Fatalf("add bot 1: %v", err)
-	}
-	if _, err := runtime.AddBot(""); err != nil {
-		t.Fatalf("add bot 2: %v", err)
-	}
+	require.NoError(t, err, "join bob")
+	_, err = runtime.AddBot("")
+	require.NoError(t, err, "add bot 1")
+	_, err = runtime.AddBot("")
+	require.NoError(t, err, "add bot 2")
 
 	start := runtime.Start(alice.PlayerID)
-	if !start.Accepted {
-		t.Fatalf("expected start accepted, got %s", start.Reason)
-	}
+	require.True(t, start.Accepted, "expected start accepted, got %s", start.Reason)
 
 	runtime.Leave(bob.PlayerID)
 
 	snapshot := runtime.Snapshot("")
-	if len(snapshot.Players) != 4 {
-		t.Fatalf("expected 4 players after converting to bot, got %d", len(snapshot.Players))
-	}
+	require.Len(t, snapshot.Players, 4)
 
 	for _, player := range snapshot.Players {
 		if player.PlayerID != bob.PlayerID {
 			continue
 		}
-		if !player.IsBot {
-			t.Fatalf("expected leaving player to become bot")
-		}
+		require.True(t, player.IsBot, "expected leaving player to become bot")
 		return
 	}
 
-	t.Fatalf("expected to find leaving player in snapshot")
+	t.Fatal("expected to find leaving player in snapshot")
 }
 
 func TestStartBeginsInPassingPhaseAndBlocksPlay(t *testing.T) {
@@ -83,40 +62,25 @@ func TestStartBeginsInPassingPhaseAndBlocksPlay(t *testing.T) {
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
-	if err != nil {
-		t.Fatalf("join alice: %v", err)
-	}
+	require.NoError(t, err, "join alice")
 	bob, err := runtime.Join("Bob", "bob-token")
-	if err != nil {
-		t.Fatalf("join bob: %v", err)
-	}
+	require.NoError(t, err, "join bob")
 	carol, err := runtime.Join("Carol", "carol-token")
-	if err != nil {
-		t.Fatalf("join carol: %v", err)
-	}
-	if _, err := runtime.Join("Dave", "dave-token"); err != nil {
-		t.Fatalf("join dave: %v", err)
-	}
+	require.NoError(t, err, "join carol")
+	_, err = runtime.Join("Dave", "dave-token")
+	require.NoError(t, err, "join dave")
 
 	start := runtime.Start(alice.PlayerID)
-	if !start.Accepted {
-		t.Fatalf("expected start accepted, got %s", start.Reason)
-	}
+	require.True(t, start.Accepted, "expected start accepted, got %s", start.Reason)
 
 	snapshot := runtime.Snapshot(alice.PlayerID)
-	if snapshot.Phase != "passing" {
-		t.Fatalf("expected passing phase, got %q", snapshot.Phase)
-	}
+	require.Equal(t, "passing", snapshot.Phase)
 
 	play := runtime.Play(bob.PlayerID, snapshot.Hand[0])
-	if play.Accepted {
-		t.Fatalf("expected play to be rejected during passing phase")
-	}
+	require.False(t, play.Accepted, "expected play to be rejected during passing phase")
 
 	play = runtime.Play(carol.PlayerID, snapshot.Hand[0])
-	if play.Accepted {
-		t.Fatalf("expected play to be rejected during passing phase")
-	}
+	require.False(t, play.Accepted, "expected play to be rejected during passing phase")
 }
 
 func TestPassingAndReviewFlowTransitionsToPlay(t *testing.T) {
@@ -129,72 +93,46 @@ func TestPassingAndReviewFlowTransitionsToPlay(t *testing.T) {
 		token string
 	}{{"Alice", "alice-token"}, {"Bob", "bob-token"}, {"Carol", "carol-token"}, {"Dave", "dave-token"}} {
 		join, err := runtime.Join(entry.name, entry.token)
-		if err != nil {
-			t.Fatalf("join %s: %v", entry.name, err)
-		}
+		require.NoError(t, err, "join %s", entry.name)
 		players = append(players, join.PlayerID)
 	}
 
 	start := runtime.Start(players[0])
-	if !start.Accepted {
-		t.Fatalf("expected start accepted, got %s", start.Reason)
-	}
+	require.True(t, start.Accepted, "expected start accepted, got %s", start.Reason)
 
 	passChoices := make(map[protocol.PlayerID][]string, len(players))
 	for _, playerID := range players {
 		hand := runtime.Snapshot(playerID).Hand
-		if len(hand) != 13 {
-			t.Fatalf("expected full hand before passing, got %d", len(hand))
-		}
+		require.Len(t, hand, 13, "expected full hand before passing")
 		passChoices[playerID] = append([]string(nil), hand[:3]...)
 	}
 
 	for _, playerID := range players {
 		pass := runtime.Pass(playerID, passChoices[playerID])
-		if !pass.Accepted {
-			t.Fatalf("expected pass accepted for %s, got %s", playerID, pass.Reason)
-		}
+		require.True(t, pass.Accepted, "expected pass accepted for %s, got %s", playerID, pass.Reason)
 	}
 
 	for _, playerID := range players {
 		snapshot := runtime.Snapshot(playerID)
-		if snapshot.Phase != "pass_review" {
-			t.Fatalf("expected pass review phase for %s, got %q", playerID, snapshot.Phase)
-		}
-		if len(snapshot.Hand) != 13 {
-			t.Fatalf("expected 13 cards after passing for %s, got %d", playerID, len(snapshot.Hand))
-		}
-		if len(snapshot.PassSent) != 3 {
-			t.Fatalf("expected 3 sent cards for %s, got %d", playerID, len(snapshot.PassSent))
-		}
-		if len(snapshot.PassReceived) != 3 {
-			t.Fatalf("expected 3 received cards for %s, got %d", playerID, len(snapshot.PassReceived))
-		}
+		require.Equal(t, "pass_review", snapshot.Phase, "phase for %s", playerID)
+		require.Len(t, snapshot.Hand, 13, "cards after passing for %s", playerID)
+		require.Len(t, snapshot.PassSent, 3, "sent cards for %s", playerID)
+		require.Len(t, snapshot.PassReceived, 3, "received cards for %s", playerID)
 	}
 
 	for i := 0; i < len(players)-1; i++ {
 		ready := runtime.ReadyAfterPass(players[i])
-		if !ready.Accepted {
-			t.Fatalf("expected ready accepted for %s, got %s", players[i], ready.Reason)
-		}
+		require.True(t, ready.Accepted, "expected ready accepted for %s, got %s", players[i], ready.Reason)
 	}
 
-	if phase := runtime.Snapshot(players[0]).Phase; phase != "pass_review" {
-		t.Fatalf("expected pass review until all ready, got %q", phase)
-	}
+	require.Equal(t, "pass_review", runtime.Snapshot(players[0]).Phase, "expected pass review until all ready")
 
 	ready := runtime.ReadyAfterPass(players[len(players)-1])
-	if !ready.Accepted {
-		t.Fatalf("expected last ready accepted, got %s", ready.Reason)
-	}
+	require.True(t, ready.Accepted, "expected last ready accepted, got %s", ready.Reason)
 
 	playing := runtime.Snapshot(players[0])
-	if playing.Phase != "playing" {
-		t.Fatalf("expected play phase after all ready, got %q", playing.Phase)
-	}
-	if playing.TurnPlayerID == "" {
-		t.Fatalf("expected turn player after transitioning to play")
-	}
+	require.Equal(t, "playing", playing.Phase)
+	require.NotEmpty(t, playing.TurnPlayerID, "expected turn player after transitioning to play")
 }
 
 func TestPassDirectionCycle(t *testing.T) {
@@ -210,9 +148,7 @@ func TestPassDirectionCycle(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		if actual := game.PassDirectionForRound(tc.roundIndex); actual != tc.expected {
-			t.Fatalf("round %d: expected %q, got %q", tc.roundIndex, tc.expected, actual)
-		}
+		require.Equal(t, tc.expected, game.PassDirectionForRound(tc.roundIndex), "round %d", tc.roundIndex)
 	}
 }
 
@@ -234,27 +170,29 @@ func TestCompleteRoundUpdatesTotalsAndHistory(t *testing.T) {
 
 	completed := runtime.completeRound(state)
 
-	if len(state.roundHistory) != 1 {
-		t.Fatalf("expected one round in history, got %d", len(state.roundHistory))
-	}
+	require.Len(t, state.roundHistory, 1)
 
 	historyEntry := state.roundHistory[0]
-	if historyEntry["p1"] != 5 || historyEntry["p2"] != 7 || historyEntry["p3"] != 3 || historyEntry["p4"] != 11 {
-		t.Fatalf("unexpected history entry: %#v", historyEntry)
-	}
+	require.Equal(t, game.Points(5), historyEntry["p1"])
+	require.Equal(t, game.Points(7), historyEntry["p2"])
+	require.Equal(t, game.Points(3), historyEntry["p3"])
+	require.Equal(t, game.Points(11), historyEntry["p4"])
 
 	scores := state.game.Scores()
-	if scores[0] != 15 || scores[1] != 22 || scores[2] != 5 || scores[3] != 19 {
-		t.Fatalf("unexpected cumulative points: %v", scores)
-	}
+	require.Equal(t, game.Points(15), scores[0])
+	require.Equal(t, game.Points(22), scores[1])
+	require.Equal(t, game.Points(5), scores[2])
+	require.Equal(t, game.Points(19), scores[3])
 
-	if completed.RoundPoints["p1"] != 5 || completed.RoundPoints["p2"] != 7 || completed.RoundPoints["p3"] != 3 || completed.RoundPoints["p4"] != 11 {
-		t.Fatalf("unexpected round completed points: %#v", completed.RoundPoints)
-	}
+	require.Equal(t, game.Points(5), completed.RoundPoints["p1"])
+	require.Equal(t, game.Points(7), completed.RoundPoints["p2"])
+	require.Equal(t, game.Points(3), completed.RoundPoints["p3"])
+	require.Equal(t, game.Points(11), completed.RoundPoints["p4"])
 
-	if completed.TotalPoints["p1"] != 15 || completed.TotalPoints["p2"] != 22 || completed.TotalPoints["p3"] != 5 || completed.TotalPoints["p4"] != 19 {
-		t.Fatalf("unexpected completed totals: %#v", completed.TotalPoints)
-	}
+	require.Equal(t, game.Points(15), completed.TotalPoints["p1"])
+	require.Equal(t, game.Points(22), completed.TotalPoints["p2"])
+	require.Equal(t, game.Points(5), completed.TotalPoints["p3"])
+	require.Equal(t, game.Points(19), completed.TotalPoints["p4"])
 }
 
 func TestBuildSnapshotCopiesRoundHistory(t *testing.T) {
@@ -272,15 +210,9 @@ func TestBuildSnapshotCopiesRoundHistory(t *testing.T) {
 	}
 
 	snapshot := runtime.buildSnapshot(state, "")
-	if len(snapshot.RoundHistory) != 1 {
-		t.Fatalf("expected one round history entry, got %d", len(snapshot.RoundHistory))
-	}
-	if snapshot.RoundHistory[0]["p3"] != 3 {
-		t.Fatalf("unexpected snapshot round history: %#v", snapshot.RoundHistory)
-	}
+	require.Len(t, snapshot.RoundHistory, 1)
+	require.Equal(t, game.Points(3), snapshot.RoundHistory[0]["p3"])
 
 	state.roundHistory[0]["p3"] = 99
-	if snapshot.RoundHistory[0]["p3"] != 3 {
-		t.Fatalf("expected snapshot round history to be copied, got %#v", snapshot.RoundHistory)
-	}
+	require.Equal(t, game.Points(3), snapshot.RoundHistory[0]["p3"], "expected snapshot round history to be copied")
 }
