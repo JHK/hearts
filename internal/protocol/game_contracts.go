@@ -81,3 +81,8 @@ type RematchVoteData struct {
 }
 
 type RematchStartingData struct{}
+
+type SeatClaimedData struct {
+	Player  PlayerInfo `json:"player"`
+	OldName string     `json:"old_name"`
+}

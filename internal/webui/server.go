@@ -49,6 +49,7 @@ type wsCommand struct {
 	Card     string   `json:"card,omitempty"`
 	Cards    []string `json:"cards,omitempty"`
 	Strategy string   `json:"strategy,omitempty"`
+	Seat     *int     `json:"seat,omitempty"`
 }
 
 type humanPresenceTracker struct {
@@ -457,6 +458,30 @@ func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTrack
 				continue
 			}
 			send(wsMessage{Type: "rematch_result", Data: runtime.Rematch(current)})
+		case "claim_seat":
+			if getPlayerID() != "" {
+				send(wsMessage{Type: "error", Error: "already seated"})
+				continue
+			}
+			if cmd.Seat == nil {
+				send(wsMessage{Type: "error", Error: "seat is required"})
+				continue
+			}
+			claimResp, err := runtime.ClaimSeat(*cmd.Seat, cmd.Name, cmd.Token)
+			if err != nil {
+				send(wsMessage{Type: "error", Error: err.Error()})
+				continue
+			}
+			send(wsMessage{Type: "claim_seat_result", Data: claimResp})
+			if claimResp.Accepted {
+				setPlayerID(claimResp.PlayerID)
+				if !humanJoined {
+					humanJoined = true
+					presence.Join(runtime.ID())
+					playerPresence.Join(runtime.ID(), string(claimResp.PlayerID))
+				}
+				send(wsMessage{Type: "table_state", Data: runtime.Snapshot(claimResp.PlayerID)})
+			}
 		default:
 			send(wsMessage{Type: "error", Error: fmt.Sprintf("unknown command %q", cmd.Type)})
 		}

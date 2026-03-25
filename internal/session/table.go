@@ -189,6 +189,13 @@ type rematchCommand struct {
 	reply    chan protocol.CommandResponse
 }
 
+type claimSeatCommand struct {
+	seat  int
+	name  string
+	token string
+	reply chan protocol.JoinResponse
+}
+
 type botHandsCommand struct {
 	reply chan []BotHandSnapshot
 }
@@ -345,6 +352,15 @@ func (r *Table) Rematch(playerID protocol.PlayerID) protocol.CommandResponse {
 	return <-reply
 }
 
+// ClaimSeat lets an observer take over a bot-controlled seat.
+func (r *Table) ClaimSeat(seat int, name, token string) (protocol.JoinResponse, error) {
+	reply := make(chan protocol.JoinResponse, 1)
+	if !r.submit(claimSeatCommand{seat: seat, name: name, token: token, reply: reply}) {
+		return protocol.JoinResponse{}, ErrTableStopping
+	}
+	return <-reply, nil
+}
+
 // BotHands returns the name, seat, and current hand of every bot at the table.
 // Intended for dev/debug use only; returns nil when the session is stopped.
 func (r *Table) BotHands() []BotHandSnapshot {
@@ -415,6 +431,8 @@ func (r *Table) run() {
 				r.handleBotTurn(state, cmd.playerID)
 			case botPassCommand:
 				r.handleBotPass(state, cmd.playerID)
+			case claimSeatCommand:
+				cmd.reply <- r.handleClaimSeat(state, cmd.seat, cmd.name, cmd.token)
 			case botHandsCommand:
 				cmd.reply <- r.buildBotHands(state)
 			}

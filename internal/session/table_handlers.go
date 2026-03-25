@@ -745,6 +745,67 @@ func (r *Table) startRematch(state *tableState) {
 	}
 }
 
+func (r *Table) handleClaimSeat(state *tableState, seat int, name, token string) protocol.JoinResponse {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return protocol.JoinResponse{Accepted: false, Reason: "player token is required"}
+	}
+
+	// Reject if this token is already mapped to a seated player.
+	if existing := state.playersByToken[token]; existing != nil {
+		return protocol.JoinResponse{Accepted: false, Reason: "already seated"}
+	}
+
+	if seat < 0 || seat >= len(state.players) {
+		return protocol.JoinResponse{Accepted: false, Reason: "invalid seat"}
+	}
+
+	target := state.players[seat]
+	if target.bot == nil {
+		return protocol.JoinResponse{Accepted: false, Reason: "seat is not bot-controlled"}
+	}
+
+	oldName := target.Name
+	target.bot = nil
+	target.Token = token
+	state.playersByToken[token] = target
+	delete(state.departedTokens, token)
+
+	name = strings.TrimSpace(name)
+	if name != "" {
+		target.Name = name
+	}
+
+	slog.Info("observer claimed bot seat", "event", "seat_claimed", "table_id", r.tableID, "player_id", target.id, "name", target.Name, "seat", seat, "old_name", oldName)
+
+	r.publishPublic(protocol.EventSeatClaimed, protocol.SeatClaimedData{
+		Player:  protocol.PlayerInfo{PlayerID: target.id, Name: target.Name, Seat: seat},
+		OldName: oldName,
+	})
+
+	// Send the new player their hand if a round is active.
+	if state.round != nil {
+		r.publishPrivate(target.id, protocol.EventHandUpdated, protocol.HandUpdatedData{
+			Cards: game.CardStrings(state.round.Hand(target.position)),
+		})
+	}
+
+	// If the game was paused for a disconnected player at this seat, resume.
+	if state.paused && state.pausedPlayerID == target.id {
+		state.paused = false
+		state.pausedPlayerID = ""
+		r.publishGameResumed()
+		r.resumeAfterPause(state)
+	}
+
+	return protocol.JoinResponse{
+		Accepted: true,
+		TableID:  r.tableID,
+		PlayerID: target.id,
+		Seat:     target.position,
+	}
+}
+
 func (r *Table) handleResumeGame(state *tableState, playerID protocol.PlayerID) protocol.CommandResponse {
 	if !state.paused {
 		return protocol.CommandResponse{Accepted: false, Reason: "game is not paused"}

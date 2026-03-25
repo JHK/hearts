@@ -469,6 +469,137 @@ func TestRematchLeaveClearsVote(t *testing.T) {
 	require.False(t, state.game.IsOver(), "game scores should reset when player leaves")
 }
 
+func TestClaimSeatReplacesBot(t *testing.T) {
+	runtime := NewTable("claim-seat")
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+
+	start := runtime.Start(alice.PlayerID)
+	require.True(t, start.Accepted, "start: %s", start.Reason)
+
+	// Observer claims seat 2 (a bot seat).
+	claim, err := runtime.ClaimSeat(2, "Observer", "observer-token")
+	require.NoError(t, err)
+	require.True(t, claim.Accepted, "claim: %s", claim.Reason)
+	require.Equal(t, 2, claim.Seat)
+
+	snapshot := runtime.Snapshot(claim.PlayerID)
+	require.NotEmpty(t, snapshot.Hand, "claimed player should see their hand")
+
+	for _, p := range snapshot.Players {
+		if p.PlayerID == claim.PlayerID {
+			require.False(t, p.IsBot, "claimed seat should no longer be a bot")
+			require.Equal(t, "Observer", p.Name)
+		}
+	}
+}
+
+func TestClaimSeatRejectsHumanSeat(t *testing.T) {
+	runtime := NewTable("claim-human")
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+
+	start := runtime.Start(alice.PlayerID)
+	require.True(t, start.Accepted)
+
+	claim, err := runtime.ClaimSeat(0, "Observer", "observer-token")
+	require.NoError(t, err)
+	require.False(t, claim.Accepted)
+	require.Equal(t, "seat is not bot-controlled", claim.Reason)
+}
+
+func TestClaimSeatRejectsAlreadySeated(t *testing.T) {
+	runtime := NewTable("claim-already-seated")
+	defer runtime.Close()
+
+	_, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+
+	// Alice tries to claim a bot seat with her existing token.
+	claim, err := runtime.ClaimSeat(1, "Alice", "alice-token")
+	require.NoError(t, err)
+	require.False(t, claim.Accepted)
+	require.Equal(t, "already seated", claim.Reason)
+}
+
+func TestClaimSeatRaceExactlyOneSucceeds(t *testing.T) {
+	runtime := NewTable("claim-race")
+	defer runtime.Close()
+
+	_, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+
+	// Two observers try to claim the same seat.
+	claim1, err := runtime.ClaimSeat(1, "Obs1", "obs1-token")
+	require.NoError(t, err)
+	require.True(t, claim1.Accepted, "first claim should succeed")
+
+	claim2, err := runtime.ClaimSeat(1, "Obs2", "obs2-token")
+	require.NoError(t, err)
+	require.False(t, claim2.Accepted, "second claim should fail")
+	require.Equal(t, "seat is not bot-controlled", claim2.Reason)
+}
+
+func TestClaimSeatResumesPausedGame(t *testing.T) {
+	runtime := NewTable("claim-resume")
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+	bob, err := runtime.Join("Bob", "bob-token")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+
+	start := runtime.Start(alice.PlayerID)
+	require.True(t, start.Accepted)
+
+	// Bob disconnects — game pauses and seat becomes bot.
+	runtime.Leave(bob.PlayerID)
+	snapshot := runtime.Snapshot("")
+	require.True(t, snapshot.Paused)
+	require.Equal(t, bob.PlayerID, snapshot.PausedForPlayerID)
+
+	// Observer claims Bob's (now bot) seat — should unpause.
+	claim, err := runtime.ClaimSeat(bob.Seat, "Observer", "observer-token")
+	require.NoError(t, err)
+	require.True(t, claim.Accepted)
+	require.Equal(t, bob.PlayerID, claim.PlayerID, "should inherit the original player ID")
+
+	snapshot = runtime.Snapshot("")
+	require.False(t, snapshot.Paused, "game should resume after observer claims paused seat")
+}
+
 func TestBuildSnapshotCopiesRoundHistory(t *testing.T) {
 	runtime := &Table{tableID: "history-copy"}
 	g := game.NewGame()

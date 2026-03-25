@@ -1,11 +1,11 @@
 ---
 # hearts-hwoh
 title: Observers can claim a bot seat
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-18T10:48:36Z
-updated_at: 2026-03-25T12:36:25Z
+updated_at: 2026-03-25T14:44:25Z
 parent: hearts-g7wu
 blocked_by:
     - hearts-sn8x
@@ -23,11 +23,11 @@ Allows observers to transition into active players without leaving and rejoining
 
 ## Acceptance Criteria
 
-- [ ] An observer sees a "Take seat" affordance on any bot-controlled seat
-- [ ] Claiming a seat replaces the bot immediately in any game phase (pre-round, passing, playing); the observer inherits the bot's state as-is, including any actions the bot already performed
-- [ ] If multiple observers try to claim the same seat simultaneously, exactly one succeeds; the rest remain observers (guaranteed by the Table actor's serialized command channel)
-- [ ] The newly seated player receives the full current game state (hand, trick, scores) upon claiming
-- [ ] A returning human (matching token) still reclaims their original seat automatically, taking priority over observer claims
+- [x] An observer sees a "Take seat" affordance on any bot-controlled seat
+- [x] Claiming a seat replaces the bot immediately in any game phase (pre-round, passing, playing); the observer inherits the bot's state as-is, including any actions the bot already performed
+- [x] If multiple observers try to claim the same seat simultaneously, exactly one succeeds; the rest remain observers (guaranteed by the Table actor's serialized command channel)
+- [x] The newly seated player receives the full current game state (hand, trick, scores) upon claiming
+- [x] A returning human (matching token) still reclaims their original seat automatically, taking priority over observer claims
 
 ## Out of Scope
 
@@ -35,3 +35,7 @@ Allows observers to transition into active players without leaving and rejoining
 - Observers being prompted or queued for seats automatically
 - Choosing which seat to observe from before claiming
 - Any distinction between "original bot" and "human-who-left-and-became-bot" seats — all bot seats are claimable
+
+## Summary of Changes
+
+Added `claim_seat` command that lets observers take over bot-controlled seats in any game phase. Backend: new `claimSeatCommand` in the Table actor, `handleClaimSeat` handler, `EventSeatClaimed` protocol event, and WebSocket routing. Frontend: "Take seat" buttons appear on bot seats for observers. Five new tests cover the happy path, rejection of human seats, rejection of already-seated players, race conditions, and auto-resume of paused games.

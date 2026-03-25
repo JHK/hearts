@@ -3,7 +3,7 @@ import { cardAltText, cardImageURL } from './cards.js';
 const CHART_COLORS = ['#116466', '#b44f26', '#5b6f83', '#8b5cf6'];
 const MEDALS = ['🏆', '🥈', '🥉'];
 
-export function createRenderer({ dom, state, send }) {
+export function createRenderer({ dom, state, send, claimSeat }) {
   let scoreChart = null;
   let gameOverRendered = false;
   function effectiveMe(players) {
@@ -57,6 +57,22 @@ export function createRenderer({ dom, state, send }) {
       return player.is_bot ? `${player.name} [bot]` : player.name;
     }
 
+    function setSeatContent(nameEl, player) {
+      nameEl.textContent = displayName(player);
+      if (state.isObserver && player && player.is_bot && claimSeat) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'claim-seat-btn';
+        btn.textContent = 'Take seat';
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          claimSeat(player.seat);
+        };
+        nameEl.appendChild(document.createTextNode(' '));
+        nameEl.appendChild(btn);
+      }
+    }
+
     if (!relativePlayers.me) {
       dom.seatTopNameEl.textContent = '-';
       dom.seatLeftNameEl.textContent = '-';
@@ -70,10 +86,10 @@ export function createRenderer({ dom, state, send }) {
       return;
     }
 
-    dom.seatTopNameEl.textContent = displayName(relativePlayers.top);
-    dom.seatLeftNameEl.textContent = displayName(relativePlayers.left);
-    dom.seatRightNameEl.textContent = displayName(relativePlayers.right);
-    dom.seatBottomNameEl.textContent = displayName(relativePlayers.me);
+    setSeatContent(dom.seatTopNameEl, relativePlayers.top);
+    setSeatContent(dom.seatLeftNameEl, relativePlayers.left);
+    setSeatContent(dom.seatRightNameEl, relativePlayers.right);
+    setSeatContent(dom.seatBottomNameEl, relativePlayers.me);
 
     setSeatTurnClass(dom.seatTopEl, relativePlayers.top, turnPlayerId);
     setSeatTurnClass(dom.seatLeftEl, relativePlayers.left, turnPlayerId);

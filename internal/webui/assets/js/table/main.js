@@ -34,7 +34,7 @@ const state = {
   loggedPassReviewKey: ''
 };
 
-const renderer = createRenderer({ dom, state, send });
+const renderer = createRenderer({ dom, state, send, claimSeat });
 
 const token = ensureToken();
 
@@ -130,6 +130,10 @@ dom.readyAfterPassEl.onclick = () => {
 dom.rematchButtonEl.onclick = () => {
   send({ type: 'rematch' });
 };
+
+function claimSeat(seat) {
+  send({ type: 'claim_seat', seat, name: playerName(), token });
+}
 
 connect();
 
@@ -427,6 +431,23 @@ function connect() {
         break;
       case 'rematch_vote':
         log(`rematch: ${msg.data.votes}/${msg.data.total} players ready`);
+        scheduleStateRefresh(0);
+        break;
+      case 'claim_seat_result':
+        if (msg.data && msg.data.accepted) {
+          state.myPlayerId = msg.data.player_id;
+          state.isObserver = false;
+          dom.observerBadgeEl.hidden = true;
+          log(`claimed seat ${msg.data.seat} as ${state.myPlayerId}`);
+        } else {
+          log(`claim seat failed: ${msg.data && msg.data.reason ? msg.data.reason : 'rejected'}`);
+        }
+        scheduleStateRefresh(0);
+        break;
+      case 'seat_claimed':
+        if (msg.data && msg.data.player) {
+          log(`${msg.data.player.name} took ${msg.data.old_name}'s seat`);
+        }
         scheduleStateRefresh(0);
         break;
       case 'rematch_starting':

@@ -20,4 +20,5 @@ const (
 	EventGameResumed       EventType = "game_resumed"
 	EventRematchVote       EventType = "rematch_vote"
 	EventRematchStarting   EventType = "rematch_starting"
+	EventSeatClaimed       EventType = "seat_claimed"
 )
