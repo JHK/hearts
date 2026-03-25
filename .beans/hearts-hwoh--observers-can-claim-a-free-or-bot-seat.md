@@ -1,21 +1,21 @@
 ---
 # hearts-hwoh
-title: Observers can claim a free or bot seat
-status: draft
+title: Observers can claim a bot seat
+status: todo
 type: feature
 priority: normal
 created_at: 2026-03-18T10:48:36Z
-updated_at: 2026-03-24T11:07:25Z
+updated_at: 2026-03-25T12:36:25Z
 parent: hearts-g7wu
 blocked_by:
     - hearts-sn8x
 ---
 
-Allow observers to take an unoccupied or bot-controlled seat and join the game
+Allow observers to take a bot-controlled seat and join the game, in any phase
 
 ## Context
 
-Once observer mode exists, observers are passive — they have no way to join the game itself. A seat may be free because a player disconnected/left, or because it's occupied by a bot. Letting an observer claim it is the natural next step toward full participation.
+Observer mode is live — observers can watch but have no way to become a player. Seats may be bot-controlled either because the table was filled with bots at start, or because a human disconnected and was converted to a bot. Letting an observer claim any bot seat is the natural next step.
 
 ## Higher Goal
 
@@ -23,13 +23,15 @@ Allows observers to transition into active players without leaving and rejoining
 
 ## Acceptance Criteria
 
-- [ ] An observer sees a "Take seat" affordance on any unoccupied seat or bot-controlled seat
-- [ ] Claiming a seat removes the bot (if any) immediately, even mid-hand, and the observer takes over from that point
-- [ ] If multiple observers try to claim the same seat simultaneously, exactly one succeeds; the rest remain observers
+- [ ] An observer sees a "Take seat" affordance on any bot-controlled seat
+- [ ] Claiming a seat replaces the bot immediately in any game phase (pre-round, passing, playing); the observer inherits the bot's state as-is, including any actions the bot already performed
+- [ ] If multiple observers try to claim the same seat simultaneously, exactly one succeeds; the rest remain observers (guaranteed by the Table actor's serialized command channel)
 - [ ] The newly seated player receives the full current game state (hand, trick, scores) upon claiming
+- [ ] A returning human (matching token) still reclaims their original seat automatically, taking priority over observer claims
 
 ## Out of Scope
 
-- Claiming a seat held by a human player (disconnected or otherwise)
-- Choosing which seat to observe from before claiming
+- Claiming a seat held by a connected human player
 - Observers being prompted or queued for seats automatically
+- Choosing which seat to observe from before claiming
+- Any distinction between "original bot" and "human-who-left-and-became-bot" seats — all bot seats are claimable
