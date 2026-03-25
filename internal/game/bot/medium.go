@@ -558,6 +558,15 @@ func highestRankedCard(cards []game.Card) game.Card {
 	return best
 }
 
+// penaltyPointsInCards returns the total penalty points across the given cards.
+func penaltyPointsInCards(cards []game.Card) game.Points {
+	var total game.Points
+	for _, c := range cards {
+		total += game.PenaltyPoints(c)
+	}
+	return total
+}
+
 func lowestRankedCard(cards []game.Card) game.Card {
 	best := cards[0]
 	for _, c := range cards[1:] {

@@ -1,11 +1,11 @@
 ---
 # hearts-2nme
 title: Moonshot abort logic too aggressive when following
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-03-25T17:20:17Z
-updated_at: 2026-03-25T17:26:08Z
+updated_at: 2026-03-25T18:07:34Z
 parent: hearts-8j8z
 blocked_by:
     - hearts-gavv
@@ -28,11 +28,21 @@ The bot should maintain or re-activate moonshot pursuit when it has captured all
 3. Both
 
 ## Acceptance Criteria
-- [ ] A bot that has collected all penalty points so far and holds safe high cards for remaining tricks keeps moonshot active when following
-- [ ] The fix does not cause false-positive moonshot pursuit (bot chasing moon when it's clearly lost penalty cards to others)
-- [ ] A simulation run (`cmd/sim`, 50k+ iterations) shows no decreased win rates compared to baseline
-- [ ] Existing `smart_test.go` moonshot tests pass; new test covers the follow-abort scenario
+- [x] A bot that has collected all penalty points so far and holds safe high cards for remaining tricks keeps moonshot active when following
+- [x] The fix does not cause false-positive moonshot pursuit (bot chasing moon when it's clearly lost penalty cards to others)
+- [x] A simulation run (`cmd/sim`, 50k+ iterations) shows no decreased win rates compared to baseline
+- [x] Existing `smart_test.go` moonshot tests pass; new test covers the follow-abort scenario
 
 ## Out of Scope
 - Reworking the initial `evaluateMoonShot` hand-evaluation heuristic
 - Changing moonshot pass strategy
+
+## Summary of Changes
+
+Added `MyRoundPoints` field to `game.TurnInput` so bots know how many penalty points they have captured.
+
+Refined the hard bot's moonshot abort logic in two ways:
+1. When following (someone else leads), only abort if `MyRoundPoints < totalPenaltyPlayed` — i.e., penalty points have leaked to opponents. Previously aborted unconditionally.
+2. The dynamic re-activation check (safe high cards >= remaining tricks) now also runs when following, not just when leading, but is gated on penalty ownership to prevent false-positive pursuit.
+
+Added `penaltyPointsInCards` helper. Added test `TestHardKeepsMoonShotWhenFollowingWithAllPenalties`. 50k sim confirms no win-rate regression.

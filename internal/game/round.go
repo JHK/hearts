@@ -29,11 +29,13 @@ type RoundScores struct {
 
 // TurnInput is the game state delivered to a decision-maker when it must choose a card to play.
 type TurnInput struct {
-	Hand         []Card
-	Trick        []Card
+	Hand        []Card
+	Trick       []Card
 	HeartsBroken bool
-	FirstTrick   bool
-	PlayedCards  []Card // all cards played in completed tricks this round
+	FirstTrick  bool
+	PlayedCards []Card                    // all cards played in completed tricks this round
+	RoundPoints [PlayersPerTable]Points   // penalty points captured per seat this round
+	MySeat      int                       // this decision-maker's seat index
 }
 
 // PassInput is the game state delivered to a decision-maker when it must choose cards to pass.
@@ -109,6 +111,8 @@ func (r *Round) TurnInput(seat int) TurnInput {
 		HeartsBroken: r.heartsBroken,
 		FirstTrick:   r.trickNumber == 0,
 		PlayedCards:  r.playedCards,
+		RoundPoints:  r.roundPoints,
+		MySeat:       seat,
 	}
 }
 
