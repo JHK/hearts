@@ -1,10 +1,11 @@
 import { createTableDom } from './dom.js';
 import { createRenderer } from './render.js';
-import { playHeartsBreaking, playQueenOfSpades } from './audio.js';
+import { playHeartsBreaking, playQueenOfSpades, setMuted } from './audio.js';
 
 const nameKey = 'hearts.player.name';
 const tokenKey = 'hearts.player.token';
 const speedKey = 'hearts.animation.speed';
+const soundKey = 'hearts.sound.enabled';
 const trickCardInBufferMs = 80;
 
 const tableId = decodeURIComponent(location.pathname.replace('/table/', ''));
@@ -50,6 +51,16 @@ function applySpeed(fast) {
 }
 
 applySpeed(localStorage.getItem(speedKey) === 'fast');
+
+const soundEnabled = localStorage.getItem(soundKey) !== 'false';
+dom.soundToggleEl.checked = soundEnabled;
+setMuted(!soundEnabled);
+
+dom.soundToggleEl.onchange = () => {
+  const enabled = dom.soundToggleEl.checked;
+  setMuted(!enabled);
+  localStorage.setItem(soundKey, enabled ? 'true' : 'false');
+};
 
 dom.settingsToggleEl.onclick = () => {
   dom.settingsPanelEl.classList.toggle('hidden');

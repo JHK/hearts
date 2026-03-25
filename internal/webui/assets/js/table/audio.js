@@ -1,4 +1,9 @@
 let ctx = null;
+let muted = false;
+
+export function setMuted(value) {
+  muted = !!value;
+}
 
 // Create and warm up the AudioContext on first user gesture so it's ready
 // when sounds are triggered from WebSocket callbacks (outside gesture window).
@@ -19,6 +24,7 @@ function audioContext() {
 
 // Descending sparkle — like a glass heart shattering
 export function playHeartsBreaking() {
+  if (muted) return;
   const ac = audioContext();
   const t = ac.currentTime;
   [1047, 880, 698].forEach((freq, i) => {
@@ -40,6 +46,7 @@ export function playHeartsBreaking() {
 
 // Bass drum thud — deep punch with quick decay
 export function playQueenOfSpades() {
+  if (muted) return;
   const ac = audioContext();
   const t = ac.currentTime;
 

@@ -40,6 +40,7 @@ export function createTableDom({ tableId, eventsEnabled }) {
   const settingsToggleEl = document.getElementById('settingsToggle');
   const settingsPanelEl = document.getElementById('settingsPanel');
   const speedToggleEl = document.getElementById('speedToggle');
+  const soundToggleEl = document.getElementById('soundToggle');
 
   eventsSectionEl.hidden = !eventsEnabled;
   titleEl.textContent = `Hearts Table ${tableId}`;
@@ -85,7 +86,8 @@ export function createTableDom({ tableId, eventsEnabled }) {
     gameOverScoresEl,
     settingsToggleEl,
     settingsPanelEl,
-    speedToggleEl
+    speedToggleEl,
+    soundToggleEl
   };
 }
 
