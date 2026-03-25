@@ -6,6 +6,7 @@ const nameKey = 'hearts.player.name';
 const tokenKey = 'hearts.player.token';
 const speedKey = 'hearts.animation.speed';
 const soundKey = 'hearts.sound.enabled';
+const notifyKey = 'hearts.notifications.enabled';
 const trickCardInBufferMs = 80;
 
 const tableId = decodeURIComponent(location.pathname.replace('/table/', ''));
@@ -61,6 +62,32 @@ dom.soundToggleEl.onchange = () => {
   setMuted(!enabled);
   localStorage.setItem(soundKey, enabled ? 'true' : 'false');
 };
+
+let notificationsEnabled = localStorage.getItem(notifyKey) === 'true';
+dom.notifyToggleEl.checked = notificationsEnabled;
+
+dom.notifyToggleEl.onchange = async () => {
+  if (dom.notifyToggleEl.checked) {
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      const result = await Notification.requestPermission();
+      if (result !== 'granted') {
+        dom.notifyToggleEl.checked = false;
+        return;
+      }
+    }
+    notificationsEnabled = true;
+  } else {
+    notificationsEnabled = false;
+  }
+  localStorage.setItem(notifyKey, notificationsEnabled ? 'true' : 'false');
+};
+
+function notifyTurn(body) {
+  if (!notificationsEnabled || document.hasFocus()) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const n = new Notification('Hearts', { body, tag: 'hearts-turn' });
+  n.onclick = () => { window.focus(); n.close(); };
+}
 
 dom.settingsToggleEl.onclick = () => {
   dom.settingsPanelEl.classList.toggle('hidden');
@@ -332,6 +359,16 @@ function connect() {
         break;
       case 'add_bot_result':
         log('bot added');
+        scheduleStateRefresh(0);
+        break;
+      case 'your_turn':
+        notifyTurn("It's your turn to play!");
+        scheduleStateRefresh(0);
+        break;
+      case 'pass_submitted':
+        if (msg.data && msg.data.submitted === 0 && msg.data.direction && !state.isObserver) {
+          notifyTurn('Time to pass cards!');
+        }
         scheduleStateRefresh(0);
         break;
       case 'trick_completed':
