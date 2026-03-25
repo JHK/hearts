@@ -1,11 +1,11 @@
 ---
 # hearts-ytvt
 title: Respect BEANS_WORKSPACE_PORT for dev server listen address
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-03-25T07:11:22Z
-updated_at: 2026-03-25T07:11:31Z
+updated_at: 2026-03-25T07:21:28Z
 ---
 
 ## Context
@@ -15,10 +15,14 @@ Beans allocates a dynamic port per workspace and passes it to the run command vi
 Seamless dev workflow when using beans workspaces — clicking "Open" should just work.
 
 ## Acceptance Criteria
-- [ ] Server reads `BEANS_WORKSPACE_PORT` and uses it as the default listen port when set
-- [ ] Explicit `-addr` flag still takes precedence
-- [ ] Default remains `127.0.0.1:8080` when the env var is absent
+- [x] Server reads `BEANS_WORKSPACE_PORT` and uses it as the default listen port when set
+- [x] Explicit `-addr` flag still takes precedence
+- [x] Default remains `127.0.0.1:8080` when the env var is absent
 
 ## Out of Scope
 - Supporting multiple concurrent workspaces on different ports
 - Changing beans itself to support a fixed-port config
+
+## Summary of Changes
+
+Changed `cmd/hearts/app/run.go` to use `BEANS_WORKSPACE_PORT` as the default listen port when set, falling back to `127.0.0.1:8080`. The env var is read before flag parsing so `-addr` still takes precedence.

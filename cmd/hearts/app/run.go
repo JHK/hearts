@@ -2,15 +2,21 @@ package app
 
 import (
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/JHK/hearts/internal/webui"
 )
 
 func Run() {
-	addr := flag.String("addr", "127.0.0.1:8080", "web listen address")
+	defaultPort := 8080
+	if s := os.Getenv("BEANS_WORKSPACE_PORT"); s != "" {
+		defaultPort, _ = strconv.Atoi(s)
+	}
+	addr := flag.String("addr", fmt.Sprintf(":%d", defaultPort), "web listen address")
 	logLevel := flag.String("log-level", "", "log level (debug, info, warn, error); overrides LOG_LEVEL env var")
 	dev := flag.Bool("dev", false, "enable dev mode (exposes bot-hand debug endpoint and debugBot() console helper)")
 	flag.Parse()

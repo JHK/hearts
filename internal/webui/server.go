@@ -78,7 +78,7 @@ func (t *humanPresenceTracker) Count(tableID string) int {
 
 func Run(cfg Config) error {
 	if strings.TrimSpace(cfg.Addr) == "" {
-		cfg.Addr = "127.0.0.1:8080"
+		cfg.Addr = ":8080"
 	}
 
 	handler, err := NewHandler(cfg, nil)
