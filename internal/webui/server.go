@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"os"
@@ -18,6 +19,13 @@ import (
 	"github.com/JHK/hearts/internal/session"
 	"github.com/gorilla/websocket"
 )
+
+// templateData holds the values injected into HTML templates.
+type templateData struct {
+	StylesURL    string
+	ScriptURL    string
+	ExtraScripts template.HTML
+}
 
 //go:embed assets/index.html assets/table.html assets/styles.css assets/cards/*.svg assets/js assets/icon.svg assets/favicon.ico assets/apple-touch-icon.png
 var assetsFS embed.FS
@@ -95,28 +103,47 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 		manager = session.NewManager()
 	}
 
-	indexHTML, err := assetsFS.ReadFile("assets/index.html")
+	indexTmpl, err := template.New("index").Parse(string(mustReadAsset("assets/index.html")))
 	if err != nil {
-		return nil, fmt.Errorf("read embedded index html: %w", err)
+		return nil, fmt.Errorf("parse index template: %w", err)
 	}
-
-	tableHTML, err := assetsFS.ReadFile("assets/table.html")
+	tableTmpl, err := template.New("table").Parse(string(mustReadAsset("assets/table.html")))
 	if err != nil {
-		return nil, fmt.Errorf("read embedded table html: %w", err)
+		return nil, fmt.Errorf("parse table template: %w", err)
 	}
-
-	embeddedStyles, err := assetsFS.ReadFile("assets/styles.css")
-	if err != nil {
-		return nil, fmt.Errorf("read embedded styles css: %w", err)
-	}
-
-	indexETag := contentETag(indexHTML)
-	tableETag := contentETag(tableHTML)
 
 	mux := http.NewServeMux()
 	presence := newHumanPresenceTracker()
 
-	stylesPath := filepath.Join("internal", "webui", "assets", "styles.css")
+	indexData := templateData{
+		StylesURL: "/assets/styles.css",
+		ScriptURL: "/assets/js/lobby/main.js",
+	}
+	tableData := templateData{
+		StylesURL: "/assets/styles.css",
+		ScriptURL: "/assets/js/table/main.js",
+	}
+
+	if cfg.Dev {
+		registerDevAssetHandlers(mux)
+		tableData.ExtraScripts = `<script src="/dev.js"></script>`
+	} else {
+		fp, fpErr := buildFingerprintedAssets(assetsFS)
+		if fpErr != nil {
+			return nil, fmt.Errorf("build fingerprinted assets: %w", fpErr)
+		}
+		indexData.StylesURL = fp.urlMapping["/assets/styles.css"]
+		indexData.ScriptURL = fp.urlMapping["/assets/js/lobby/main.js"]
+		tableData.StylesURL = fp.urlMapping["/assets/styles.css"]
+		tableData.ScriptURL = fp.urlMapping["/assets/js/table/main.js"]
+		registerFingerprintedAssetHandlers(mux, fp)
+	}
+
+	indexHTML := mustRenderTemplate(indexTmpl, indexData)
+	tableHTML := mustRenderTemplate(tableTmpl, tableData)
+
+	indexETag := contentETag(indexHTML)
+	tableETag := contentETag(tableHTML)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
@@ -139,35 +166,6 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 
 	mux.HandleFunc("/api/tables", func(w http.ResponseWriter, r *http.Request) {
 		handleTablesAPI(manager, w, r)
-	})
-
-	mux.HandleFunc("/assets/styles.css", func(w http.ResponseWriter, r *http.Request) {
-		styles, err := os.ReadFile(stylesPath)
-		if err != nil {
-			styles = embeddedStyles
-		}
-
-		w.Header().Set("Content-Type", "text/css; charset=utf-8")
-		_, _ = w.Write(styles)
-	})
-
-	mux.HandleFunc("/assets/js/", func(w http.ResponseWriter, r *http.Request) {
-		scriptFile := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/assets/js/"))
-		if scriptFile == "" || strings.HasPrefix(scriptFile, "/") || strings.Contains(scriptFile, "..") || !strings.HasSuffix(scriptFile, ".js") {
-			http.NotFound(w, r)
-			return
-		}
-
-		scriptPath := "assets/js/" + scriptFile
-
-		script, err := assetsFS.ReadFile(scriptPath)
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-		_, _ = w.Write(script)
 	})
 
 	mux.HandleFunc("/assets/cards/", func(w http.ResponseWriter, r *http.Request) {
@@ -220,8 +218,6 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 };
 console.log('[dev] debugBot() available — call debugBot() to see bot hands');
 `)
-		tableHTML = bytes.ReplaceAll(tableHTML, []byte("</body>"), []byte("<script src=\"/dev.js\"></script>\n</body>"))
-
 		mux.HandleFunc("/dev.js", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 			_, _ = w.Write(devJS)
@@ -439,6 +435,55 @@ func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTrack
 			}
 		}()
 	}
+}
+
+// registerDevAssetHandlers serves CSS and JS at their plain paths without
+// fingerprinting or cache headers, so hot-reload works without stale-cache issues.
+func registerDevAssetHandlers(mux *http.ServeMux) {
+	stylesPath := filepath.Join("internal", "webui", "assets", "styles.css")
+	embeddedStyles, _ := assetsFS.ReadFile("assets/styles.css")
+
+	mux.HandleFunc("/assets/styles.css", func(w http.ResponseWriter, r *http.Request) {
+		styles, err := os.ReadFile(stylesPath)
+		if err != nil {
+			styles = embeddedStyles
+		}
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		_, _ = w.Write(styles)
+	})
+
+	mux.HandleFunc("/assets/js/", func(w http.ResponseWriter, r *http.Request) {
+		scriptFile := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/assets/js/"))
+		if scriptFile == "" || strings.HasPrefix(scriptFile, "/") || strings.Contains(scriptFile, "..") || !strings.HasSuffix(scriptFile, ".js") {
+			http.NotFound(w, r)
+			return
+		}
+
+		script, err := assetsFS.ReadFile("assets/js/" + scriptFile)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		_, _ = w.Write(script)
+	})
+}
+
+func mustReadAsset(name string) []byte {
+	data, err := assetsFS.ReadFile(name)
+	if err != nil {
+		panic(fmt.Sprintf("read embedded %s: %v", name, err))
+	}
+	return data
+}
+
+func mustRenderTemplate(tmpl *template.Template, data templateData) []byte {
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		panic(fmt.Sprintf("render template %s: %v", tmpl.Name(), err))
+	}
+	return buf.Bytes()
 }
 
 func contentETag(data []byte) string {

@@ -1,11 +1,11 @@
 ---
 # hearts-4o0k
 title: Asset fingerprinting for CSS and JS
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-25T06:55:06Z
-updated_at: 2026-03-25T06:55:21Z
+updated_at: 2026-03-25T08:09:47Z
 parent: hearts-e5b4
 ---
 
@@ -22,17 +22,24 @@ Enable aggressive browser caching for CSS and JS while guaranteeing clients alwa
 
 ## Acceptance Criteria
 
-- [ ] CSS and JS are served at content-hashed URLs (e.g. `/assets/styles.a1b2c3.css`)
-- [ ] Fingerprinted asset responses include `Cache-Control: public, max-age=31536000, immutable`
-- [ ] HTML templates reference fingerprinted URLs (not hardcoded paths)
-- [ ] JS module imports between files use fingerprinted paths or are otherwise cache-safe
-- [ ] Old (non-fingerprinted) asset paths return 404 or redirect
-- [ ] In dev mode (`mise dev`), assets are served at plain paths without fingerprinting or cache headers, so hot-reload works without stale-cache issues
-- [ ] Test coverage for fingerprinted URL generation and serving
-- [ ] Documentation updated if architecture or asset pipeline changes
+- [x] CSS and JS are served at content-hashed URLs (e.g. `/assets/styles.a1b2c3.css`)
+- [x] Fingerprinted asset responses include `Cache-Control: public, max-age=31536000, immutable`
+- [x] HTML templates reference fingerprinted URLs (not hardcoded paths)
+- [x] JS module imports between files use fingerprinted paths or are otherwise cache-safe
+- [x] Old (non-fingerprinted) asset paths return 404 or redirect
+- [x] In dev mode (`mise dev`), assets are served at plain paths without fingerprinting or cache headers, so hot-reload works without stale-cache issues
+- [x] Test coverage for fingerprinted URL generation and serving
+- [x] Documentation updated if architecture or asset pipeline changes
 
 ## Out of Scope
 
 - Card SVG fingerprinting (covered by immutable caching in hearts-tnu6)
 - HTML page caching (separate ticket)
 - Build-time fingerprinting or external tooling — hashes should be computed at startup from `embed.FS`
+
+## Summary of Changes
+
+- Added `internal/webui/fingerprint.go`: computes SHA256 content hashes for CSS/JS at startup, builds URL mapping, rewrites JS import paths to use fingerprinted filenames
+- Modified `internal/webui/server.go`: in production mode, HTML templates are rewritten with fingerprinted asset URLs; fingerprinted assets served with immutable cache headers; plain CSS/JS paths 404. In dev mode, assets served at plain paths with no cache headers
+- Updated tests: `TestDevModeServesPlainAssetPaths`, `TestFingerprintedAssetURLsAndCaching`, `TestFingerprintedJSImportsRewritten`
+- Updated `CLAUDE.md` and `architecture.md` with asset fingerprinting documentation

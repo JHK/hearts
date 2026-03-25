@@ -2,8 +2,10 @@ package webui
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -89,11 +91,11 @@ func TestHTMLETagAndConditionalRequests(t *testing.T) {
 	}
 }
 
-func TestServesExtractedScripts(t *testing.T) {
+func TestDevModeServesPlainAssetPaths(t *testing.T) {
 	manager := session.NewManager()
 	defer manager.Close()
 
-	handler, err := NewHandler(Config{}, manager)
+	handler, err := NewHandler(Config{Dev: true}, manager)
 	require.NoError(t, err, "new handler")
 
 	srv := httptest.NewServer(handler)
@@ -105,12 +107,12 @@ func TestServesExtractedScripts(t *testing.T) {
 		"/assets/js/table/dom.js",
 		"/assets/js/table/render.js",
 		"/assets/js/table/cards.js",
+		"/assets/styles.css",
 	} {
 		resp, err := srv.Client().Get(srv.URL + path)
 		require.NoError(t, err, "get %s", path)
 		require.Equal(t, http.StatusOK, resp.StatusCode, "status for %s", path)
-		require.True(t, strings.HasPrefix(resp.Header.Get("Content-Type"), "text/javascript"),
-			"expected JavaScript content type for %s, got %q", path, resp.Header.Get("Content-Type"))
+		require.Empty(t, resp.Header.Get("Cache-Control"), "no cache headers in dev mode for %s", path)
 		_ = resp.Body.Close()
 	}
 
@@ -118,6 +120,81 @@ func TestServesExtractedScripts(t *testing.T) {
 	require.NoError(t, err, "get missing script")
 	defer missing.Body.Close()
 	require.Equal(t, http.StatusNotFound, missing.StatusCode)
+}
+
+func TestFingerprintedAssetURLsAndCaching(t *testing.T) {
+	manager := session.NewManager()
+	defer manager.Close()
+
+	handler, err := NewHandler(Config{}, manager)
+	require.NoError(t, err, "new handler")
+
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	const wantCC = "public, max-age=31536000, immutable"
+
+	// HTML should reference fingerprinted asset URLs (not plain ones).
+	resp, err := srv.Client().Get(srv.URL + "/")
+	require.NoError(t, err, "get index")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	require.NotContains(t, string(body), `"/assets/styles.css"`,
+		"index HTML should not reference plain CSS path")
+	require.NotContains(t, string(body), `"/assets/js/lobby/main.js"`,
+		"index HTML should not reference plain JS path")
+
+	// Table page should also use fingerprinted URLs.
+	tableResp, err := srv.Client().Get(srv.URL + "/table/test123")
+	require.NoError(t, err, "get table page")
+	require.Equal(t, http.StatusOK, tableResp.StatusCode)
+	tableBody, _ := io.ReadAll(tableResp.Body)
+	tableResp.Body.Close()
+	require.NotContains(t, string(tableBody), `"/assets/styles.css"`,
+		"table HTML should not reference plain CSS path")
+	require.NotContains(t, string(tableBody), `"/assets/js/table/main.js"`,
+		"table HTML should not reference plain JS path")
+
+	// Extract fingerprinted URLs from HTML and verify they serve correctly.
+	fp, err := buildFingerprintedAssets(assetsFS)
+	require.NoError(t, err, "build fingerprints")
+
+	for origURL, fpURL := range fp.urlMapping {
+		// Fingerprinted URL should serve with immutable cache.
+		fpResp, err := srv.Client().Get(srv.URL + fpURL)
+		require.NoError(t, err, "get fingerprinted %s", fpURL)
+		require.Equal(t, http.StatusOK, fpResp.StatusCode, "status for %s", fpURL)
+		require.Equal(t, wantCC, fpResp.Header.Get("Cache-Control"),
+			"Cache-Control for %s", fpURL)
+		fpResp.Body.Close()
+
+		// Plain URL should 404.
+		plainResp, err := srv.Client().Get(srv.URL + origURL)
+		require.NoError(t, err, "get plain %s", origURL)
+		require.Equal(t, http.StatusNotFound, plainResp.StatusCode,
+			"plain path %s should 404", origURL)
+		plainResp.Body.Close()
+	}
+}
+
+func TestFingerprintedJSImportsRewritten(t *testing.T) {
+	fp, err := buildFingerprintedAssets(assetsFS)
+	require.NoError(t, err, "build fingerprints")
+
+	// table/main.js imports ./dom.js, ./render.js, ./audio.js — all should be rewritten.
+	mainURL := fp.urlMapping["/assets/js/table/main.js"]
+	mainContent := string(fp.byFingerprintedURL[mainURL])
+
+	require.NotContains(t, mainContent, "'./dom.js'", "import should be rewritten")
+	require.NotContains(t, mainContent, "'./render.js'", "import should be rewritten")
+	require.NotContains(t, mainContent, "'./audio.js'", "import should be rewritten")
+
+	// Rewritten imports should reference fingerprinted filenames.
+	domURL := fp.urlMapping["/assets/js/table/dom.js"]
+	require.Contains(t, mainContent, path.Base(domURL),
+		"main.js should import fingerprinted dom filename")
 }
 
 func TestWebSocketJoinAndStateFlow(t *testing.T) {
