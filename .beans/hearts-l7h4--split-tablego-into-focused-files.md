@@ -1,11 +1,11 @@
 ---
 # hearts-l7h4
 title: Split table.go into focused files
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-03-25T12:22:22Z
-updated_at: 2026-03-25T12:22:39Z
+updated_at: 2026-03-25T13:17:53Z
 ---
 
 table.go is 1230 lines and mixes types, public API, actor loop, handlers, snapshot building, and utilities.
@@ -35,3 +35,12 @@ table.go is 1230 lines and mixes types, public API, actor loop, handlers, snapsh
 ## Out of Scope
 
 Further splitting handlers by concern (play vs pass, bots vs humans) — these cross-reference freely within the actor goroutine and splitting would create artificial boundaries.
+
+## Summary of Changes
+
+Split `table.go` (1230 lines) into three focused files:
+- **table.go** (422 lines): Types, constructor, public API, subscription management, emit helpers, actor loop with dispatch switch
+- **table_handlers.go** (671 lines): All handler methods, validation helpers, bot scheduling, pause/resume, round lifecycle, event publishing
+- **table_snapshot.go** (153 lines): buildSnapshot, buildBotHands, roundPhaseString, copyPoints, copyRoundHistory
+
+Pure refactor — no behavioral changes. All existing tests pass.
