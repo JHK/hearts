@@ -109,6 +109,47 @@
     gap: 10px;
   }
 
+  .lobby-page .table-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .lobby-page .table-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lobby-page .table-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .lobby-page .badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .lobby-page .badge-waiting {
+    background: #e0f2e9;
+    color: #1a6b4a;
+  }
+
+  .lobby-page .badge-active {
+    background: #fef3cd;
+    color: #856404;
+  }
+
   .table-page {
     --ink: #142132;
     --muted: #54697d;

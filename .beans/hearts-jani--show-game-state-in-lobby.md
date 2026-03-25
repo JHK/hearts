@@ -1,13 +1,13 @@
 ---
 # hearts-jani
 title: Show game state in lobby
-status: todo
+status: completed
 type: feature
 priority: normal
 tags:
     - frontend
 created_at: 2026-03-25T09:07:07Z
-updated_at: 2026-03-25T09:07:33Z
+updated_at: 2026-03-25T09:52:29Z
 parent: hearts-g7wu
 ---
 
@@ -20,10 +20,17 @@ The lobby lists tables but gives no indication whether a table is waiting for pl
 Help players find games that need them, making the lobby an effective matchmaking surface.
 
 ## Acceptance Criteria
-- [ ] Each table in the lobby shows its current state (e.g. waiting, in progress, finished)
-- [ ] The player count per table is visible (e.g. "2/4 players")
-- [ ] State updates in real-time without requiring a page refresh
+- [x] Each table in the lobby shows its current state (e.g. waiting, in progress, finished)
+- [x] The player count per table is visible (e.g. "2/4 players")
+- [x] State updates in real-time without requiring a page refresh
 
 ## Out of Scope
 - Filtering or sorting tables by state
 - Showing detailed game progress (score, round number)
+
+## Summary of Changes
+
+Improved lobby table list to clearly display game state and player count:
+- Each table now shows its name on one line with a colored status badge ("Waiting" in green, "In progress" in amber) and player count (e.g. "2/4 players") below
+- Added CSS styles for `.table-info`, `.table-name`, `.table-meta`, `.badge`, `.badge-waiting`, and `.badge-active`
+- Real-time updates were already in place via 1.5s polling

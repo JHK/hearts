@@ -44,9 +44,29 @@
     tablesEl.innerHTML = '';
     for (const table of tables) {
       const li = document.createElement('li');
+
       const info = document.createElement('div');
-      const state = table.started ? 'in_round' : 'waiting';
-      info.textContent = `${table.table_id} (${table.players}/${table.max_players}, ${state})`;
+      info.className = 'table-info';
+
+      const name = document.createElement('span');
+      name.className = 'table-name';
+      name.textContent = table.table_id;
+
+      const meta = document.createElement('span');
+      meta.className = 'table-meta';
+
+      const badge = document.createElement('span');
+      badge.className = table.started ? 'badge badge-active' : 'badge badge-waiting';
+      badge.textContent = table.started ? 'In progress' : 'Waiting';
+
+      const players = document.createElement('span');
+      players.className = 'table-players';
+      players.textContent = `${table.players}/${table.max_players} players`;
+
+      meta.appendChild(badge);
+      meta.appendChild(players);
+      info.appendChild(name);
+      info.appendChild(meta);
 
       const btn = document.createElement('button');
       btn.textContent = 'Join';
