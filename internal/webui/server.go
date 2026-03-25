@@ -252,28 +252,42 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 	}
 
 	if cfg.Dev {
-		devJS := []byte(`window.debugBot = async function(tableID) {
-  tableID = tableID || window.location.pathname.replace('/table/', '');
-  const r = await fetch('/api/debug/bot-hands?table_id=' + encodeURIComponent(tableID));
-  const data = await r.json();
-  console.table(data.bots.map(b => ({name: b.name, seat: b.seat, hand: b.cards.join(' ')})));
-  return data;
+		devJS := []byte(`window.debugBot = async function(opts) {
+  opts = opts || {};
+  const tableID = opts.tableID || window.location.pathname.replace('/table/', '');
+  const fmt = opts.json ? 'json' : 'markdown';
+  const r = await fetch('/api/debug/bots?table_id=' + encodeURIComponent(tableID) + '&format=' + fmt);
+  if (!r.ok) { console.error('debugBot:', r.status, await r.text()); return; }
+  if (fmt === 'json') { const data = await r.json(); console.log(data); return data; }
+  const text = await r.text();
+  console.log(text);
+  return text;
 };
-console.log('[dev] debugBot() available — call debugBot() to see bot hands');
+console.log('[dev] debugBot() — full bot decision context (markdown). debugBot({json:true}) for JSON.');
 `)
 		mux.HandleFunc("/dev.js", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 			_, _ = w.Write(devJS)
 		})
 
-		mux.HandleFunc("/api/debug/bot-hands", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/api/debug/bots", func(w http.ResponseWriter, r *http.Request) {
 			tableID := r.URL.Query().Get("table_id")
 			rt, ok := manager.Get(tableID)
 			if !ok {
 				http.Error(w, "table not found", http.StatusNotFound)
 				return
 			}
-			writeJSON(w, map[string]any{"bots": rt.BotHands()})
+			snap := rt.DebugBotContext()
+			if snap == nil {
+				http.Error(w, "table stopped", http.StatusGone)
+				return
+			}
+			if r.URL.Query().Get("format") == "json" {
+				writeJSON(w, snap)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			_, _ = w.Write([]byte(snap.FormatMarkdown()))
 		})
 	}
 

@@ -196,15 +196,37 @@ type claimSeatCommand struct {
 	reply chan protocol.JoinResponse
 }
 
-type botHandsCommand struct {
-	reply chan []BotHandSnapshot
+type debugBotCommand struct {
+	reply chan *DebugBotSnapshot
 }
 
-// BotHandSnapshot holds a bot's name, seat, and current hand for debugging.
-type BotHandSnapshot struct {
-	Name  string   `json:"name"`
-	Seat  int      `json:"seat"`
-	Cards []string `json:"cards"`
+// DebugBotSnapshot holds the full decision context for all bots at the table.
+type DebugBotSnapshot struct {
+	TableID       string                 `json:"table_id"`
+	Phase         string                 `json:"phase"`
+	TrickNumber   int                    `json:"trick_number"`
+	HeartsBroken  bool                   `json:"hearts_broken"`
+	FirstTrick    bool                   `json:"first_trick"`
+	LedSuit       game.Suit              `json:"led_suit,omitempty"`
+	PassDirection game.PassDirection     `json:"pass_direction,omitempty"`
+	TurnSeat      *int                   `json:"turn_seat,omitempty"`
+	TurnPlayer    string                 `json:"turn_player,omitempty"`
+	CurrentTrick  []TrickPlaySnapshot    `json:"current_trick"`
+	PlayedCards   []string               `json:"played_cards"`
+	Players       []string               `json:"players"`
+	RoundPoints   map[string]game.Points `json:"round_points"`
+	TotalPoints   map[string]game.Points `json:"total_points"`
+	Bots          []BotSnapshot          `json:"bots"`
+}
+
+// BotSnapshot holds a single bot's decision context for debugging.
+type BotSnapshot struct {
+	Name             string   `json:"name"`
+	Seat             int      `json:"seat"`
+	Strategy         string   `json:"strategy"`
+	Hand             []string `json:"hand"`
+	MoonShotActive   *bool    `json:"moon_shot_active,omitempty"`
+	MoonShotAborted  *bool    `json:"moon_shot_aborted,omitempty"`
 }
 
 func NewTable(tableID string) *Table {
@@ -361,11 +383,11 @@ func (r *Table) ClaimSeat(seat int, name, token string) (protocol.JoinResponse, 
 	return <-reply, nil
 }
 
-// BotHands returns the name, seat, and current hand of every bot at the table.
+// DebugBotContext returns the full decision context for all bots at the table.
 // Intended for dev/debug use only; returns nil when the session is stopped.
-func (r *Table) BotHands() []BotHandSnapshot {
-	reply := make(chan []BotHandSnapshot, 1)
-	if !r.submit(botHandsCommand{reply: reply}) {
+func (r *Table) DebugBotContext() *DebugBotSnapshot {
+	reply := make(chan *DebugBotSnapshot, 1)
+	if !r.submit(debugBotCommand{reply: reply}) {
 		return nil
 	}
 	return <-reply
@@ -433,8 +455,8 @@ func (r *Table) run() {
 				r.handleBotPass(state, cmd.playerID)
 			case claimSeatCommand:
 				cmd.reply <- r.handleClaimSeat(state, cmd.seat, cmd.name, cmd.token)
-			case botHandsCommand:
-				cmd.reply <- r.buildBotHands(state)
+			case debugBotCommand:
+				cmd.reply <- r.buildDebugBotContext(state)
 			}
 		}
 	}

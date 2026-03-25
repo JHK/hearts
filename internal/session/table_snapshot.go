@@ -2,13 +2,20 @@ package session
 
 import (
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/JHK/hearts/internal/game"
+	"github.com/JHK/hearts/internal/game/bot"
 	"github.com/JHK/hearts/internal/protocol"
 )
 
-func (r *Table) buildBotHands(state *tableState) []BotHandSnapshot {
-	var out []BotHandSnapshot
+func (r *Table) buildDebugBotContext(state *tableState) *DebugBotSnapshot {
+	snap := &DebugBotSnapshot{
+		TableID: r.tableID,
+	}
+
+	// Collect bot snapshots (hand + strategy + moon-shot state).
 	for _, p := range state.players {
 		if p.bot == nil {
 			continue
@@ -17,13 +24,149 @@ func (r *Table) buildBotHands(state *tableState) []BotHandSnapshot {
 		if state.round != nil {
 			hand = state.round.Hand(p.position)
 		}
-		cards := make([]string, 0, len(hand))
-		for _, c := range hand {
-			cards = append(cards, c.String())
+		bs := BotSnapshot{
+			Name:     p.Name,
+			Seat:     p.position,
+			Strategy: string(p.bot.Kind()),
+			Hand:     game.CardStrings(hand),
 		}
-		out = append(out, BotHandSnapshot{Name: p.Name, Seat: p.position, Cards: cards})
+		if smart, ok := p.bot.(*bot.Smart); ok {
+			active := smart.MoonShotActive()
+			aborted := smart.MoonShotAborted()
+			bs.MoonShotActive = &active
+			bs.MoonShotAborted = &aborted
+		}
+		snap.Bots = append(snap.Bots, bs)
 	}
-	return out
+
+	if state.round == nil {
+		snap.Phase = "waiting"
+		return snap
+	}
+
+	rd := state.round
+	snap.Phase = roundPhaseString(rd.Phase())
+	snap.TrickNumber = rd.TrickNumber()
+	snap.HeartsBroken = rd.HeartsBroken()
+	snap.FirstTrick = rd.TrickNumber() == 0
+	snap.PassDirection = rd.PassDirection()
+
+	// Current trick plays.
+	trick := rd.CurrentTrick()
+	snap.CurrentTrick = make([]TrickPlaySnapshot, 0, len(trick))
+	for _, played := range trick {
+		p := state.players[played.Seat]
+		snap.CurrentTrick = append(snap.CurrentTrick, TrickPlaySnapshot{
+			PlayerID: p.id,
+			Name:     p.Name,
+			Seat:     played.Seat,
+			Card:     played.Card.String(),
+		})
+	}
+	if len(trick) > 0 {
+		snap.LedSuit = trick[0].Card.Suit
+	}
+
+	// Previously played cards.
+	played := rd.PlayedCards()
+	snap.PlayedCards = make([]string, 0, len(played))
+	for _, c := range played {
+		snap.PlayedCards = append(snap.PlayedCards, c.String())
+	}
+
+	// Turn info.
+	if rd.Phase() == game.PhasePlaying {
+		seat := rd.TurnSeat()
+		snap.TurnSeat = &seat
+		snap.TurnPlayer = state.players[seat].Name
+	}
+
+	// All players (ordered by seat) for the scores table.
+	snap.Players = make([]string, 0, len(state.players))
+	for _, p := range state.players {
+		snap.Players = append(snap.Players, p.Name)
+	}
+
+	// Scores keyed by player name for readability.
+	snap.RoundPoints = make(map[string]game.Points, len(state.players))
+	snap.TotalPoints = make(map[string]game.Points, len(state.players))
+	gameScores := state.game.Scores()
+	for i, p := range state.players {
+		snap.RoundPoints[p.Name] = rd.RoundPoints(i)
+		snap.TotalPoints[p.Name] = gameScores[p.position]
+	}
+
+	return snap
+}
+
+// FormatMarkdown renders the debug snapshot as a markdown text block
+// suitable for pasting into a Claude conversation.
+func (s *DebugBotSnapshot) FormatMarkdown() string {
+	var b strings.Builder
+	b.WriteString("# Bot Decision Context\n\n")
+	b.WriteString("## Table State\n")
+	b.WriteString("- **Table:** " + s.TableID + "\n")
+	b.WriteString("- **Phase:** " + s.Phase + "\n")
+	if s.PassDirection != "" {
+		b.WriteString("- **Pass direction:** " + string(s.PassDirection) + "\n")
+	}
+	b.WriteString("- **Trick:** " + itoa(s.TrickNumber+1) + " of 13\n")
+	b.WriteString("- **Hearts broken:** " + boolStr(s.HeartsBroken) + "\n")
+	b.WriteString("- **First trick:** " + boolStr(s.FirstTrick) + "\n")
+	if s.LedSuit != "" {
+		b.WriteString("- **Led suit:** " + string(s.LedSuit) + "\n")
+	}
+	if s.TurnSeat != nil {
+		b.WriteString("- **Turn:** " + s.TurnPlayer + " (seat " + itoa(*s.TurnSeat) + ")\n")
+	}
+
+	if len(s.CurrentTrick) > 0 {
+		b.WriteString("\n## Current Trick\n")
+		b.WriteString("| Seat | Player | Card |\n|------|--------|------|\n")
+		for _, tp := range s.CurrentTrick {
+			b.WriteString("| " + itoa(tp.Seat) + " | " + tp.Name + " | " + tp.Card + " |\n")
+		}
+	}
+
+	if len(s.PlayedCards) > 0 {
+		b.WriteString("\n## Previously Played Cards\n")
+		b.WriteString(strings.Join(s.PlayedCards, " ") + "\n")
+	}
+
+	b.WriteString("\n## Scores\n")
+	b.WriteString("| Player | Round | Total |\n|--------|-------|-------|\n")
+	for _, name := range s.Players {
+		rp := s.RoundPoints[name]
+		tp := s.TotalPoints[name]
+		b.WriteString("| " + name + " | " + itoa(int(rp)) + " | " + itoa(int(tp)) + " |\n")
+	}
+
+	b.WriteString("\n## Bots\n")
+	for _, bot := range s.Bots {
+		b.WriteString("\n### " + bot.Name + " (seat " + itoa(bot.Seat) + ", " + bot.Strategy + ")\n")
+		if len(bot.Hand) > 0 {
+			b.WriteString("**Hand:** " + strings.Join(bot.Hand, " ") + "\n")
+		} else {
+			b.WriteString("**Hand:** (none)\n")
+		}
+		if bot.MoonShotActive != nil && bot.MoonShotAborted != nil {
+			b.WriteString("**Moon shot active:** " + boolStr(*bot.MoonShotActive) + "\n")
+			b.WriteString("**Moon shot aborted:** " + boolStr(*bot.MoonShotAborted) + "\n")
+		}
+	}
+
+	return b.String()
+}
+
+func boolStr(v bool) string {
+	if v {
+		return "yes"
+	}
+	return "no"
+}
+
+func itoa(n int) string {
+	return strconv.Itoa(n)
 }
 
 func (r *Table) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) Snapshot {

@@ -27,6 +27,12 @@ var smartBotNames = []string{"Ada", "Grace", "Alan", "Radia", "Margaret", "Barba
 
 func (s *Smart) Kind() StrategyKind { return StrategySmart }
 
+// MoonShotActive reports whether the bot is currently pursuing a shoot-the-moon strategy.
+func (s *Smart) MoonShotActive() bool { return s.moonShotActive }
+
+// MoonShotAborted reports whether the bot abandoned a moon-shot attempt this round.
+func (s *Smart) MoonShotAborted() bool { return s.moonShotAborted }
+
 // NewSmartBot creates a smart bot for testing.
 func NewSmartBot() *Smart {
 	return &Smart{}

@@ -18,7 +18,7 @@ func Run() {
 	}
 	addr := flag.String("addr", fmt.Sprintf(":%d", defaultPort), "web listen address")
 	logLevel := flag.String("log-level", "", "log level (debug, info, warn, error); overrides LOG_LEVEL env var")
-	dev := flag.Bool("dev", false, "enable dev mode (exposes bot-hand debug endpoint and debugBot() console helper)")
+	dev := flag.Bool("dev", false, "enable dev mode (exposes bot debug endpoint and debugBot() console helper)")
 	flag.Parse()
 
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: resolveLogLevel(*logLevel)})))
