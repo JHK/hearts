@@ -46,6 +46,49 @@ func TestImmutableCacheHeadersOnStaticAssets(t *testing.T) {
 	}
 }
 
+func TestHTMLETagAndConditionalRequests(t *testing.T) {
+	manager := session.NewManager()
+	defer manager.Close()
+
+	handler, err := NewHandler(Config{}, manager)
+	require.NoError(t, err, "new handler")
+
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	for _, path := range []string{"/", "/table/test123"} {
+		// First request: should get 200, ETag, and Cache-Control: no-cache.
+		resp, err := srv.Client().Get(srv.URL + path)
+		require.NoError(t, err, "get %s", path)
+		require.Equal(t, http.StatusOK, resp.StatusCode, "status for %s", path)
+		require.Equal(t, "no-cache", resp.Header.Get("Cache-Control"), "Cache-Control for %s", path)
+
+		etag := resp.Header.Get("ETag")
+		require.NotEmpty(t, etag, "ETag for %s", path)
+		_ = resp.Body.Close()
+
+		// Second request with matching If-None-Match: should get 304.
+		req, err := http.NewRequest("GET", srv.URL+path, nil)
+		require.NoError(t, err)
+		req.Header.Set("If-None-Match", etag)
+
+		resp2, err := srv.Client().Do(req)
+		require.NoError(t, err, "conditional get %s", path)
+		require.Equal(t, http.StatusNotModified, resp2.StatusCode, "304 for %s", path)
+		_ = resp2.Body.Close()
+
+		// Third request with non-matching If-None-Match: should get 200.
+		req3, err := http.NewRequest("GET", srv.URL+path, nil)
+		require.NoError(t, err)
+		req3.Header.Set("If-None-Match", `"stale"`)
+
+		resp3, err := srv.Client().Do(req3)
+		require.NoError(t, err, "stale etag get %s", path)
+		require.Equal(t, http.StatusOK, resp3.StatusCode, "200 for stale etag on %s", path)
+		_ = resp3.Body.Close()
+	}
+}
+
 func TestServesExtractedScripts(t *testing.T) {
 	manager := session.NewManager()
 	defer manager.Close()

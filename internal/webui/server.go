@@ -2,6 +2,7 @@ package webui
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -109,6 +110,9 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 		return nil, fmt.Errorf("read embedded styles css: %w", err)
 	}
 
+	indexETag := contentETag(indexHTML)
+	tableETag := contentETag(tableHTML)
+
 	mux := http.NewServeMux()
 	presence := newHumanPresenceTracker()
 
@@ -119,8 +123,7 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 			http.NotFound(w, r)
 			return
 		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(indexHTML)
+		serveHTMLWithETag(w, r, indexHTML, indexETag)
 	})
 
 	mux.HandleFunc("/table/", func(w http.ResponseWriter, r *http.Request) {
@@ -131,8 +134,7 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 			return
 		}
 
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(tableHTML)
+		serveHTMLWithETag(w, r, tableHTML, tableETag)
 	})
 
 	mux.HandleFunc("/api/tables", func(w http.ResponseWriter, r *http.Request) {
@@ -437,6 +439,24 @@ func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTrack
 			}
 		}()
 	}
+}
+
+func contentETag(data []byte) string {
+	h := sha256.Sum256(data)
+	return fmt.Sprintf(`"%x"`, h[:16])
+}
+
+func serveHTMLWithETag(w http.ResponseWriter, r *http.Request, content []byte, etag string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("ETag", etag)
+
+	if match := r.Header.Get("If-None-Match"); match == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
+	_, _ = w.Write(content)
 }
 
 func writeJSON(w http.ResponseWriter, value any) {
