@@ -385,7 +385,8 @@ export function createRenderer({ dom, state, send }) {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             for (const c of cells) {
-              c.style.transition = 'transform 0.4s ease';
+              const flipDuration = document.body.dataset.speed === 'fast' ? '0.2s' : '0.4s';
+              c.style.transition = `transform ${flipDuration} ease`;
               c.style.transform = 'translateX(0)';
             }
           });
@@ -742,8 +743,9 @@ export function createRenderer({ dom, state, send }) {
         return;
       }
 
-      const durationMs = 1400;
-      const staggerMs = 90;
+      const fast = document.body.dataset.speed === 'fast';
+      const durationMs = fast ? 700 : 1400;
+      const staggerMs = fast ? 45 : 90;
       const sortPriorityBySlot = { top: 0, left: 1, right: 2, bottom: 3 };
       animatedCards.sort((a, b) => (sortPriorityBySlot[a.slotKey] || 0) - (sortPriorityBySlot[b.slotKey] || 0));
 

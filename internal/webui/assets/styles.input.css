@@ -123,8 +123,19 @@
     --card-back-a: #2b5a86;
     --card-back-b: #22496d;
     --card-back-c: #173653;
+    --anim-card-in: 520ms;
+    --anim-trick-capture: 1400ms;
+    --anim-winner-pulse: 1200ms;
+    --anim-scoreboard-flip: 400ms;
     color: var(--ink);
     background: radial-gradient(circle at 15% 0%, #ffffff 0%, #edf2f7 35%, #d7e1ec 100%);
+  }
+
+  .table-page[data-speed="fast"] {
+    --anim-card-in: 260ms;
+    --anim-trick-capture: 700ms;
+    --anim-winner-pulse: 600ms;
+    --anim-scoreboard-flip: 200ms;
   }
 
   .table-page main {
@@ -256,6 +267,117 @@
     fill: currentColor;
   }
 
+  .table-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .settings-container {
+    position: relative;
+  }
+
+  .settings-toggle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.74);
+    color: #1a4c68;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  }
+
+  .settings-toggle:hover {
+    background: #fff;
+    box-shadow: 0 6px 14px rgba(17, 37, 58, 0.14);
+  }
+
+  .settings-toggle:focus-visible {
+    outline: 2px solid rgba(26, 76, 104, 0.55);
+    outline-offset: 2px;
+  }
+
+  .settings-toggle-icon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+  }
+
+  .settings-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 80;
+    min-width: 180px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 10px;
+    box-shadow: 0 10px 24px rgba(17, 37, 58, 0.14);
+  }
+
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.875rem;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .settings-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex: 0 0 auto;
+  }
+
+  .settings-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+  }
+
+  .settings-switch-track {
+    position: absolute;
+    inset: 0;
+    background: var(--line);
+    border-radius: 10px;
+    transition: background 120ms ease;
+  }
+
+  .settings-switch-track::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 120ms ease;
+  }
+
+  .settings-switch input:checked + .settings-switch-track {
+    background: var(--green);
+  }
+
+  .settings-switch input:checked + .settings-switch-track::after {
+    transform: translateX(16px);
+  }
+
+  .settings-switch input:focus-visible + .settings-switch-track {
+    outline: 2px solid rgba(26, 76, 104, 0.55);
+    outline-offset: 2px;
+  }
+
   .table-board {
     background: radial-gradient(circle at center, #2a7d6a 0%, var(--felt) 65%, #17493f 100%);
     border: 1px solid #2d7e6f;
@@ -362,7 +484,7 @@
   }
 
   .seat.trick-winner {
-    animation: trick-winner-pulse 1200ms ease-out;
+    animation: trick-winner-pulse var(--anim-winner-pulse) ease-out;
   }
 
   .seat.top {
@@ -435,7 +557,7 @@
     margin: 0;
     pointer-events: none;
     z-index: 1;
-    transition: transform 1400ms cubic-bezier(0.42, 0, 0.58, 1), opacity 1400ms cubic-bezier(0.42, 0, 0.58, 1);
+    transition: transform var(--anim-trick-capture) cubic-bezier(0.42, 0, 0.58, 1), opacity var(--anim-trick-capture) cubic-bezier(0.42, 0, 0.58, 1);
     will-change: transform, opacity;
   }
 
@@ -491,19 +613,19 @@
   }
 
   .trick-slot-top .play-card {
-    animation: trick-card-in-top 520ms cubic-bezier(0.16, 0.84, 0.28, 1);
+    animation: trick-card-in-top var(--anim-card-in) cubic-bezier(0.16, 0.84, 0.28, 1);
   }
 
   .trick-slot-left .play-card {
-    animation: trick-card-in-left 520ms cubic-bezier(0.16, 0.84, 0.28, 1);
+    animation: trick-card-in-left var(--anim-card-in) cubic-bezier(0.16, 0.84, 0.28, 1);
   }
 
   .trick-slot-right .play-card {
-    animation: trick-card-in-right 520ms cubic-bezier(0.16, 0.84, 0.28, 1);
+    animation: trick-card-in-right var(--anim-card-in) cubic-bezier(0.16, 0.84, 0.28, 1);
   }
 
   .trick-slot-bottom .play-card {
-    animation: trick-card-in-bottom 520ms cubic-bezier(0.16, 0.84, 0.28, 1);
+    animation: trick-card-in-bottom var(--anim-card-in) cubic-bezier(0.16, 0.84, 0.28, 1);
   }
 
   .play-card {
@@ -692,7 +814,7 @@
     flex: 0 0 auto;
   }
 
-  .table-page button:not(.hand-card) {
+  .table-page button:not(.hand-card):not(.settings-toggle) {
     border: 0;
     border-radius: 10px;
     padding: 9px 13px;
@@ -706,7 +828,7 @@
     background: linear-gradient(130deg, var(--green), #2f9480);
   }
 
-  .table-page button:not(.hand-card):disabled {
+  .table-page button:not(.hand-card):not(.settings-toggle):disabled {
     background: linear-gradient(130deg, #7f8b96, #6e7883);
     color: rgba(255, 255, 255, 0.78);
     cursor: not-allowed;
@@ -915,7 +1037,7 @@
 
   .table-page input,
   .table-page select,
-  .table-page button:not(.hand-card) {
+  .table-page button:not(.hand-card):not(.settings-toggle) {
     width: 100%;
   }
 }

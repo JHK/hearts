@@ -4,7 +4,7 @@ import { playHeartsBreaking, playQueenOfSpades } from './audio.js';
 
 const nameKey = 'hearts.player.name';
 const tokenKey = 'hearts.player.token';
-const trickCardInDurationMs = 520;
+const speedKey = 'hearts.animation.speed';
 const trickCardInBufferMs = 80;
 
 const tableId = decodeURIComponent(location.pathname.replace('/table/', ''));
@@ -35,6 +35,39 @@ const state = {
 const renderer = createRenderer({ dom, state, send });
 
 const token = ensureToken();
+
+function isFastSpeed() {
+  return document.body.dataset.speed === 'fast';
+}
+
+function applySpeed(fast) {
+  if (fast) {
+    document.body.dataset.speed = 'fast';
+  } else {
+    delete document.body.dataset.speed;
+  }
+  dom.speedToggleEl.checked = fast;
+}
+
+applySpeed(localStorage.getItem(speedKey) === 'fast');
+
+dom.settingsToggleEl.onclick = () => {
+  dom.settingsPanelEl.classList.toggle('hidden');
+};
+
+dom.speedToggleEl.onchange = () => {
+  const fast = dom.speedToggleEl.checked;
+  applySpeed(fast);
+  localStorage.setItem(speedKey, fast ? 'fast' : 'normal');
+};
+
+document.addEventListener('click', (e) => {
+  if (!dom.settingsPanelEl.classList.contains('hidden') &&
+      !dom.settingsPanelEl.contains(e.target) &&
+      !dom.settingsToggleEl.contains(e.target)) {
+    dom.settingsPanelEl.classList.add('hidden');
+  }
+});
 
 dom.addBotDefaultEl.onclick = () => {
   send({ type: 'add_bot', strategy: dom.botStrategySelectEl.value || '' });
@@ -156,7 +189,8 @@ async function processQueuedCardPlayed(data) {
   }
 
   if (!prefersReducedMotion()) {
-    await waitMs(trickCardInDurationMs + trickCardInBufferMs);
+    const cardInMs = isFastSpeed() ? 260 : 520;
+    await waitMs(cardInMs + trickCardInBufferMs);
   }
 }
 
