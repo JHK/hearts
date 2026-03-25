@@ -1,11 +1,11 @@
 ---
 # hearts-tnu6
 title: Add immutable cache headers for card SVGs and icons
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-03-25T06:42:40Z
-updated_at: 2026-03-25T06:42:45Z
+updated_at: 2026-03-25T07:11:39Z
 parent: hearts-e5b4
 ---
 
@@ -22,12 +22,16 @@ Reduce bandwidth and improve load times, especially on mobile/flaky connections 
 
 ## Acceptance Criteria
 
-- [ ] `/assets/cards/*` responses include `Cache-Control: public, max-age=31536000, immutable`
-- [ ] `/favicon.ico`, `/icon.svg`, `/apple-touch-icon.png` responses include the same header
-- [ ] Test coverage verifies caching headers are present on these routes
+- [x] `/assets/cards/*` responses include `Cache-Control: public, max-age=31536000, immutable`
+- [x] `/favicon.ico`, `/icon.svg`, `/apple-touch-icon.png` responses include the same header
+- [x] Test coverage verifies caching headers are present on these routes
 
 ## Out of Scope
 
 - CSS and JS caching (separate ticket with fingerprinting)
 - ETag / conditional request support
 - HTML page caching
+
+## Summary of Changes
+
+Added `Cache-Control: public, max-age=31536000, immutable` header to the `/assets/cards/*` handler and the favicon/icon handlers in `internal/webui/server.go`. Added `TestImmutableCacheHeadersOnStaticAssets` integration test verifying the header on all four routes.

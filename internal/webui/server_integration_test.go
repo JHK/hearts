@@ -20,6 +20,32 @@ type testWSMessage struct {
 	Error string          `json:"error,omitempty"`
 }
 
+func TestImmutableCacheHeadersOnStaticAssets(t *testing.T) {
+	manager := session.NewManager()
+	defer manager.Close()
+
+	handler, err := NewHandler(Config{}, manager)
+	require.NoError(t, err, "new handler")
+
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	const wantCC = "public, max-age=31536000, immutable"
+
+	for _, path := range []string{
+		"/assets/cards/2_of_clubs.svg",
+		"/favicon.ico",
+		"/icon.svg",
+		"/apple-touch-icon.png",
+	} {
+		resp, err := srv.Client().Get(srv.URL + path)
+		require.NoError(t, err, "get %s", path)
+		require.Equal(t, http.StatusOK, resp.StatusCode, "status for %s", path)
+		require.Equal(t, wantCC, resp.Header.Get("Cache-Control"), "Cache-Control for %s", path)
+		_ = resp.Body.Close()
+	}
+}
+
 func TestServesExtractedScripts(t *testing.T) {
 	manager := session.NewManager()
 	defer manager.Close()

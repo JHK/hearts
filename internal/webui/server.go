@@ -183,6 +183,7 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 		}
 
 		w.Header().Set("Content-Type", "image/svg+xml")
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		_, _ = w.Write(content)
 	})
 
@@ -202,6 +203,7 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 		}
 		mux.HandleFunc(f.path, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", f.contentType)
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 			_, _ = w.Write(data)
 		})
 	}
