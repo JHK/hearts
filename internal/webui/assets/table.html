@@ -133,12 +133,15 @@
   <div id="gameOverOverlay" class="game-over-overlay hidden">
     <div class="game-over-panel">
       <h2>Game Over</h2>
-      <p id="gameOverWinner" class="game-over-winner-text"></p>
+      <div id="gameOverChart" class="game-over-chart">
+        <canvas id="gameOverCanvas"></canvas>
+      </div>
       <div id="gameOverScores" class="game-over-scores"></div>
       <a href="/" class="game-over-back-link">Back to Lobby</a>
     </div>
   </div>
 
+  <script defer src="{{.ChartJSURL}}"></script>
   <script type="module" src="{{.ScriptURL}}"></script>
 {{.ExtraScripts}}
 </body>

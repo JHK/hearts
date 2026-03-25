@@ -24,6 +24,7 @@ import (
 type templateData struct {
 	StylesURL    string
 	ScriptURL    string
+	ChartJSURL   string
 	ExtraScripts template.HTML
 }
 
@@ -153,8 +154,9 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 		ScriptURL: "/assets/js/lobby/main.js",
 	}
 	tableData := templateData{
-		StylesURL: "/assets/styles.css",
-		ScriptURL: "/assets/js/table/main.js",
+		StylesURL:  "/assets/styles.css",
+		ScriptURL:  "/assets/js/table/main.js",
+		ChartJSURL: "/assets/js/vendor/chart.umd.js",
 	}
 
 	if cfg.Dev {
@@ -169,6 +171,7 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 		indexData.ScriptURL = fp.urlMapping["/assets/js/lobby/main.js"]
 		tableData.StylesURL = fp.urlMapping["/assets/styles.css"]
 		tableData.ScriptURL = fp.urlMapping["/assets/js/table/main.js"]
+		tableData.ChartJSURL = fp.urlMapping["/assets/js/vendor/chart.umd.js"]
 		registerFingerprintedAssetHandlers(mux, fp)
 	}
 

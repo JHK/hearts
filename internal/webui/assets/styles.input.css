@@ -936,22 +936,21 @@
     gap: 14px;
     align-items: center;
     text-align: center;
-    max-width: 380px;
+    max-width: 520px;
     width: 90%;
     box-shadow: 0 20px 48px rgba(10, 20, 34, 0.32);
+  }
+
+  .game-over-chart {
+    width: 100%;
+    height: 220px;
+    position: relative;
   }
 
   .game-over-panel h2 {
     margin: 0;
     font-size: 1.6rem;
     letter-spacing: 0.01em;
-  }
-
-  .game-over-winner-text {
-    margin: 0;
-    font-weight: 700;
-    font-size: 1.05rem;
-    color: var(--ink);
   }
 
   .game-over-scores {
@@ -967,6 +966,21 @@
   .game-over-scores-table td {
     padding: 5px 8px;
     border-bottom: 1px solid var(--line);
+  }
+
+  .game-over-scores-table td:first-child {
+    width: 1.6em;
+    text-align: center;
+    padding-right: 0;
+  }
+
+  .game-over-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
   }
 
   .game-over-scores-table td:last-child {

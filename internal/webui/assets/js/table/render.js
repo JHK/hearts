@@ -1,6 +1,11 @@
 import { cardAltText, cardImageURL } from './cards.js';
 
+const CHART_COLORS = ['#116466', '#b44f26', '#5b6f83', '#8b5cf6'];
+const MEDALS = ['🏆', '🥈', '🥉'];
+
 export function createRenderer({ dom, state, send }) {
+  let scoreChart = null;
+  let gameOverRendered = false;
   function effectiveMe(players) {
     if (!players || players.length === 0) return null;
     const me = players.find((p) => p.player_id === state.myPlayerId);
@@ -400,34 +405,113 @@ export function createRenderer({ dom, state, send }) {
     const totalPoints = (snapshot && snapshot.total_points) ? snapshot.total_points : {};
     const winners = Array.isArray(snapshot.winners) ? snapshot.winners : [];
 
-    const winnerNames = winners.map((wid) => {
-      const p = players.find((pl) => pl.player_id === wid);
-      return p ? (p.is_bot ? `${p.name} [bot]` : p.name) : wid;
-    });
-
-    dom.gameOverWinnerEl.textContent = winnerNames.length === 1
-      ? `Winner: ${winnerNames[0]}`
-      : `Co-winners: ${winnerNames.join(', ')}`;
-
-    const sorted = [...players].sort((a, b) => (totalPoints[a.player_id] || 0) - (totalPoints[b.player_id] || 0));
+    const sorted = [...players].sort((a, b) => (totalPoints[a.player_id] ?? 0) - (totalPoints[b.player_id] ?? 0));
 
     dom.gameOverScoresEl.innerHTML = '';
     const table = document.createElement('table');
     table.className = 'game-over-scores-table';
-    for (const p of sorted) {
+    let rank = 0;
+    let prevScore = null;
+    for (let i = 0; i < sorted.length; i++) {
+      const p = sorted[i];
+      const score = totalPoints[p.player_id] ?? 0;
+      if (score !== prevScore) {
+        rank = i;
+        prevScore = score;
+      }
       const tr = document.createElement('tr');
       if (winners.includes(p.player_id)) {
         tr.classList.add('game-over-winner-row');
       }
+      const medalTd = document.createElement('td');
+      medalTd.textContent = rank < MEDALS.length ? MEDALS[rank] : '';
       const nameTd = document.createElement('td');
-      nameTd.textContent = p.is_bot ? `${p.name} [bot]` : p.name;
+      const swatch = document.createElement('span');
+      swatch.className = 'game-over-swatch';
+      swatch.style.backgroundColor = CHART_COLORS[i % CHART_COLORS.length];
+      nameTd.appendChild(swatch);
+      nameTd.appendChild(document.createTextNode(p.is_bot ? `${p.name} [bot]` : p.name));
       const scoreTd = document.createElement('td');
-      scoreTd.textContent = String(totalPoints[p.player_id] || 0);
+      scoreTd.textContent = String(score);
+      tr.appendChild(medalTd);
       tr.appendChild(nameTd);
       tr.appendChild(scoreTd);
       table.appendChild(tr);
     }
     dom.gameOverScoresEl.appendChild(table);
+
+    renderScoreChart(snapshot, players, winners, sorted);
+  }
+
+  function renderScoreChart(snapshot, players, winners, sortedPlayers) {
+    const history = Array.isArray(snapshot.round_history) ? snapshot.round_history : [];
+    if (history.length === 0 || typeof Chart === 'undefined') {
+      dom.gameOverChartEl.hidden = true;
+      return;
+    }
+    dom.gameOverChartEl.hidden = false;
+
+    // Build cumulative scores per player
+    const playerIds = sortedPlayers.map(p => p.player_id);
+    const datasets = playerIds.map((pid, i) => {
+      let cumulative = 0;
+      const data = history.map(entry => {
+        cumulative += (entry[pid] ?? 0);
+        return cumulative;
+      });
+      const p = players.find(pl => pl.player_id === pid);
+      const label = p ? (p.is_bot ? `${p.name} [bot]` : p.name) : pid;
+      const isWinner = winners.includes(pid);
+      return {
+        label,
+        data,
+        borderColor: CHART_COLORS[i % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+        borderWidth: isWinner ? 3 : 1.5,
+        pointRadius: isWinner ? 3 : 1.5,
+        tension: 0.15,
+      };
+    });
+
+    const labels = history.map((_, i) => String(i + 1));
+
+    if (scoreChart) {
+      scoreChart.destroy();
+    }
+
+    const ctx = dom.gameOverCanvasEl.getContext('2d');
+    const style = getComputedStyle(document.documentElement);
+    const lineColor = style.getPropertyValue('--line').trim() || '#d4e1ec';
+    const mutedColor = style.getPropertyValue('--muted').trim() || '#5b6f83';
+
+    scoreChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => items.length ? `Round ${items[0].label}` : '',
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: mutedColor, font: { size: 10 } },
+            grid: { color: lineColor },
+          },
+          y: {
+            ticks: { color: mutedColor, font: { size: 10 } },
+            grid: { color: lineColor },
+            beginAtZero: true,
+          },
+        },
+      },
+    });
   }
 
   function renderPassPanel(snapshot) {
@@ -538,7 +622,8 @@ export function createRenderer({ dom, state, send }) {
 
     const isGameOver = !!snapshot.game_over;
     dom.gameOverOverlayEl.classList.toggle('hidden', !isGameOver);
-    if (isGameOver) {
+    if (isGameOver && !gameOverRendered) {
+      gameOverRendered = true;
       renderGameOverPanel(snapshot);
     }
 

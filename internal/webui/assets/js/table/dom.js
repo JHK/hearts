@@ -38,7 +38,8 @@ export function createTableDom({ tableId, eventsEnabled }) {
   const gamePausedMessageEl = document.getElementById('gamePausedMessage');
   const gamePausedActionsEl = document.getElementById('gamePausedActions');
   const gameOverOverlayEl = document.getElementById('gameOverOverlay');
-  const gameOverWinnerEl = document.getElementById('gameOverWinner');
+  const gameOverChartEl = document.getElementById('gameOverChart');
+  const gameOverCanvasEl = document.getElementById('gameOverCanvas');
   const gameOverScoresEl = document.getElementById('gameOverScores');
   const settingsToggleEl = document.getElementById('settingsToggle');
   const settingsPanelEl = document.getElementById('settingsPanel');
@@ -89,7 +90,8 @@ export function createTableDom({ tableId, eventsEnabled }) {
     gamePausedMessageEl,
     gamePausedActionsEl,
     gameOverOverlayEl,
-    gameOverWinnerEl,
+    gameOverChartEl,
+    gameOverCanvasEl,
     gameOverScoresEl,
     settingsToggleEl,
     settingsPanelEl,
