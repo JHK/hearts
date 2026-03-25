@@ -15,7 +15,6 @@ var randomBotNames = []string{"Lucky", "Dice", "Chance", "Jinx", "Hazard", "Wild
 
 func (r *Random) Kind() StrategyKind { return StrategyRandom }
 
-
 func newRandomBot(rng *rand.Rand) *Random {
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))

@@ -1,6 +1,5 @@
 package protocol
 
-
 type TableInfo struct {
 	TableID    string `json:"table_id"`
 	Players    int    `json:"players"`
@@ -10,9 +9,9 @@ type TableInfo struct {
 }
 
 type JoinResponse struct {
-	Accepted bool          `json:"accepted"`
-	Reason   string        `json:"reason,omitempty"`
-	TableID  string        `json:"table_id,omitempty"`
+	Accepted bool     `json:"accepted"`
+	Reason   string   `json:"reason,omitempty"`
+	TableID  string   `json:"table_id,omitempty"`
 	PlayerID PlayerID `json:"player_id,omitempty"`
-	Seat     int           `json:"seat,omitempty"`
+	Seat     int      `json:"seat,omitempty"`
 }

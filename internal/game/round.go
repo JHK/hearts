@@ -86,20 +86,20 @@ func NewTestRound(roundPoints [PlayersPerTable]Points) *Round {
 
 // --- Queries ---
 
-func (r *Round) Phase() RoundPhase         { return r.phase }
+func (r *Round) Phase() RoundPhase            { return r.phase }
 func (r *Round) PassDirection() PassDirection { return r.passDir }
-func (r *Round) TurnSeat() int             { return r.turnSeat }
-func (r *Round) TrickNumber() int          { return r.trickNumber }
-func (r *Round) HeartsBroken() bool        { return r.heartsBroken }
-func (r *Round) PlayedCards() []Card       { return r.playedCards }
-func (r *Round) CurrentTrick() []Play      { return r.currentTrick }
-func (r *Round) RoundPoints(seat int) Points { return r.roundPoints[seat] }
+func (r *Round) TurnSeat() int                { return r.turnSeat }
+func (r *Round) TrickNumber() int             { return r.trickNumber }
+func (r *Round) HeartsBroken() bool           { return r.heartsBroken }
+func (r *Round) PlayedCards() []Card          { return r.playedCards }
+func (r *Round) CurrentTrick() []Play         { return r.currentTrick }
+func (r *Round) RoundPoints(seat int) Points  { return r.roundPoints[seat] }
 
-func (r *Round) Hand(seat int) []Card             { return r.hands[seat] }
-func (r *Round) HasSubmittedPass(seat int) bool    { return r.passSubmitted[seat] != nil }
-func (r *Round) IsPassReady(seat int) bool         { return r.passReady[seat] }
-func (r *Round) PassSent(seat int) []Card          { return r.passSubmitted[seat] }
-func (r *Round) PassReceived(seat int) []Card      { return r.passReceived[seat] }
+func (r *Round) Hand(seat int) []Card           { return r.hands[seat] }
+func (r *Round) HasSubmittedPass(seat int) bool { return r.passSubmitted[seat] != nil }
+func (r *Round) IsPassReady(seat int) bool      { return r.passReady[seat] }
+func (r *Round) PassSent(seat int) []Card       { return r.passSubmitted[seat] }
+func (r *Round) PassReceived(seat int) []Card   { return r.passReceived[seat] }
 
 // TurnInput builds the decision input for a bot or UI at the given seat.
 func (r *Round) TurnInput(seat int) TurnInput {

@@ -12,7 +12,6 @@ var dumbBotNames = []string{"Linus", "Ken", "Dennis", "Anita", "Bob", "Dave", "C
 
 func (d *Dumb) Kind() StrategyKind { return StrategyDumb }
 
-
 func chooseSmartLead(hand []game.Card, legal []game.Card) game.Card {
 	nonHearts := filterCards(legal, func(card game.Card) bool {
 		return card.Suit != game.SuitHearts

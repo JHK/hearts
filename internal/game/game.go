@@ -11,7 +11,7 @@ type GameResult struct {
 
 // Game tracks cumulative scores across rounds and detects game-over conditions.
 type Game struct {
-	scores      [PlayersPerTable]Points
+	scores       [PlayersPerTable]Points
 	roundsPlayed int
 }
 

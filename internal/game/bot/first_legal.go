@@ -8,7 +8,6 @@ var firstLegalBotNames = []string{"Fritz"}
 
 func (f *FirstLegal) Kind() StrategyKind { return StrategyFirstLegal }
 
-
 // NewFirstLegalBot creates a first-legal bot for testing.
 func NewFirstLegalBot() *FirstLegal {
 	return &FirstLegal{}

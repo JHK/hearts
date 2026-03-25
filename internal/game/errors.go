@@ -4,11 +4,11 @@ import "errors"
 
 // Round state machine errors.
 var (
-	ErrWrongPhase           = errors.New("wrong phase")
-	ErrPassAlreadySubmitted = errors.New("pass already submitted")
+	ErrWrongPhase            = errors.New("wrong phase")
+	ErrPassAlreadySubmitted  = errors.New("pass already submitted")
 	ErrNotAllPassesSubmitted = errors.New("not all passes submitted")
-	ErrNotYourTurn          = errors.New("not your turn")
-	ErrCardNotInHand        = errors.New("card is not in hand")
+	ErrNotYourTurn           = errors.New("not your turn")
+	ErrCardNotInHand         = errors.New("card is not in hand")
 )
 
 // Card parsing errors.
@@ -20,9 +20,9 @@ var (
 
 // Play validation errors.
 var (
-	ErrMustLeadTwoClubs  = errors.New("first trick must be led with 2C")
-	ErrHeartsNotBroken   = errors.New("hearts are not broken")
-	ErrMustFollowSuit    = errors.New("must follow suit")
+	ErrMustLeadTwoClubs   = errors.New("first trick must be led with 2C")
+	ErrHeartsNotBroken    = errors.New("hearts are not broken")
+	ErrMustFollowSuit     = errors.New("must follow suit")
 	ErrPenaltyCardBlocked = errors.New("penalty cards are blocked on first trick when alternatives exist")
 )
 

@@ -110,7 +110,6 @@ type playerState struct {
 	// bot handles autonomous decisions; nil for human players.
 	// Human turns are driven by Play/Pass commands from the WebSocket connection.
 	bot bot.Bot
-
 }
 
 type joinCommand struct {

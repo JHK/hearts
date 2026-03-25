@@ -9,8 +9,8 @@ type CommandResponse struct {
 
 type PlayerInfo struct {
 	PlayerID PlayerID `json:"player_id"`
-	Name     string        `json:"name"`
-	Seat     int           `json:"seat"`
+	Name     string   `json:"name"`
+	Seat     int      `json:"seat"`
 }
 
 type PlayerJoinedData struct {
@@ -19,23 +19,23 @@ type PlayerJoinedData struct {
 
 type TurnChangedData struct {
 	PlayerID    PlayerID `json:"player_id"`
-	TrickNumber int           `json:"trick_number"`
+	TrickNumber int      `json:"trick_number"`
 }
 
 type YourTurnData struct {
 	PlayerID    PlayerID `json:"player_id"`
-	TrickNumber int           `json:"trick_number"`
+	TrickNumber int      `json:"trick_number"`
 }
 
 type CardPlayedData struct {
 	PlayerID     PlayerID `json:"player_id"`
-	Card         string        `json:"card"`
-	BreaksHearts bool          `json:"breaks_hearts,omitempty"`
+	Card         string   `json:"card"`
+	BreaksHearts bool     `json:"breaks_hearts,omitempty"`
 }
 
 type PassStatusData struct {
-	Submitted int    `json:"submitted"`
-	Total     int    `json:"total"`
+	Submitted int                `json:"submitted"`
+	Total     int                `json:"total"`
 	Direction game.PassDirection `json:"direction,omitempty"`
 }
 
@@ -45,9 +45,9 @@ type PassReadyData struct {
 }
 
 type TrickCompletedData struct {
-	TrickNumber    int           `json:"trick_number"`
-	WinnerPlayerID PlayerID `json:"winner_player_id"`
-	Points         game.Points   `json:"points"`
+	TrickNumber    int         `json:"trick_number"`
+	WinnerPlayerID PlayerID    `json:"winner_player_id"`
+	Points         game.Points `json:"points"`
 }
 
 type RoundCompletedData struct {

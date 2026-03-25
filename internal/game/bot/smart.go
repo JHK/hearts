@@ -27,7 +27,6 @@ var smartBotNames = []string{"Ada", "Grace", "Alan", "Radia", "Margaret", "Barba
 
 func (s *Smart) Kind() StrategyKind { return StrategySmart }
 
-
 // NewSmartBot creates a smart bot for testing.
 func NewSmartBot() *Smart {
 	return &Smart{}
