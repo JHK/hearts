@@ -58,6 +58,7 @@ func TestHTMLETagAndConditionalRequests(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
+	mustCreateTable(t, manager, "test123")
 	for _, path := range []string{"/", "/table/test123"} {
 		// First request: should get 200, ETag, and Cache-Control: no-cache.
 		resp, err := srv.Client().Get(srv.URL + path)
@@ -134,6 +135,8 @@ func TestFingerprintedAssetURLsAndCaching(t *testing.T) {
 
 	const wantCC = "public, max-age=31536000, immutable"
 
+	mustCreateTable(t, manager, "test123")
+
 	// HTML should reference fingerprinted asset URLs (not plain ones).
 	resp, err := srv.Client().Get(srv.URL + "/")
 	require.NoError(t, err, "get index")
@@ -207,6 +210,7 @@ func TestWebSocketJoinAndStateFlow(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
+	mustCreateTable(t, manager, "demo")
 	ws := mustDialTableSocket(t, srv.URL, "demo")
 	defer ws.Close()
 
@@ -251,6 +255,7 @@ func TestWebSocketJoinReusesPlayerByToken(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
+	mustCreateTable(t, manager, "rejoin")
 	first := mustDialTableSocket(t, srv.URL, "rejoin")
 	defer first.Close()
 	_ = readMessage(t, first)
@@ -284,6 +289,7 @@ func TestDisconnectLeavesTableBeforeRoundStart(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
+	mustCreateTable(t, manager, "leave-before-start")
 	alice := mustDialTableSocket(t, srv.URL, "leave-before-start")
 	defer alice.Close()
 	_ = readMessage(t, alice)
@@ -307,7 +313,7 @@ func TestDisconnectLeavesTableBeforeRoundStart(t *testing.T) {
 	})
 }
 
-func TestWebSocketAutoCreatesTable(t *testing.T) {
+func TestTablePageRedirectsForNonExistentTable(t *testing.T) {
 	manager := session.NewManager()
 	defer manager.Close()
 
@@ -317,13 +323,19 @@ func TestWebSocketAutoCreatesTable(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	ws := mustDialTableSocket(t, srv.URL, "auto-create")
-	defer ws.Close()
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
 
-	_ = readMessage(t, ws)
+	resp, err := client.Get(srv.URL + "/table/no-such-table")
+	require.NoError(t, err, "GET /table/no-such-table")
+	defer resp.Body.Close()
 
-	_, ok := manager.Get("auto-create")
-	require.True(t, ok, "expected table to be created when websocket connected")
+	require.Equal(t, http.StatusSeeOther, resp.StatusCode)
+	require.Equal(t, "/", resp.Header.Get("Location"))
+
+	_, ok := manager.Get("no-such-table")
+	require.False(t, ok, "expected table NOT to be created")
 }
 
 func TestTableClosesWhenLastHumanLeaves(t *testing.T) {
@@ -336,6 +348,7 @@ func TestTableClosesWhenLastHumanLeaves(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
+	mustCreateTable(t, manager, "close-on-empty")
 	ws := mustDialTableSocket(t, srv.URL, "close-on-empty")
 	_ = readMessage(t, ws)
 	require.NoError(t, ws.WriteJSON(wsCommand{Type: "join", Name: "Alice", Token: "alice-token"}), "join write")
@@ -369,6 +382,7 @@ func TestPassPhaseAndReviewFlowOverWebSocket(t *testing.T) {
 		{name: "Dave", token: "token-d"},
 	}
 
+	mustCreateTable(t, manager, "pass-flow")
 	for i := range players {
 		players[i].conn = mustDialTableSocket(t, srv.URL, "pass-flow")
 		defer players[i].conn.Close()
@@ -433,6 +447,13 @@ func TestPassPhaseAndReviewFlowOverWebSocket(t *testing.T) {
 		snapshot := requestStateSnapshot(t, players[0].conn)
 		return snapshot.Phase == "playing" && snapshot.TurnPlayerID != ""
 	})
+}
+
+func mustCreateTable(t *testing.T, manager *session.Manager, tableID string) {
+	t.Helper()
+
+	_, _, err := manager.Create(tableID)
+	require.NoError(t, err, "create table %s", tableID)
 }
 
 func mustDialTableSocket(t *testing.T, baseURL, tableID string) *websocket.Conn {

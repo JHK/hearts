@@ -161,6 +161,11 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 			return
 		}
 
+		if _, ok := manager.Get(tableID); !ok {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+
 		serveHTMLWithETag(w, r, tableHTML, tableETag)
 	})
 
@@ -276,9 +281,9 @@ func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTrack
 		return
 	}
 
-	runtime, _, err := manager.Create(tableID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	runtime, ok := manager.Get(tableID)
+	if !ok {
+		http.NotFound(w, r)
 		return
 	}
 

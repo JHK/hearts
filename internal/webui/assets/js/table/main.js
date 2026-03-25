@@ -237,17 +237,34 @@ async function processTrickEventQueue() {
   }
 }
 
+let initialConnectFailures = 0;
+const maxInitialConnectRetries = 2;
+
 function connect() {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   state.ws = new WebSocket(`${protocol}://${location.host}/ws/table/${encodeURIComponent(tableId)}`);
 
+  let opened = false;
+
   state.ws.onopen = () => {
+    opened = true;
+    initialConnectFailures = 0;
     log('connected');
     send({ type: 'join', name: playerName(), token });
     requestState();
   };
 
   state.ws.onclose = () => {
+    if (!opened) {
+      initialConnectFailures++;
+      if (initialConnectFailures <= maxInitialConnectRetries) {
+        log(`connect failed, retrying (${initialConnectFailures}/${maxInitialConnectRetries})...`);
+        setTimeout(connect, 1000);
+        return;
+      }
+      window.location.href = '/';
+      return;
+    }
     log('disconnected, retrying...');
     setTimeout(connect, 1000);
   };

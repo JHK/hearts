@@ -80,6 +80,10 @@ Each browser instance represents one player identity for a table.
 - No persistence across restarts.
 - Reconnects can recover identity within a running process via browser token/cookie, but not after restart.
 
+## Frontend resilience
+
+The browser client should retry on transient, potentially recoverable failures (network blips, brief server unavailability) before giving up. Terminal conditions (server explicitly rejects the request) should fail fast. The goal is to avoid bouncing users out of a game due to a momentary glitch while still redirecting promptly when the resource is genuinely gone.
+
 ## Authority rules
 
 - Only the session runtime validates and commits game actions.
