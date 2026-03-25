@@ -17,6 +17,10 @@ type PlayerJoinedData struct {
 	Player PlayerInfo `json:"player"`
 }
 
+type PlayerLeftData struct {
+	Player PlayerInfo `json:"player"`
+}
+
 type TurnChangedData struct {
 	PlayerID    PlayerID `json:"player_id"`
 	TrickNumber int      `json:"trick_number"`
@@ -69,3 +73,11 @@ type GamePausedData struct {
 }
 
 type GameResumedData struct{}
+
+type RematchVoteData struct {
+	PlayerID PlayerID `json:"player_id"`
+	Votes    int      `json:"votes"`
+	Total    int      `json:"total"`
+}
+
+type RematchStartingData struct{}

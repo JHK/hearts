@@ -450,6 +450,13 @@ func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTrack
 				continue
 			}
 			send(wsMessage{Type: "resume_game_result", Data: runtime.ResumeGame(current)})
+		case "rematch":
+			current := getPlayerID()
+			if current == "" {
+				send(wsMessage{Type: "error", Error: "join first"})
+				continue
+			}
+			send(wsMessage{Type: "rematch_result", Data: runtime.Rematch(current)})
 		default:
 			send(wsMessage{Type: "error", Error: fmt.Sprintf("unknown command %q", cmd.Type)})
 		}

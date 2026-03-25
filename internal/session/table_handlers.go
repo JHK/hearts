@@ -55,7 +55,9 @@ func (r *Table) handleLeave(state *tableState, playerID protocol.PlayerID) {
 		return
 	}
 
+	seat := player.position
 	delete(state.playersByID, playerID)
+	delete(state.rematchVotes, playerID)
 	if player.Token != "" {
 		delete(state.playersByToken, player.Token)
 		state.departedTokens[player.Token] = playerID
@@ -67,10 +69,21 @@ func (r *Table) handleLeave(state *tableState, playerID protocol.PlayerID) {
 		}
 
 		state.players = append(state.players[:index], state.players[index+1:]...)
-		for seat, updated := range state.players {
-			updated.position = seat
+		for i, updated := range state.players {
+			updated.position = i
 		}
-		return
+		break
+	}
+
+	r.publishPublic(protocol.EventPlayerLeft, protocol.PlayerLeftData{
+		Player: protocol.PlayerInfo{PlayerID: playerID, Name: player.Name, Seat: seat},
+	})
+
+	if state.gameOver {
+		state.gameOver = false
+		state.game = game.NewGame()
+		state.rematchVotes = nil
+		state.roundHistory = nil
 	}
 }
 
@@ -650,6 +663,85 @@ func (r *Table) resumeAfterPause(state *tableState) {
 		turnSeat := state.round.TurnSeat()
 		turnPlayer := state.players[turnSeat]
 		r.scheduleBotTurn(state, turnPlayer)
+	}
+}
+
+func (r *Table) handleRematch(state *tableState, playerID protocol.PlayerID) protocol.CommandResponse {
+	if !state.gameOver {
+		return protocol.CommandResponse{Accepted: false, Reason: "game is not over"}
+	}
+	player := state.playersByID[playerID]
+	if player == nil || player.bot != nil {
+		return protocol.CommandResponse{Accepted: false, Reason: "only seated human players can vote for rematch"}
+	}
+
+	if state.rematchVotes == nil {
+		state.rematchVotes = make(map[protocol.PlayerID]bool)
+	}
+	state.rematchVotes[playerID] = true
+
+	humans := 0
+	for _, p := range state.players {
+		if p.bot == nil {
+			humans++
+		}
+	}
+	votes := len(state.rematchVotes)
+
+	slog.Info("rematch vote", "event", "rematch_vote", "table_id", r.tableID, "player_id", playerID, "votes", votes, "total", humans)
+	r.publishPublic(protocol.EventRematchVote, protocol.RematchVoteData{
+		PlayerID: playerID,
+		Votes:    votes,
+		Total:    humans,
+	})
+
+	if votes >= humans {
+		r.startRematch(state)
+	}
+
+	return protocol.CommandResponse{Accepted: true}
+}
+
+func (r *Table) startRematch(state *tableState) {
+	slog.Info("rematch starting", "event", "rematch_starting", "table_id", r.tableID)
+	r.publishPublic(protocol.EventRematchStarting, protocol.RematchStartingData{})
+
+	// Remove all bot players.
+	humanPlayers := make([]*playerState, 0, len(state.players))
+	for _, p := range state.players {
+		if p.bot == nil {
+			humanPlayers = append(humanPlayers, p)
+		} else {
+			delete(state.playersByID, p.id)
+		}
+	}
+	state.players = humanPlayers
+	for i, p := range state.players {
+		p.position = i
+	}
+
+	// Reset game state.
+	state.game = game.NewGame()
+	state.gameOver = false
+	state.round = nil
+	state.roundHistory = nil
+	state.rematchVotes = nil
+	state.paused = false
+	state.pausedPlayerID = ""
+
+	// Fill empty seats with bots.
+	for len(state.players) < game.PlayersPerTable {
+		taken := make(map[string]bool, len(state.players))
+		for _, p := range state.players {
+			taken[p.Name] = true
+		}
+		id := r.nextPlayerID(state)
+		botPlayer := r.addPlayer(state, id, bot.StrategySmart.BotName(taken), bot.StrategySmart.NewBot(), "")
+		r.publishPublic(protocol.EventPlayerJoined, protocol.PlayerJoinedData{Player: protocol.PlayerInfo{
+			PlayerID: botPlayer.id,
+			Name:     botPlayer.Name,
+			Seat:     botPlayer.position,
+		}})
 	}
 }
 

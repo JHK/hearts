@@ -41,6 +41,7 @@ export function createTableDom({ tableId, eventsEnabled }) {
   const gameOverChartEl = document.getElementById('gameOverChart');
   const gameOverCanvasEl = document.getElementById('gameOverCanvas');
   const gameOverScoresEl = document.getElementById('gameOverScores');
+  const rematchButtonEl = document.getElementById('rematchButton');
   const settingsToggleEl = document.getElementById('settingsToggle');
   const settingsPanelEl = document.getElementById('settingsPanel');
   const speedToggleEl = document.getElementById('speedToggle');
@@ -93,6 +94,7 @@ export function createTableDom({ tableId, eventsEnabled }) {
     gameOverChartEl,
     gameOverCanvasEl,
     gameOverScoresEl,
+    rematchButtonEl,
     settingsToggleEl,
     settingsPanelEl,
     speedToggleEl,

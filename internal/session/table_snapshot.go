@@ -58,6 +58,17 @@ func (r *Table) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) Sn
 
 	if state.gameOver {
 		snapshot.Winners = r.seatWinnersToPlayerIDs(state, state.game.Winners())
+		humans := 0
+		for _, p := range state.players {
+			if p.bot == nil {
+				humans++
+			}
+		}
+		snapshot.RematchVotes = len(state.rematchVotes)
+		snapshot.RematchTotal = humans
+		if forPlayer != "" && state.rematchVotes[forPlayer] {
+			snapshot.RematchVoted = true
+		}
 	}
 
 	if state.round != nil {

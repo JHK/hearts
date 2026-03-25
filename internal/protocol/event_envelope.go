@@ -4,6 +4,7 @@ type EventType string
 
 const (
 	EventPlayerJoined      EventType = "player_joined"
+	EventPlayerLeft        EventType = "player_left"
 	EventGameStarted       EventType = "game_started"
 	EventPassSubmitted     EventType = "pass_submitted"
 	EventPassReviewStarted EventType = "pass_review_started"
@@ -17,4 +18,6 @@ const (
 	EventGameOver          EventType = "game_over"
 	EventGamePaused        EventType = "game_paused"
 	EventGameResumed       EventType = "game_resumed"
+	EventRematchVote       EventType = "rematch_vote"
+	EventRematchStarting   EventType = "rematch_starting"
 )

@@ -127,6 +127,10 @@ dom.readyAfterPassEl.onclick = () => {
   send({ type: 'ready_after_pass' });
 };
 
+dom.rematchButtonEl.onclick = () => {
+  send({ type: 'rematch' });
+};
+
 connect();
 
 function playerName() {
@@ -389,6 +393,10 @@ function connect() {
         }
         scheduleStateRefresh(0);
         break;
+      case 'player_left':
+        log(`${msg.data.player.name} left the table`);
+        scheduleStateRefresh(0);
+        break;
       case 'game_paused':
         log('game paused — player disconnected');
         scheduleStateRefresh(0);
@@ -407,6 +415,34 @@ function connect() {
         break;
       case 'trick_completed':
         enqueueTrickEvent('trick_completed', msg.data || {});
+        scheduleStateRefresh(0);
+        break;
+      case 'rematch_result':
+        if (msg.data && msg.data.accepted) {
+          log('rematch vote accepted');
+        } else {
+          log(`rematch failed: ${msg.data && msg.data.reason ? msg.data.reason : 'rejected'}`);
+        }
+        scheduleStateRefresh(0);
+        break;
+      case 'rematch_vote':
+        log(`rematch: ${msg.data.votes}/${msg.data.total} players ready`);
+        scheduleStateRefresh(0);
+        break;
+      case 'rematch_starting':
+        log('rematch starting!');
+        renderer.resetGameOver();
+        state.selectedPassCards = [];
+        state.lastTrickSignature = '';
+        state.lastHandRenderKey = '';
+        state.liveTrickPlays = [];
+        state.liveTurnPlayerId = undefined;
+        state.trickEventQueue = [];
+        state.processingTrickEventQueue = false;
+        state.lastPhase = '';
+        state.lastPassSubmittedCount = -1;
+        state.lastPassReadyCount = -1;
+        state.loggedPassReviewKey = '';
         scheduleStateRefresh(0);
         break;
       default:

@@ -58,6 +58,9 @@ type Snapshot struct {
 	TotalPoints        map[protocol.PlayerID]game.Points   `json:"total_points"`
 	GameOver           bool                                `json:"game_over"`
 	Winners            []protocol.PlayerID                 `json:"winners,omitempty"`
+	RematchVotes       int                                 `json:"rematch_votes,omitempty"`
+	RematchTotal       int                                 `json:"rematch_total,omitempty"`
+	RematchVoted       bool                                `json:"rematch_voted,omitempty"`
 	Paused             bool                                `json:"paused,omitempty"`
 	PausedForPlayerID  protocol.PlayerID                   `json:"paused_for_player_id,omitempty"`
 }
@@ -91,6 +94,9 @@ type tableState struct {
 	// commands and bot actions are blocked until a remaining human resumes.
 	paused         bool
 	pausedPlayerID protocol.PlayerID // player who disconnected
+
+	// rematchVotes tracks which human players have voted for a rematch.
+	rematchVotes map[protocol.PlayerID]bool
 }
 
 // playerState holds the seat-level data for one player.
@@ -174,6 +180,11 @@ type botPassCommand struct {
 }
 
 type resumeGameCommand struct {
+	playerID protocol.PlayerID
+	reply    chan protocol.CommandResponse
+}
+
+type rematchCommand struct {
 	playerID protocol.PlayerID
 	reply    chan protocol.CommandResponse
 }
@@ -326,6 +337,14 @@ func (r *Table) Info() protocol.TableInfo {
 	return <-reply
 }
 
+func (r *Table) Rematch(playerID protocol.PlayerID) protocol.CommandResponse {
+	reply := make(chan protocol.CommandResponse, 1)
+	if !r.submit(rematchCommand{playerID: playerID, reply: reply}) {
+		return protocol.CommandResponse{Accepted: false, Reason: "table is stopping"}
+	}
+	return <-reply
+}
+
 // BotHands returns the name, seat, and current hand of every bot at the table.
 // Intended for dev/debug use only; returns nil when the session is stopped.
 func (r *Table) BotHands() []BotHandSnapshot {
@@ -390,6 +409,8 @@ func (r *Table) run() {
 				}
 			case resumeGameCommand:
 				cmd.reply <- r.handleResumeGame(state, cmd.playerID)
+			case rematchCommand:
+				cmd.reply <- r.handleRematch(state, cmd.playerID)
 			case botTurnCommand:
 				r.handleBotTurn(state, cmd.playerID)
 			case botPassCommand:

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/JHK/hearts/internal/game"
+	"github.com/JHK/hearts/internal/game/bot"
 	"github.com/JHK/hearts/internal/protocol"
 	"github.com/stretchr/testify/require"
 )
@@ -349,6 +350,123 @@ func TestCompleteRoundUpdatesTotalsAndHistory(t *testing.T) {
 	require.Equal(t, game.Points(22), completed.TotalPoints["p2"])
 	require.Equal(t, game.Points(5), completed.TotalPoints["p3"])
 	require.Equal(t, game.Points(19), completed.TotalPoints["p4"])
+}
+
+func TestRematchResetsGameAfterAllHumansVote(t *testing.T) {
+	// Test the rematch handler directly with fabricated game-over state.
+	rt := &Table{tableID: "rematch-test"}
+	g := game.NewGame()
+	g.AddRoundScores([game.PlayersPerTable]game.Points{50, 30, 20, 110})
+
+	alice := &playerState{id: "alice", Name: "Alice", position: 0, Token: "alice-token"}
+	bob := &playerState{id: "bob", Name: "Bob", position: 1, Token: "bob-token"}
+	bot1 := &playerState{id: "bot1", Name: "Bot 1", position: 2, bot: bot.StrategyRandom.NewBot()}
+	bot2 := &playerState{id: "bot2", Name: "Bot 2", position: 3, bot: bot.StrategyRandom.NewBot()}
+
+	state := &tableState{
+		players:     []*playerState{alice, bob, bot1, bot2},
+		playersByID: map[protocol.PlayerID]*playerState{"alice": alice, "bob": bob, "bot1": bot1, "bot2": bot2},
+		playersByToken: map[string]*playerState{
+			"alice-token": alice,
+			"bob-token":   bob,
+		},
+		departedTokens: make(map[string]protocol.PlayerID),
+		game:           g,
+		gameOver:       true,
+		roundHistory:   []map[protocol.PlayerID]game.Points{{"alice": 50, "bob": 30, "bot1": 20, "bot2": 110}},
+	}
+
+	// Rematch before game over should fail.
+	state.gameOver = false
+	resp := rt.handleRematch(state, "alice")
+	require.False(t, resp.Accepted, "rematch should fail when game not over")
+	state.gameOver = true
+
+	// First vote.
+	resp = rt.handleRematch(state, "alice")
+	require.True(t, resp.Accepted, "alice rematch vote: %s", resp.Reason)
+	require.True(t, state.gameOver, "game still over after 1 vote")
+	require.Len(t, state.rematchVotes, 1)
+
+	snap := rt.buildSnapshot(state, "alice")
+	require.Equal(t, 1, snap.RematchVotes)
+	require.Equal(t, 2, snap.RematchTotal)
+	require.True(t, snap.RematchVoted)
+
+	bobSnap := rt.buildSnapshot(state, "bob")
+	require.False(t, bobSnap.RematchVoted)
+
+	// Second vote triggers rematch.
+	resp = rt.handleRematch(state, "bob")
+	require.True(t, resp.Accepted, "bob rematch vote: %s", resp.Reason)
+
+	require.False(t, state.gameOver, "game should be reset after rematch")
+	require.Len(t, state.players, 4, "table should be full (2 humans + 2 auto-bots)")
+	require.Equal(t, "Alice", state.players[0].Name)
+	require.Equal(t, "Bob", state.players[1].Name)
+	require.Nil(t, state.players[0].bot, "Alice should be human")
+	require.Nil(t, state.players[1].bot, "Bob should be human")
+	require.NotNil(t, state.players[2].bot, "seat 2 should be bot")
+	require.NotNil(t, state.players[3].bot, "seat 3 should be bot")
+	for i, p := range state.players {
+		require.Equal(t, i, p.position, "position should match index")
+	}
+	require.Nil(t, state.roundHistory, "history should be cleared")
+	require.Nil(t, state.rematchVotes)
+	require.False(t, state.game.IsOver(), "new game should not be over")
+}
+
+func TestRematchRejectsBot(t *testing.T) {
+	rt := &Table{tableID: "rematch-bot"}
+	g := game.NewGame()
+	g.AddRoundScores([game.PlayersPerTable]game.Points{0, 0, 0, 110})
+
+	bot1 := &playerState{id: "bot1", Name: "Bot 1", position: 0, bot: bot.StrategyRandom.NewBot()}
+	state := &tableState{
+		players:        []*playerState{bot1},
+		playersByID:    map[protocol.PlayerID]*playerState{"bot1": bot1},
+		playersByToken: make(map[string]*playerState),
+		departedTokens: make(map[string]protocol.PlayerID),
+		game:           g,
+		gameOver:       true,
+	}
+
+	resp := rt.handleRematch(state, "bot1")
+	require.False(t, resp.Accepted)
+	require.Equal(t, "only seated human players can vote for rematch", resp.Reason)
+}
+
+func TestRematchLeaveClearsVote(t *testing.T) {
+	rt := &Table{tableID: "rematch-leave"}
+	g := game.NewGame()
+	g.AddRoundScores([game.PlayersPerTable]game.Points{50, 30, 20, 110})
+
+	alice := &playerState{id: "alice", Name: "Alice", position: 0, Token: "alice-token"}
+	bob := &playerState{id: "bob", Name: "Bob", position: 1, Token: "bob-token"}
+
+	state := &tableState{
+		players:     []*playerState{alice, bob},
+		playersByID: map[protocol.PlayerID]*playerState{"alice": alice, "bob": bob},
+		playersByToken: map[string]*playerState{
+			"alice-token": alice,
+			"bob-token":   bob,
+		},
+		departedTokens: make(map[string]protocol.PlayerID),
+		game:           g,
+		gameOver:       true,
+		rematchVotes:   map[protocol.PlayerID]bool{"alice": true},
+		roundHistory:   []map[protocol.PlayerID]game.Points{{"alice": 50, "bob": 110}},
+	}
+
+	require.Len(t, state.rematchVotes, 1)
+
+	// Alice leaves — game-over state should fully reset.
+	rt.handleLeave(state, "alice")
+
+	require.Nil(t, state.rematchVotes)
+	require.Nil(t, state.roundHistory)
+	require.False(t, state.gameOver, "game-over should reset when player leaves")
+	require.False(t, state.game.IsOver(), "game scores should reset when player leaves")
 }
 
 func TestBuildSnapshotCopiesRoundHistory(t *testing.T) {

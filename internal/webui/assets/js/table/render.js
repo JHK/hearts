@@ -443,6 +443,22 @@ export function createRenderer({ dom, state, send }) {
     renderScoreChart(snapshot, players, winners, sorted);
   }
 
+  function renderRematchStatus(snapshot) {
+    const isPlayer = !!state.myPlayerId && !state.isObserver;
+    const voted = !!snapshot.rematch_voted;
+    const votes = snapshot.rematch_votes || 0;
+    const total = snapshot.rematch_total || 0;
+
+    dom.rematchButtonEl.hidden = !isPlayer;
+    if (voted) {
+      dom.rematchButtonEl.disabled = true;
+      dom.rematchButtonEl.textContent = `Waiting\u2026 ${votes}/${total}`;
+    } else {
+      dom.rematchButtonEl.disabled = false;
+      dom.rematchButtonEl.textContent = 'Play Again';
+    }
+  }
+
   function renderScoreChart(snapshot, players, winners, sortedPlayers) {
     const history = Array.isArray(snapshot.round_history) ? snapshot.round_history : [];
     if (history.length === 0 || typeof Chart === 'undefined') {
@@ -625,6 +641,11 @@ export function createRenderer({ dom, state, send }) {
     if (isGameOver && !gameOverRendered) {
       gameOverRendered = true;
       renderGameOverPanel(snapshot);
+    }
+    if (isGameOver) {
+      renderRematchStatus(snapshot);
+    } else if (gameOverRendered) {
+      resetGameOver();
     }
 
     const isPaused = !!snapshot.paused;
@@ -900,10 +921,19 @@ export function createRenderer({ dom, state, send }) {
     return [];
   }
 
+  function resetGameOver() {
+    gameOverRendered = false;
+    if (scoreChart) {
+      scoreChart.destroy();
+      scoreChart = null;
+    }
+  }
+
   return {
     renderState,
     renderTrick,
     animateTrickCardsToWinner,
-    trickRenderPlayers
+    trickRenderPlayers,
+    resetGameOver
   };
 }
