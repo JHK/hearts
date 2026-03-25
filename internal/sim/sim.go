@@ -68,9 +68,12 @@ func (s *Simulation) runWorker(n int, results chan<- Result) {
 }
 
 func (s *Simulation) runGame(rng *rand.Rand) ([]int, [game.PlayersPerTable]int) {
+	// Randomly permute strategy-to-seat assignment each game to eliminate
+	// positional bias from fixed neighbor relationships (passing, trick order).
+	perm := rng.Perm(game.PlayersPerTable)
 	var bots [game.PlayersPerTable]bot.Bot
-	for i, strategy := range s.strategies {
-		bots[i] = strategy.NewBot()
+	for stratIdx, seat := range perm {
+		bots[seat] = s.strategies[stratIdx].NewBot()
 	}
 	g := game.NewGame()
 	var moonShots [game.PlayersPerTable]int
@@ -115,7 +118,21 @@ func (s *Simulation) runGame(rng *rand.Rand) ([]int, [game.PlayersPerTable]int) 
 		}
 
 		if g.AddRoundScores(scores.Adjusted) {
-			return g.Winners(), moonShots
+			// Map seat-based winners back to strategy indices.
+			seatToStrat := [game.PlayersPerTable]int{}
+			for stratIdx, seat := range perm {
+				seatToStrat[seat] = stratIdx
+			}
+			seatWinners := g.Winners()
+			stratWinners := make([]int, len(seatWinners))
+			for i, seat := range seatWinners {
+				stratWinners[i] = seatToStrat[seat]
+			}
+			var stratMoonShots [game.PlayersPerTable]int
+			for seat, count := range moonShots {
+				stratMoonShots[seatToStrat[seat]] += count
+			}
+			return stratWinners, stratMoonShots
 		}
 	}
 }
