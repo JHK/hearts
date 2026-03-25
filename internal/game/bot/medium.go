@@ -14,31 +14,31 @@ const (
 	strategyMoonShot                   // attempt to win all penalty cards
 )
 
-// Smart is a stateful bot that selects a per-round strategy during the pass
+// Medium is a stateful bot that selects a per-round strategy during the pass
 // phase and maintains moon-shot state across tricks.
-type Smart struct {
+type Medium struct {
 	moonShotActive   bool
 	moonShotAborted  bool
 	winningAllTricks bool // true while bot has won every trick this round
 	prevPlayedCount  int
 }
 
-var smartBotNames = []string{"Ada", "Grace", "Alan", "Radia", "Margaret", "Barbara", "Edsger", "Claude"}
+var mediumBotNames = []string{"Ada", "Grace", "Alan", "Radia", "Margaret", "Barbara", "Edsger", "Claude"}
 
-func (s *Smart) Kind() StrategyKind { return StrategySmart }
+func (s *Medium) Kind() StrategyKind { return StrategyMedium }
 
 // MoonShotActive reports whether the bot is currently pursuing a shoot-the-moon strategy.
-func (s *Smart) MoonShotActive() bool { return s.moonShotActive }
+func (s *Medium) MoonShotActive() bool { return s.moonShotActive }
 
 // MoonShotAborted reports whether the bot abandoned a moon-shot attempt this round.
-func (s *Smart) MoonShotAborted() bool { return s.moonShotAborted }
+func (s *Medium) MoonShotAborted() bool { return s.moonShotAborted }
 
-// NewSmartBot creates a smart bot for testing.
-func NewSmartBot() *Smart {
-	return &Smart{}
+// NewMediumBot creates a medium bot for testing.
+func NewMediumBot() *Medium {
+	return &Medium{}
 }
 
-func (s *Smart) ChoosePass(input game.PassInput) ([]game.Card, error) {
+func (s *Medium) ChoosePass(input game.PassInput) ([]game.Card, error) {
 	if len(input.Hand) < 3 {
 		return nil, ErrNotEnoughCards
 	}
@@ -57,7 +57,7 @@ func (s *Smart) ChoosePass(input game.PassInput) ([]game.Card, error) {
 	}
 }
 
-func (s *Smart) ChoosePlay(input game.TurnInput) (game.Card, error) {
+func (s *Medium) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
 	if len(legal) == 0 {
 		return game.Card{}, ErrNoLegalPlays

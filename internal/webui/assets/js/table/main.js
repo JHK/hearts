@@ -109,7 +109,7 @@ document.addEventListener('click', (e) => {
 
 dom.addBotDefaultEl.onclick = () => {
   send({ type: 'add_bot', strategy: dom.botStrategySelectEl.value || '' });
-  dom.botStrategySelectEl.value = 'smart';
+  dom.botStrategySelectEl.value = 'hard';
 };
 
 dom.startButtonEl.onclick = () => {

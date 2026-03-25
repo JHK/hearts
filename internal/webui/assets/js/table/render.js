@@ -681,7 +681,7 @@ export function createRenderer({ dom, state, send, claimSeat }) {
     const canAddBot = !state.isObserver && !snapshot.started && players.length < 4 && !isGameOver;
     dom.botControlEl.classList.toggle('hidden', !canAddBot);
     if (!canAddBot) {
-      dom.botStrategySelectEl.value = 'smart';
+      dom.botStrategySelectEl.value = 'hard';
     }
 
     const queueIdle = !state.processingTrickEventQueue && state.trickEventQueue.length === 0;

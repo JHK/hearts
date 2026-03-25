@@ -14,7 +14,9 @@ func TestParseStrategyKind(t *testing.T) {
 		want    StrategyKind
 		wantErr bool
 	}{
-		{name: "smart", raw: "smart", want: StrategySmart},
+		{name: "hard", raw: "hard", want: StrategyHard},
+		{name: "medium", raw: "medium", want: StrategyMedium},
+		{name: "easy", raw: "easy", want: StrategyEasy},
 		{name: "empty defaults to random", raw: "", want: StrategyRandom},
 		{name: "random", raw: "random", want: StrategyRandom},
 		{name: "first legal", raw: "first-legal", want: StrategyFirstLegal},
@@ -36,8 +38,14 @@ func TestParseStrategyKind(t *testing.T) {
 }
 
 func TestStrategyKindNew(t *testing.T) {
-	bot := StrategySmart.New()
-	require.IsType(t, &Smart{}, bot)
+	bot := StrategyHard.New()
+	require.IsType(t, &Hard{}, bot)
+
+	bot = StrategyMedium.New()
+	require.IsType(t, &Medium{}, bot)
+
+	bot = StrategyEasy.New()
+	require.IsType(t, &Easy{}, bot)
 
 	bot = StrategyRandom.New()
 	require.IsType(t, &Random{}, bot)

@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDumbChoosePlayLeadsShortestNonHeartSuit(t *testing.T) {
+func TestEasyChoosePlayLeadsShortestNonHeartSuit(t *testing.T) {
 	hand := parseCards(t, []string{"3D", "9D", "2S", "KH"})
 
-	card, err := NewDumbBot().ChoosePlay(game.TurnInput{
+	card, err := NewEasyBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        nil,
 		HeartsBroken: false,
@@ -20,10 +20,10 @@ func TestDumbChoosePlayLeadsShortestNonHeartSuit(t *testing.T) {
 	require.Equal(t, "2S", card.String())
 }
 
-func TestDumbChoosePlayAvoidsTakingPenaltyTrick(t *testing.T) {
+func TestEasyChoosePlayAvoidsTakingPenaltyTrick(t *testing.T) {
 	hand := parseCards(t, []string{"TS", "KS", "3C"})
 
-	card, err := NewDumbBot().ChoosePlay(game.TurnInput{
+	card, err := NewEasyBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        parseCards(t, []string{"JS", "QS"}),
 		HeartsBroken: true,
@@ -33,10 +33,10 @@ func TestDumbChoosePlayAvoidsTakingPenaltyTrick(t *testing.T) {
 	require.Equal(t, "TS", card.String())
 }
 
-func TestDumbChoosePlayDiscardsQueenOfSpades(t *testing.T) {
+func TestEasyChoosePlayDiscardsQueenOfSpades(t *testing.T) {
 	hand := parseCards(t, []string{"QS", "AH", "2D"})
 
-	card, err := NewDumbBot().ChoosePlay(game.TurnInput{
+	card, err := NewEasyBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        parseCards(t, []string{"5C"}),
 		HeartsBroken: true,
@@ -46,23 +46,23 @@ func TestDumbChoosePlayDiscardsQueenOfSpades(t *testing.T) {
 	require.Equal(t, "QS", card.String())
 }
 
-func TestDumbChoosePassPrefersDangerousCards(t *testing.T) {
+func TestEasyChoosePassPrefersDangerousCards(t *testing.T) {
 	hand := parseCards(t, []string{"QS", "AS", "KH", "2C", "3C", "4D", "5D", "6H", "7H", "8S", "9S", "TC", "JD"})
 
-	cards, err := NewDumbBot().ChoosePass(game.PassInput{Hand: hand, Direction: "left"})
+	cards, err := NewEasyBot().ChoosePass(game.PassInput{Hand: hand, Direction: "left"})
 	require.NoError(t, err)
 	require.Len(t, cards, 3)
 
 	want := map[string]struct{}{"QS": {}, "AS": {}, "KH": {}}
 	for _, card := range cards {
 		_, ok := want[card.String()]
-		require.True(t, ok, "expected dumb pass cards QS,AS,KH got %s,%s,%s", cards[0], cards[1], cards[2])
+		require.True(t, ok, "expected easy pass cards QS,AS,KH got %s,%s,%s", cards[0], cards[1], cards[2])
 	}
 }
 
-func TestDumbChoosePassRequiresThreeCards(t *testing.T) {
+func TestEasyChoosePassRequiresThreeCards(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "3D"})
 
-	_, err := NewDumbBot().ChoosePass(game.PassInput{Hand: hand})
+	_, err := NewEasyBot().ChoosePass(game.PassInput{Hand: hand})
 	require.ErrorIs(t, err, ErrNotEnoughCards)
 }

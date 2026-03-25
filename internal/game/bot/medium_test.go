@@ -9,7 +9,7 @@ import (
 
 // --- Trade strategy selection ---
 
-func TestSmartPassSelectsMoonShotStrategy(t *testing.T) {
+func TestMediumPassSelectsMoonShotStrategy(t *testing.T) {
 	// 5 top hearts + 3 top clubs + 2 top diamonds = 10 guaranteed tricks → moon shot
 	hand := parseCards(t, []string{
 		"AH", "KH", "QH", "JH", "TH",
@@ -18,7 +18,7 @@ func TestSmartPassSelectsMoonShotStrategy(t *testing.T) {
 		"2S", "3S", "4S",
 	})
 
-	cards, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand, Direction: game.PassDirectionLeft})
+	cards, err := NewMediumBot().ChoosePass(game.PassInput{Hand: hand, Direction: game.PassDirectionLeft})
 	require.NoError(t, err)
 	require.Len(t, cards, 3)
 
@@ -34,7 +34,7 @@ func TestSmartPassSelectsMoonShotStrategy(t *testing.T) {
 	}
 }
 
-func TestSmartPassSelectsDefensiveStrategyForShortSuit(t *testing.T) {
+func TestMediumPassSelectsDefensiveStrategyForShortSuit(t *testing.T) {
 	// Only 1 club but no moon-shot potential — falls through to defensive pass.
 	// Defensive pass should send the three highest-risk cards.
 	hand := parseCards(t, []string{
@@ -44,7 +44,7 @@ func TestSmartPassSelectsDefensiveStrategyForShortSuit(t *testing.T) {
 		"2H", "4H", "6H", "8H",
 	})
 
-	cards, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand, Direction: "left"})
+	cards, err := NewMediumBot().ChoosePass(game.PassInput{Hand: hand, Direction: "left"})
 	require.NoError(t, err)
 	require.Len(t, cards, 3)
 
@@ -55,13 +55,13 @@ func TestSmartPassSelectsDefensiveStrategyForShortSuit(t *testing.T) {
 	}
 }
 
-func TestSmartPassSelectsDefensiveStrategy(t *testing.T) {
+func TestMediumPassSelectsDefensiveStrategy(t *testing.T) {
 	// Balanced hand, no moon-shot dominance, no near-void suit → defensive
 	hand := parseCards(t, []string{
 		"QS", "AS", "KH", "2C", "3C", "4D", "5D", "6H", "7H", "8S", "9S", "TC", "JD",
 	})
 
-	cards, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand, Direction: "left"})
+	cards, err := NewMediumBot().ChoosePass(game.PassInput{Hand: hand, Direction: "left"})
 	require.NoError(t, err)
 	require.Len(t, cards, 3)
 
@@ -75,12 +75,12 @@ func TestSmartPassSelectsDefensiveStrategy(t *testing.T) {
 
 // --- Card tracking / safe-high-card play ---
 
-func TestSmartPlaysAceWhenOnlyLegalOption(t *testing.T) {
+func TestMediumPlaysAceWhenOnlyLegalOption(t *testing.T) {
 	// Holds A♣ as the only non-heart; K♣ and Q♣ already played → A♣ is safe and only legal lead.
 	hand := parseCards(t, []string{"AC", "7H"})
 	played := parseCards(t, []string{"KC", "QC"})
 
-	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
+	card, err := NewMediumBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
 		Trick:       nil,
 		PlayedCards: played,
@@ -89,13 +89,13 @@ func TestSmartPlaysAceWhenOnlyLegalOption(t *testing.T) {
 	require.Equal(t, "AC", card.String())
 }
 
-func TestSmartDoesNotLeadUnsafeKing(t *testing.T) {
+func TestMediumDoesNotLeadUnsafeKing(t *testing.T) {
 	// Holds K♣ but A♣ not yet played → K♣ is not safe (A♣ is still out)
 	// The bot should prefer leading a shorter/safer suit instead.
 	hand := parseCards(t, []string{"KC", "2D", "3D", "4D"})
 	played := parseCards(t, []string{"QC"}) // A♣ still outstanding
 
-	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
+	card, err := NewMediumBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
 		Trick:       nil,
 		PlayedCards: played,
@@ -105,7 +105,7 @@ func TestSmartDoesNotLeadUnsafeKing(t *testing.T) {
 	require.NotEqual(t, "KC", card.String(), "should not lead unsafe K♣ when A♣ is still outstanding")
 }
 
-func TestSmartDefensiveLeadPrefersLowestRankOverShortestSuit(t *testing.T) {
+func TestMediumDefensiveLeadPrefersLowestRankOverShortestSuit(t *testing.T) {
 	// Clubs is the shortest non-heart suit (TC, QC = 2 cards), but TC rank 10
 	// is far more likely to win a trick than 2S rank 2.
 	// Defensive mode must prioritise rank over suit-length heuristic.
@@ -116,7 +116,7 @@ func TestSmartDefensiveLeadPrefersLowestRankOverShortestSuit(t *testing.T) {
 		"4H", "KH",
 	})
 
-	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
+	card, err := NewMediumBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
 		Trick:       nil,
 		PlayedCards: nil,
@@ -125,13 +125,13 @@ func TestSmartDefensiveLeadPrefersLowestRankOverShortestSuit(t *testing.T) {
 	require.Less(t, card.Rank, 10, "defensive lead should prefer low-rank card over short-suit heuristic, got %s (rank %d)", card, card.Rank)
 }
 
-func TestSmartDefensiveLeadPrefersLowHeartOverHighSpade(t *testing.T) {
+func TestMediumDefensiveLeadPrefersLowHeartOverHighSpade(t *testing.T) {
 	// K♠ is the only non-heart but rank 13 will almost certainly win the trick.
 	// With hearts broken and low hearts available, the bot should lead the
 	// highest non-winning heart (shed borderline cards first).
 	hand := parseCards(t, []string{"KS", "2H", "3H", "5H", "6H"})
 
-	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
+	card, err := NewMediumBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        nil,
 		HeartsBroken: true,
@@ -145,13 +145,13 @@ func TestSmartDefensiveLeadPrefersLowHeartOverHighSpade(t *testing.T) {
 	require.Equal(t, want, card, "expected highest safe heart")
 }
 
-func TestSmartDefensiveLeadAvoidsGuaranteedWinner(t *testing.T) {
+func TestMediumDefensiveLeadAvoidsGuaranteedWinner(t *testing.T) {
 	// A♣ and K♣ are both guaranteed winners: bot holds the entire top run in clubs.
 	// 5♦ is NOT a guaranteed winner (higher diamonds may still be in opponents' hands).
 	// Defensive mode must prefer 5♦ to avoid inviting Q♠ dumps from void opponents.
 	hand := parseCards(t, []string{"AC", "KC", "5D"})
 
-	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
+	card, err := NewMediumBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
 		Trick:       nil,
 		PlayedCards: nil,
@@ -163,11 +163,11 @@ func TestSmartDefensiveLeadAvoidsGuaranteedWinner(t *testing.T) {
 
 // --- Void exploitation ---
 
-func TestSmartDiscardsQueenOfSpadesWhenVoid(t *testing.T) {
+func TestMediumDiscardsQueenOfSpadesWhenVoid(t *testing.T) {
 	// Can't follow clubs → should dump Q♠
 	hand := parseCards(t, []string{"QS", "AH", "2D"})
 
-	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
+	card, err := NewMediumBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        parseCards(t, []string{"5C"}),
 		HeartsBroken: true,
@@ -176,11 +176,11 @@ func TestSmartDiscardsQueenOfSpadesWhenVoid(t *testing.T) {
 	require.Equal(t, "QS", card.String())
 }
 
-func TestSmartDiscardsHighHeartWhenVoidAndNoQueenSpades(t *testing.T) {
+func TestMediumDiscardsHighHeartWhenVoidAndNoQueenSpades(t *testing.T) {
 	// Can't follow clubs, no Q♠ → discard highest heart
 	hand := parseCards(t, []string{"AH", "KH", "2D"})
 
-	card, err := NewSmartBot().ChoosePlay(game.TurnInput{
+	card, err := NewMediumBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
 		Trick:        parseCards(t, []string{"5C"}),
 		HeartsBroken: true,
@@ -191,7 +191,7 @@ func TestSmartDiscardsHighHeartWhenVoidAndNoQueenSpades(t *testing.T) {
 
 // --- Moon-shot triggering and pursuit ---
 
-func TestSmartEvaluatesMoonShotFromHand(t *testing.T) {
+func TestMediumEvaluatesMoonShotFromHand(t *testing.T) {
 	// 5 top hearts + 3 top clubs + 2 top diamonds = 10 guaranteed tricks
 	hand := parseCards(t, []string{
 		"AH", "KH", "QH", "JH", "TH",
@@ -202,7 +202,7 @@ func TestSmartEvaluatesMoonShotFromHand(t *testing.T) {
 	require.True(t, evaluateMoonShot(hand), "expected moon-shot potential")
 }
 
-func TestSmartDoesNotTriggerMoonShotOnWeakHand(t *testing.T) {
+func TestMediumDoesNotTriggerMoonShotOnWeakHand(t *testing.T) {
 	hand := parseCards(t, []string{
 		"2H", "3H", "4H",
 		"2C", "3C", "4C", "5C", "6C",
@@ -211,7 +211,7 @@ func TestSmartDoesNotTriggerMoonShotOnWeakHand(t *testing.T) {
 	require.False(t, evaluateMoonShot(hand), "weak hand should not trigger moon shot")
 }
 
-func TestSmartPursueMoonShotLeadsHighCards(t *testing.T) {
+func TestMediumPursueMoonShotLeadsHighCards(t *testing.T) {
 	hand := parseCards(t, []string{"AH", "KH", "QH", "AS"})
 	legal := hand
 
@@ -219,7 +219,7 @@ func TestSmartPursueMoonShotLeadsHighCards(t *testing.T) {
 	require.Equal(t, 14, card.Rank, "moon shot should lead highest card (A), got %s", card)
 }
 
-func TestSmartPursueMoonShotWinsFollowTrick(t *testing.T) {
+func TestMediumPursueMoonShotWinsFollowTrick(t *testing.T) {
 	// Trick: JS led; bot has QS → should play QS to win
 	trick := parseCards(t, []string{"JS"})
 	legal := parseCards(t, []string{"QS"}) // must follow spades
@@ -230,8 +230,8 @@ func TestSmartPursueMoonShotWinsFollowTrick(t *testing.T) {
 
 // --- Moon-shot abort on penalty leak ---
 
-func TestSmartAbortsMoonShotWhenOtherLeads(t *testing.T) {
-	bot := &Smart{moonShotActive: true, moonShotAborted: false, prevPlayedCount: 4}
+func TestMediumAbortsMoonShotWhenOtherLeads(t *testing.T) {
+	bot := &Medium{moonShotActive: true, moonShotAborted: false, prevPlayedCount: 4}
 
 	// Not first trick; trick already has a card (someone else led) → abort
 	hand := parseCards(t, []string{"AH", "KH"})
@@ -247,8 +247,8 @@ func TestSmartAbortsMoonShotWhenOtherLeads(t *testing.T) {
 	require.True(t, bot.moonShotAborted, "expected moon shot to be aborted when another player leads")
 }
 
-func TestSmartContinuesMoonShotWhenLeadingEveryTrick(t *testing.T) {
-	bot := &Smart{moonShotActive: true, moonShotAborted: false, prevPlayedCount: 4}
+func TestMediumContinuesMoonShotWhenLeadingEveryTrick(t *testing.T) {
+	bot := &Medium{moonShotActive: true, moonShotAborted: false, prevPlayedCount: 4}
 
 	// Bot is leading (trick is empty), not first trick → should NOT abort
 	hand := parseCards(t, []string{"AH", "KH", "QH", "JH"})
@@ -266,9 +266,9 @@ func TestSmartContinuesMoonShotWhenLeadingEveryTrick(t *testing.T) {
 
 // --- Pass requires three cards ---
 
-func TestSmartChoosePassRequiresThreeCards(t *testing.T) {
+func TestMediumChoosePassRequiresThreeCards(t *testing.T) {
 	hand := parseCards(t, []string{"KC", "3D"})
 
-	_, err := NewSmartBot().ChoosePass(game.PassInput{Hand: hand})
+	_, err := NewMediumBot().ChoosePass(game.PassInput{Hand: hand})
 	require.ErrorIs(t, err, ErrNotEnoughCards)
 }

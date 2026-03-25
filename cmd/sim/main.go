@@ -13,10 +13,10 @@ func main() {
 	flag.Parse()
 
 	strategies := [4]bot.StrategyKind{
-		bot.StrategySmart,
-		bot.StrategyDumb,
+		bot.StrategyHard,
+		bot.StrategyMedium,
+		bot.StrategyEasy,
 		bot.StrategyRandom,
-		bot.StrategyFirstLegal,
 	}
 
 	result := sim.New(strategies, *n).Run()

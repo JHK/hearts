@@ -10,8 +10,9 @@ import (
 type StrategyKind string
 
 const (
-	StrategySmart      StrategyKind = "smart"
-	StrategyDumb       StrategyKind = "dumb"
+	StrategyHard       StrategyKind = "hard"
+	StrategyMedium     StrategyKind = "medium"
+	StrategyEasy       StrategyKind = "easy"
 	StrategyRandom     StrategyKind = "random"
 	StrategyFirstLegal StrategyKind = "first-legal"
 )
@@ -24,7 +25,7 @@ func ParseStrategyKind(raw string) (StrategyKind, error) {
 
 	kind := StrategyKind(name)
 	if !kind.Valid() {
-		return "", fmt.Errorf("%w %q (available: %s, %s, %s, %s)", ErrUnknownStrategy, raw, StrategySmart, StrategyDumb, StrategyRandom, StrategyFirstLegal)
+		return "", fmt.Errorf("%w %q (available: %s, %s, %s, %s, %s)", ErrUnknownStrategy, raw, StrategyHard, StrategyMedium, StrategyEasy, StrategyRandom, StrategyFirstLegal)
 	}
 
 	return kind, nil
@@ -32,7 +33,7 @@ func ParseStrategyKind(raw string) (StrategyKind, error) {
 
 func (k StrategyKind) Valid() bool {
 	switch k {
-	case StrategySmart, StrategyDumb, StrategyRandom, StrategyFirstLegal:
+	case StrategyHard, StrategyMedium, StrategyEasy, StrategyRandom, StrategyFirstLegal:
 		return true
 	default:
 		return false
@@ -42,10 +43,12 @@ func (k StrategyKind) Valid() bool {
 // NewBot creates a fresh bot of this strategy kind.
 func (k StrategyKind) NewBot() Bot {
 	switch k {
-	case StrategySmart:
-		return &Smart{}
-	case StrategyDumb:
-		return &Dumb{}
+	case StrategyHard:
+		return &Hard{}
+	case StrategyMedium:
+		return &Medium{}
+	case StrategyEasy:
+		return &Easy{}
 	case StrategyFirstLegal:
 		return &FirstLegal{}
 	case StrategyRandom:
@@ -61,8 +64,9 @@ func (k StrategyKind) New() Bot {
 }
 
 var botNames = map[StrategyKind][]string{
-	StrategySmart:      smartBotNames,
-	StrategyDumb:       dumbBotNames,
+	StrategyHard:       hardBotNames,
+	StrategyMedium:     mediumBotNames,
+	StrategyEasy:       easyBotNames,
 	StrategyRandom:     randomBotNames,
 	StrategyFirstLegal: firstLegalBotNames,
 }

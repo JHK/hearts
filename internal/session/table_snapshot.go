@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/JHK/hearts/internal/game"
-	"github.com/JHK/hearts/internal/game/bot"
 	"github.com/JHK/hearts/internal/protocol"
 )
 
@@ -30,9 +29,13 @@ func (r *Table) buildDebugBotContext(state *tableState) *DebugBotSnapshot {
 			Strategy: string(p.bot.Kind()),
 			Hand:     game.CardStrings(hand),
 		}
-		if smart, ok := p.bot.(*bot.Smart); ok {
-			active := smart.MoonShotActive()
-			aborted := smart.MoonShotAborted()
+		type moonShotter interface {
+			MoonShotActive() bool
+			MoonShotAborted() bool
+		}
+		if ms, ok := p.bot.(moonShotter); ok {
+			active := ms.MoonShotActive()
+			aborted := ms.MoonShotAborted()
 			bs.MoonShotActive = &active
 			bs.MoonShotAborted = &aborted
 		}

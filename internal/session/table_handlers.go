@@ -736,7 +736,7 @@ func (r *Table) startRematch(state *tableState) {
 			taken[p.Name] = true
 		}
 		id := r.nextPlayerID(state)
-		botPlayer := r.addPlayer(state, id, bot.StrategySmart.BotName(taken), bot.StrategySmart.NewBot(), "")
+		botPlayer := r.addPlayer(state, id, bot.StrategyHard.BotName(taken), bot.StrategyHard.NewBot(), "")
 		r.publishPublic(protocol.EventPlayerJoined, protocol.PlayerJoinedData{Player: protocol.PlayerInfo{
 			PlayerID: botPlayer.id,
 			Name:     botPlayer.Name,
