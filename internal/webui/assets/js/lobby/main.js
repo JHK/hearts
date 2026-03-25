@@ -32,8 +32,14 @@
   }
 
   async function fetchTables() {
-    const res = await fetch('/api/tables');
-    const data = await res.json();
+    let data;
+    try {
+      const res = await fetch('/api/tables');
+      data = await res.json();
+    } catch (err) {
+      console.warn('fetchTables failed, showing stale data:', err);
+      return;
+    }
     const tables = data.tables || [];
 
     if (tables.length === 0) {
@@ -80,18 +86,33 @@
 
   async function createTable() {
     const payload = { table_id: newTableIdEl.value.trim() };
-    const res = await fetch('/api/tables', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data.error) {
-      createResultEl.textContent = data.error;
-      return;
+    const maxRetries = 2;
+    let lastErr;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetch('/api/tables', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.error) {
+          createResultEl.textContent = data.error;
+          return;
+        }
+        createResultEl.textContent = data.created ? `created ${data.table_id}` : `using existing ${data.table_id}`;
+        openTable(data.table_id);
+        return;
+      } catch (err) {
+        lastErr = err;
+        console.warn(`createTable attempt ${attempt + 1} failed:`, err);
+        if (attempt < maxRetries) {
+          await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
+        }
+      }
     }
-    createResultEl.textContent = data.created ? `created ${data.table_id}` : `using existing ${data.table_id}`;
-    openTable(data.table_id);
+    console.error('createTable failed after retries:', lastErr);
+    createResultEl.textContent = 'Network error, please try again.';
   }
 
   document.getElementById('createTable').onclick = createTable;

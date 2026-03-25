@@ -171,6 +171,7 @@ function log(line) {
 
 function send(msg) {
   if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+    console.warn('send: WebSocket not connected, dropping message:', msg.type);
     return;
   }
 
@@ -277,6 +278,14 @@ async function processTrickEventQueue() {
 
 let initialConnectFailures = 0;
 const maxInitialConnectRetries = 2;
+let reconnectAttempts = 0;
+
+function reconnectDelayMs() {
+  const base = 1000;
+  const max = 30000;
+  const delay = Math.min(base * Math.pow(2, reconnectAttempts), max);
+  return delay + Math.random() * 500;
+}
 
 function connect() {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -287,6 +296,7 @@ function connect() {
   state.ws.onopen = () => {
     opened = true;
     initialConnectFailures = 0;
+    reconnectAttempts = 0;
     log('connected');
     send({ type: 'join', name: playerName(), token });
     requestState();
@@ -303,8 +313,10 @@ function connect() {
       window.location.href = '/';
       return;
     }
-    log('disconnected, retrying...');
-    setTimeout(connect, 1000);
+    const delay = reconnectDelayMs();
+    reconnectAttempts++;
+    log(`disconnected, reconnecting in ${Math.round(delay / 1000)}s...`);
+    setTimeout(connect, delay);
   };
 
   state.ws.onerror = () => {
@@ -312,7 +324,13 @@ function connect() {
   };
 
   state.ws.onmessage = (event) => {
-    const msg = JSON.parse(event.data);
+    let msg;
+    try {
+      msg = JSON.parse(event.data);
+    } catch (err) {
+      console.warn('failed to parse WebSocket message:', err);
+      return;
+    }
 
     if (msg.error) {
       log(`error: ${msg.error}`);
