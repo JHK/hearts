@@ -1,11 +1,11 @@
 ---
 # hearts-e5b4
 title: Web Caching
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-03-24T10:53:41Z
-updated_at: 2026-03-25T06:56:47Z
+updated_at: 2026-03-25T09:39:12Z
 ---
 
 ## Vision
