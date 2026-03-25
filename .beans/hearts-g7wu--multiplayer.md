@@ -1,20 +1,17 @@
 ---
 # hearts-g7wu
 title: Multiplayer
-status: draft
+status: todo
 type: epic
 priority: normal
 created_at: 2026-03-24T11:04:40Z
-updated_at: 2026-03-24T15:59:50Z
+updated_at: 2026-03-25T09:17:50Z
 ---
 
-Make the game invite humans to play with other humans
+## Vision
+Make the game a proper multiplayer experience where humans can find each other, play together, and handle the messy realities of real connections — players dropping, games ending, stale links.
 
-- when a player leaves the other players may replace them with a bot - this should not happen automatically. Also bots should stop their play
-- bots should stop to play immediately when someone loses their connection
-- a bot can be replaced by a human observer
-- when a game is finished have a button to replay with the same people
-- indicator on game state in lobby (waiting, started)
-- do not start a table automatically when visiting a non existent table -> info and redirect to lobby
-- indicator that there are other players in the lobby
-- keep state across restarts
+## Context
+The game currently works well for a single human playing with bots. The multiplayer infrastructure (WebSocket, observer mode, reconnection) exists, but the UX doesn't guide players toward each other or handle disruptions gracefully.
+
+Note: "Persist game state across restarts" was split into its own epic (hearts-oeb4).
