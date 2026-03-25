@@ -6,6 +6,8 @@
   const newTableIdEl = document.getElementById('newTableId');
   const createResultEl = document.getElementById('createResult');
   const tablesEl = document.getElementById('tables');
+  const presenceSection = document.getElementById('presenceSection');
+  const presenceText = document.getElementById('presenceText');
 
   function ensureToken() {
     let token = localStorage.getItem(tokenKey);
@@ -123,10 +125,89 @@
     createResultEl.textContent = 'Network error, please try again.';
   }
 
+  // --- Lobby presence via WebSocket ---
+
+  const MAX_VISIBLE_NAMES = 8;
+  let lobbyWs = null;
+  let selfId = null;
+  let lastPlayers = [];
+
+  function renderPresence(players) {
+    // Don't render until we know our own ID so we can filter ourselves out.
+    if (selfId == null) {
+      presenceSection.style.display = 'none';
+      return;
+    }
+
+    const others = players.filter(p => p.id !== selfId);
+
+    if (others.length === 0) {
+      presenceSection.style.display = 'none';
+      return;
+    }
+
+    presenceSection.style.display = '';
+    const names = others.map(p => p.name);
+
+    let text;
+    if (names.length <= MAX_VISIBLE_NAMES) {
+      text = names.join(', ') + (names.length === 1 ? ' is' : ' are') + ' also in the lobby';
+    } else {
+      const visible = names.slice(0, MAX_VISIBLE_NAMES);
+      const remaining = names.length - MAX_VISIBLE_NAMES;
+      text = visible.join(', ') + ' and ' + remaining + (remaining === 1 ? ' other' : ' others') + ' also in the lobby';
+    }
+    presenceText.textContent = text;
+  }
+
+  function connectLobbyWs() {
+    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    lobbyWs = new WebSocket(`${protocol}://${location.host}/ws/lobby`);
+
+    lobbyWs.onopen = () => {
+      selfId = null;
+      announceSelf();
+    };
+
+    lobbyWs.onmessage = (event) => {
+      let msg;
+      try { msg = JSON.parse(event.data); } catch { return; }
+      if (msg.type === 'lobby_presence' && msg.data && Array.isArray(msg.data.players)) {
+        lastPlayers = msg.data.players;
+        renderPresence(lastPlayers);
+      } else if (msg.type === 'lobby_self' && msg.data) {
+        selfId = msg.data.id;
+        renderPresence(lastPlayers);
+      }
+    };
+
+    lobbyWs.onclose = () => {
+      lobbyWs = null;
+      selfId = null;
+      presenceSection.style.display = 'none';
+      setTimeout(connectLobbyWs, 2000);
+    };
+  }
+
+  function announceSelf() {
+    if (!lobbyWs || lobbyWs.readyState !== WebSocket.OPEN) return;
+    const token = ensureToken();
+    const name = getName();
+    lobbyWs.send(JSON.stringify({ type: 'announce', name, token }));
+  }
+
+  // Re-announce when name changes so the presence list stays current.
+  let announceTimer = null;
+  nameEl.addEventListener('input', () => {
+    clearTimeout(announceTimer);
+    announceTimer = setTimeout(announceSelf, 300);
+  });
+
   document.getElementById('createTable').onclick = createTable;
 
   nameEl.value = localStorage.getItem(nameKey) || 'Player';
   ensureToken();
   fetchTables();
   setInterval(fetchTables, 1500);
+  connectLobbyWs();
 })();

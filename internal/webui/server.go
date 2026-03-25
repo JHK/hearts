@@ -149,6 +149,7 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 	mux := http.NewServeMux()
 	presence := newHumanPresenceTracker()
 	playerPresence := newPlayerPresenceTracker()
+	lobby := newLobbyHub()
 
 	indexData := templateData{
 		StylesURL: "/assets/styles.css",
@@ -277,6 +278,9 @@ console.log('[dev] debugBot() available — call debugBot() to see bot hands');
 	}
 
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+	mux.HandleFunc("/ws/lobby", func(w http.ResponseWriter, r *http.Request) {
+		handleLobbyWebSocket(lobby, upgrader, w, r)
+	})
 	mux.HandleFunc("/ws/table/", func(w http.ResponseWriter, r *http.Request) {
 		handleTableWebSocket(manager, presence, playerPresence, upgrader, w, r)
 	})
@@ -308,6 +312,95 @@ func handleTablesAPI(manager *session.Manager, w http.ResponseWriter, r *http.Re
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+const maxLobbyNameLen = 32
+const maxLobbyTokenLen = 128
+
+func handleLobbyWebSocket(lobby *lobbyHub, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	slog.Info("lobby client connected", "event", "lobby_connected", "addr", r.RemoteAddr)
+
+	events, unsubscribe := lobby.Subscribe()
+
+	out := make(chan wsMessage, 16)
+	writerDone := make(chan struct{})
+	go func() {
+		defer close(writerDone)
+		for msg := range out {
+			_ = conn.SetWriteDeadline(time.Now().Add(15 * time.Second))
+			if err := conn.WriteJSON(msg); err != nil {
+				return
+			}
+		}
+	}()
+
+	send := func(msg wsMessage) {
+		select {
+		case out <- msg:
+		default:
+		}
+	}
+
+	// Send initial snapshot before starting the events goroutine so that
+	// broadcasts triggered between Subscribe and here can't overtake it.
+	send(wsMessage{Type: "lobby_presence", Data: lobby.Snapshot()})
+
+	// Forward presence updates to the client.
+	eventsDone := make(chan struct{})
+	go func() {
+		defer close(eventsDone)
+		for snap := range events {
+			send(wsMessage{Type: "lobby_presence", Data: snap})
+		}
+	}()
+
+	var token string
+	var myID int
+	for {
+		var cmd wsCommand
+		if err := conn.ReadJSON(&cmd); err != nil {
+			break
+		}
+		switch cmd.Type {
+		case "announce":
+			if cmd.Token == "" {
+				send(wsMessage{Type: "error", Error: "token required"})
+				continue
+			}
+			if len(cmd.Token) > maxLobbyTokenLen {
+				send(wsMessage{Type: "error", Error: "token too long"})
+				continue
+			}
+			name := truncateUTF8(cmd.Name, maxLobbyNameLen)
+			if name == "" {
+				name = "Player"
+			}
+			if token == "" {
+				token = cmd.Token
+				myID = lobby.Join(token, name)
+				send(wsMessage{Type: "lobby_self", Data: map[string]any{"id": myID}})
+			} else if cmd.Token == token {
+				lobby.UpdateName(token, name)
+			}
+		}
+	}
+
+	if token != "" {
+		lobby.Leave(token)
+	}
+
+	slog.Info("lobby client disconnected", "event", "lobby_disconnected", "addr", r.RemoteAddr)
+
+	unsubscribe()
+	<-eventsDone
+	close(out)
+	<-writerDone
 }
 
 func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTracker, playerPresence *playerPresenceTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
@@ -593,4 +686,14 @@ func writeJSON(w http.ResponseWriter, value any) {
 	if err := json.NewEncoder(w).Encode(value); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// truncateUTF8 truncates s to at most maxRunes runes without splitting
+// multi-byte characters.
+func truncateUTF8(s string, maxRunes int) string {
+	runes := []rune(s)
+	if len(runes) <= maxRunes {
+		return s
+	}
+	return string(runes[:maxRunes])
 }
