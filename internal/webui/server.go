@@ -85,6 +85,38 @@ func (t *humanPresenceTracker) Count(tableID string) int {
 	return t.counts[tableID]
 }
 
+// playerPresenceTracker counts active WebSocket connections per player per table.
+// This prevents spurious Leave calls when a player has multiple tabs open.
+type playerPresenceTracker struct {
+	mu     sync.Mutex
+	counts map[string]int // key: "tableID\x00playerID"
+}
+
+func newPlayerPresenceTracker() *playerPresenceTracker {
+	return &playerPresenceTracker{counts: make(map[string]int)}
+}
+
+func (t *playerPresenceTracker) Join(tableID string, playerID string) {
+	t.mu.Lock()
+	t.counts[tableID+"\x00"+playerID]++
+	t.mu.Unlock()
+}
+
+// Leave decrements the count and returns the remaining connections.
+func (t *playerPresenceTracker) Leave(tableID string, playerID string) int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	key := tableID + "\x00" + playerID
+	remaining := t.counts[key] - 1
+	if remaining <= 0 {
+		delete(t.counts, key)
+		return 0
+	}
+	t.counts[key] = remaining
+	return remaining
+}
+
 func Run(cfg Config) error {
 	if strings.TrimSpace(cfg.Addr) == "" {
 		cfg.Addr = ":8080"
@@ -114,6 +146,7 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 
 	mux := http.NewServeMux()
 	presence := newHumanPresenceTracker()
+	playerPresence := newPlayerPresenceTracker()
 
 	indexData := templateData{
 		StylesURL: "/assets/styles.css",
@@ -241,7 +274,7 @@ console.log('[dev] debugBot() available — call debugBot() to see bot hands');
 
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	mux.HandleFunc("/ws/table/", func(w http.ResponseWriter, r *http.Request) {
-		handleTableWebSocket(manager, presence, upgrader, w, r)
+		handleTableWebSocket(manager, presence, playerPresence, upgrader, w, r)
 	})
 
 	return mux, nil
@@ -273,7 +306,7 @@ func handleTablesAPI(manager *session.Manager, w http.ResponseWriter, r *http.Re
 	}
 }
 
-func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
+func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTracker, playerPresence *playerPresenceTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
 	tableID := strings.TrimPrefix(r.URL.Path, "/ws/table/")
 	tableID = strings.TrimSpace(tableID)
 	if tableID == "" || strings.Contains(tableID, "/") {
@@ -366,6 +399,7 @@ func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTrack
 				if !humanJoined {
 					humanJoined = true
 					presence.Join(runtime.ID())
+					playerPresence.Join(runtime.ID(), string(joinResp.PlayerID))
 				}
 				send(wsMessage{Type: "table_state", Data: runtime.Snapshot(joinResp.PlayerID)})
 			}
@@ -406,6 +440,13 @@ func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTrack
 				continue
 			}
 			send(wsMessage{Type: "add_bot_result", Data: added})
+		case "resume_game":
+			current := getPlayerID()
+			if current == "" {
+				send(wsMessage{Type: "error", Error: "join first"})
+				continue
+			}
+			send(wsMessage{Type: "resume_game_result", Data: runtime.ResumeGame(current)})
 		default:
 			send(wsMessage{Type: "error", Error: fmt.Sprintf("unknown command %q", cmd.Type)})
 		}
@@ -420,7 +461,10 @@ func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTrack
 	slog.Info("player disconnected", "event", "player_disconnected", "table_id", tableID, "player_id", string(getPlayerID()), "addr", r.RemoteAddr)
 
 	if humanJoined {
-		runtime.Leave(getPlayerID())
+		pid := getPlayerID()
+		if playerPresence.Leave(runtime.ID(), string(pid)) == 0 {
+			runtime.Leave(pid)
+		}
 	}
 
 	if humanJoined && presence.Leave(runtime.ID()) == 0 {

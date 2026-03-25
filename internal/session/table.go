@@ -64,6 +64,8 @@ type Snapshot struct {
 	TotalPoints        map[protocol.PlayerID]game.Points   `json:"total_points"`
 	GameOver           bool                                `json:"game_over"`
 	Winners            []protocol.PlayerID                 `json:"winners,omitempty"`
+	Paused             bool                                `json:"paused,omitempty"`
+	PausedForPlayerID  protocol.PlayerID                   `json:"paused_for_player_id,omitempty"`
 }
 
 type Table struct {
@@ -90,6 +92,11 @@ type tableState struct {
 	game          *game.Game
 	nextPlayerSeq int
 	gameOver      bool
+
+	// paused is set when a human disconnects mid-round. While true, all game
+	// commands and bot actions are blocked until a remaining human resumes.
+	paused         bool
+	pausedPlayerID protocol.PlayerID // player who disconnected
 }
 
 // playerState holds the seat-level data for one player.
@@ -170,6 +177,11 @@ type botTurnCommand struct {
 
 type botPassCommand struct {
 	playerID protocol.PlayerID
+}
+
+type resumeGameCommand struct {
+	playerID protocol.PlayerID
+	reply    chan protocol.CommandResponse
 }
 
 type botHandsCommand struct {
@@ -304,6 +316,14 @@ func (r *Table) Leave(playerID protocol.PlayerID) {
 	<-reply
 }
 
+func (r *Table) ResumeGame(playerID protocol.PlayerID) protocol.CommandResponse {
+	reply := make(chan protocol.CommandResponse, 1)
+	if !r.submit(resumeGameCommand{playerID: playerID, reply: reply}) {
+		return protocol.CommandResponse{Accepted: false, Reason: "table is stopping"}
+	}
+	return <-reply
+}
+
 func (r *Table) Info() protocol.TableInfo {
 	reply := make(chan protocol.TableInfo, 1)
 	if !r.submit(infoCommand{reply: reply}) {
@@ -372,7 +392,10 @@ func (r *Table) run() {
 					MaxPlayers: game.PlayersPerTable,
 					Started:    state.round != nil,
 					GameOver:   state.gameOver,
+					Paused:     state.paused,
 				}
+			case resumeGameCommand:
+				cmd.reply <- r.handleResumeGame(state, cmd.playerID)
 			case botTurnCommand:
 				r.handleBotTurn(state, cmd.playerID)
 			case botPassCommand:
@@ -393,28 +416,34 @@ func (r *Table) handleLeave(state *tableState, playerID protocol.PlayerID) {
 	slog.Info("player left table", "event", "player_left", "table_id", r.tableID, "player_id", playerID, "name", player.Name)
 
 	if state.round != nil {
-		// Preserve the token so the player can reclaim their seat if they reconnect.
-		// Assign a bot; game state stays in the Round untouched.
-		if player.bot == nil {
-			player.bot = bot.StrategyRandom.NewBot()
+		if player.bot != nil {
+			return
 		}
 
+		// Convert the departing human to a bot and pause the game so remaining
+		// humans can decide whether to wait for reconnection or continue.
+		player.bot = bot.StrategyRandom.NewBot()
+		state.paused = true
+		state.pausedPlayerID = player.id
+		slog.Info("game paused due to disconnection", "event", "game_paused", "table_id", r.tableID, "player_id", playerID, "name", player.Name)
+		r.publishPublic(protocol.EventGamePaused, protocol.GamePausedData{
+			Player: protocol.PlayerInfo{PlayerID: player.id, Name: player.Name, Seat: player.position},
+		})
+
+		// Immediately resolve any pending action for the departing player's
+		// new bot so the game state is consistent when it resumes.
 		switch state.round.Phase() {
 		case game.PhasePassing:
 			if !state.round.HasSubmittedPass(player.position) {
 				input := state.round.PassInput(player.position)
 				cards, err := player.bot.ChoosePass(input)
 				if err == nil {
-					_ = r.handlePass(state, playerID, game.CardStrings(cards))
+					_ = state.round.SubmitPass(player.position, cards)
 				}
 			}
 		case game.PhasePassReview:
 			if !state.round.IsPassReady(player.position) {
-				_ = r.handleReadyAfterPass(state, playerID)
-			}
-		case game.PhasePlaying:
-			if player.position == state.round.TurnSeat() {
-				r.scheduleBotTurn(state, player)
+				_ = state.round.MarkReady(player.position)
 			}
 		}
 		return
@@ -447,12 +476,17 @@ func (r *Table) handleJoin(state *tableState, name, token string) protocol.JoinR
 
 	if existing := state.playersByToken[token]; existing != nil {
 		if existing.bot != nil {
-			// Player reconnected after being converted to a bot mid-round — reclaim the seat.
 			existing.bot = nil
 			if n := strings.TrimSpace(name); n != "" {
 				existing.Name = n
 			}
 			slog.Info("player reclaimed seat", "event", "player_reclaimed", "table_id", r.tableID, "player_id", existing.id, "name", existing.Name, "seat", existing.position)
+			if state.paused {
+				state.paused = false
+				state.pausedPlayerID = ""
+				r.publishGameResumed()
+				r.resumeAfterPause(state)
+			}
 		}
 		return protocol.JoinResponse{
 			Accepted: true,
@@ -596,18 +630,16 @@ func (r *Table) nextPlayerID(state *tableState) protocol.PlayerID {
 }
 
 func (r *Table) handlePlay(state *tableState, playerID protocol.PlayerID, cardRaw string) protocol.CommandResponse {
+	if reason := validateRoundCommandPreconditions(state, playerID); reason != "" {
+		return protocol.CommandResponse{Accepted: false, Reason: reason}
+	}
+
 	card, err := game.ParseCard(cardRaw)
 	if err != nil {
 		return protocol.CommandResponse{Accepted: false, Reason: err.Error()}
 	}
 
-	if state.round == nil {
-		return protocol.CommandResponse{Accepted: false, Reason: "round is not running"}
-	}
 	player := state.playersByID[playerID]
-	if player == nil {
-		return protocol.CommandResponse{Accepted: false, Reason: "player is not seated"}
-	}
 
 	heartsBrokenBefore := state.round.HeartsBroken()
 	trickResult, err := state.round.Play(player.position, card)
@@ -659,13 +691,10 @@ func (r *Table) handlePlay(state *tableState, playerID protocol.PlayerID, cardRa
 }
 
 func (r *Table) handlePass(state *tableState, playerID protocol.PlayerID, cardsRaw []string) protocol.CommandResponse {
-	if state.round == nil {
-		return protocol.CommandResponse{Accepted: false, Reason: "round is not running"}
+	if reason := validateRoundCommandPreconditions(state, playerID); reason != "" {
+		return protocol.CommandResponse{Accepted: false, Reason: reason}
 	}
 	player := state.playersByID[playerID]
-	if player == nil {
-		return protocol.CommandResponse{Accepted: false, Reason: "player is not seated"}
-	}
 
 	passCards, err := r.parseAndValidatePassCards(cardsRaw)
 	if err != nil {
@@ -700,11 +729,8 @@ func (r *Table) handlePass(state *tableState, playerID protocol.PlayerID, cardsR
 }
 
 func (r *Table) handleReadyAfterPass(state *tableState, playerID protocol.PlayerID) protocol.CommandResponse {
-	if state.round == nil {
-		return protocol.CommandResponse{Accepted: false, Reason: "round is not running"}
-	}
-	if state.playersByID[playerID] == nil {
-		return protocol.CommandResponse{Accepted: false, Reason: "player is not seated"}
+	if reason := validateRoundCommandPreconditions(state, playerID); reason != "" {
+		return protocol.CommandResponse{Accepted: false, Reason: reason}
 	}
 
 	if err := state.round.MarkReady(state.playersByID[playerID].position); err != nil {
@@ -796,13 +822,22 @@ func (r *Table) publishPlayPhaseStart(state *tableState) {
 	r.scheduleBotTurn(state, turnPlayer)
 }
 
-func (r *Table) handleBotTurn(state *tableState, playerID protocol.PlayerID) {
-	if state.round == nil || state.round.Phase() != game.PhasePlaying {
-		return
+// botForPhase returns the bot player if the round is active in the given phase,
+// the table is not paused, and the player is a valid bot. Returns nil otherwise.
+func botForPhase(state *tableState, playerID protocol.PlayerID, phase game.RoundPhase) *playerState {
+	if state.paused || state.round == nil || state.round.Phase() != phase {
+		return nil
 	}
-
 	player := state.playersByID[playerID]
-	if player == nil || player.bot == nil || player.position != state.round.TurnSeat() {
+	if player == nil || player.bot == nil {
+		return nil
+	}
+	return player
+}
+
+func (r *Table) handleBotTurn(state *tableState, playerID protocol.PlayerID) {
+	player := botForPhase(state, playerID, game.PhasePlaying)
+	if player == nil || player.position != state.round.TurnSeat() {
 		return
 	}
 
@@ -815,12 +850,8 @@ func (r *Table) handleBotTurn(state *tableState, playerID protocol.PlayerID) {
 }
 
 func (r *Table) handleBotPass(state *tableState, playerID protocol.PlayerID) {
-	if state.round == nil || state.round.Phase() != game.PhasePassing {
-		return
-	}
-
-	player := state.playersByID[playerID]
-	if player == nil || player.bot == nil || state.round.HasSubmittedPass(player.position) {
+	player := botForPhase(state, playerID, game.PhasePassing)
+	if player == nil || state.round.HasSubmittedPass(player.position) {
 		return
 	}
 
@@ -829,7 +860,6 @@ func (r *Table) handleBotPass(state *tableState, playerID protocol.PlayerID) {
 	if err != nil {
 		return
 	}
-
 	_ = r.handlePass(state, playerID, game.CardStrings(cards))
 }
 
@@ -876,6 +906,19 @@ func (r *Table) validateStartPreconditions(state *tableState, playerID protocol.
 	}
 	if len(state.players) != game.PlayersPerTable {
 		return fmt.Sprintf("table requires %d players before start", game.PlayersPerTable)
+	}
+	return ""
+}
+
+func validateRoundCommandPreconditions(state *tableState, playerID protocol.PlayerID) string {
+	if state.paused {
+		return "game is paused"
+	}
+	if state.round == nil {
+		return "round is not running"
+	}
+	if state.playersByID[playerID] == nil {
+		return "player is not seated"
 	}
 	return ""
 }
@@ -968,6 +1011,59 @@ func (r *Table) maybeEndGame(state *tableState) {
 	})
 }
 
+func (r *Table) publishGameResumed() {
+	slog.Info("game resumed", "event", "game_resumed", "table_id", r.tableID)
+	r.publishPublic(protocol.EventGameResumed, protocol.GameResumedData{})
+}
+
+func (r *Table) resumeAfterPause(state *tableState) {
+	if state.round == nil {
+		return
+	}
+	switch state.round.Phase() {
+	case game.PhasePassing:
+		r.schedulePassingBots(state)
+	case game.PhasePassReview:
+		for _, player := range state.players {
+			if player.bot != nil && !state.round.IsPassReady(player.position) {
+				_ = state.round.MarkReady(player.position)
+			}
+		}
+		ready := 0
+		for i := 0; i < game.PlayersPerTable; i++ {
+			if state.round.IsPassReady(i) {
+				ready++
+			}
+		}
+		r.publishPublic(protocol.EventPassReadyChanged, protocol.PassReadyData{Ready: ready, Total: game.PlayersPerTable})
+		if ready == game.PlayersPerTable {
+			_ = state.round.StartPlaying()
+			r.publishPlayPhaseStart(state)
+		}
+	case game.PhasePlaying:
+		turnSeat := state.round.TurnSeat()
+		turnPlayer := state.players[turnSeat]
+		r.scheduleBotTurn(state, turnPlayer)
+	}
+}
+
+func (r *Table) handleResumeGame(state *tableState, playerID protocol.PlayerID) protocol.CommandResponse {
+	if !state.paused {
+		return protocol.CommandResponse{Accepted: false, Reason: "game is not paused"}
+	}
+	requester := state.playersByID[playerID]
+	if requester == nil || requester.bot != nil {
+		return protocol.CommandResponse{Accepted: false, Reason: "only seated human players can resume"}
+	}
+
+	state.paused = false
+	state.pausedPlayerID = ""
+	slog.Info("game resumed by player", "event", "game_resumed", "table_id", r.tableID, "resumed_by", playerID)
+	r.publishGameResumed()
+	r.resumeAfterPause(state)
+	return protocol.CommandResponse{Accepted: true}
+}
+
 func (r *Table) buildBotHands(state *tableState) []BotHandSnapshot {
 	var out []BotHandSnapshot
 	for _, p := range state.players {
@@ -1004,15 +1100,17 @@ func (r *Table) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) Sn
 	totals := r.buildTotals(state)
 
 	snapshot := Snapshot{
-		TableID:      r.tableID,
-		Players:      playerSnapshots,
-		Started:      state.round != nil,
-		Phase:        "",
-		HandSizes:    map[protocol.PlayerID]int{},
-		RoundPoints:  map[protocol.PlayerID]game.Points{},
-		RoundHistory: copyRoundHistory(state.roundHistory),
-		TotalPoints:  totals,
-		GameOver:     state.gameOver,
+		TableID:           r.tableID,
+		Players:           playerSnapshots,
+		Started:           state.round != nil,
+		Phase:             "",
+		HandSizes:         map[protocol.PlayerID]int{},
+		RoundPoints:       map[protocol.PlayerID]game.Points{},
+		RoundHistory:      copyRoundHistory(state.roundHistory),
+		TotalPoints:       totals,
+		GameOver:          state.gameOver,
+		Paused:            state.paused,
+		PausedForPlayerID: state.pausedPlayerID,
 	}
 
 	if state.gameOver {

@@ -6,6 +6,7 @@ type TableInfo struct {
 	MaxPlayers int    `json:"max_players"`
 	Started    bool   `json:"started"`
 	GameOver   bool   `json:"game_over,omitempty"`
+	Paused     bool   `json:"paused,omitempty"`
 }
 
 type JoinResponse struct {

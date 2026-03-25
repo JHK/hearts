@@ -389,6 +389,22 @@ function connect() {
         }
         scheduleStateRefresh(0);
         break;
+      case 'game_paused':
+        log('game paused — player disconnected');
+        scheduleStateRefresh(0);
+        break;
+      case 'game_resumed':
+        log('game resumed');
+        scheduleStateRefresh(0);
+        break;
+      case 'resume_game_result':
+        if (msg.data && msg.data.accepted) {
+          log('game resumed');
+        } else {
+          log(`resume failed: ${msg.data && msg.data.reason ? msg.data.reason : 'rejected'}`);
+        }
+        scheduleStateRefresh(0);
+        break;
       case 'trick_completed':
         enqueueTrickEvent('trick_completed', msg.data || {});
         scheduleStateRefresh(0);

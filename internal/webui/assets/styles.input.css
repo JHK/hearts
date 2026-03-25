@@ -150,6 +150,11 @@
     color: #856404;
   }
 
+  .lobby-page .badge-paused {
+    background: #f8d7da;
+    color: #842029;
+  }
+
   .table-page {
     --ink: #142132;
     --muted: #54697d;
@@ -988,6 +993,50 @@
 
   .game-over-back-link:hover {
     opacity: 0.88;
+  }
+
+  .game-paused-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(14, 22, 34, 0.72);
+    backdrop-filter: blur(3px);
+  }
+
+  .game-paused-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 20px 48px rgba(10, 20, 34, 0.32);
+  }
+
+  .game-paused-panel h2 {
+    margin: 0;
+    font-size: 1.6rem;
+    letter-spacing: 0.01em;
+  }
+
+  .game-paused-message {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .game-paused-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
   }
 }
 

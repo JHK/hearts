@@ -25,7 +25,7 @@ func TestLeaveRemovesPlayerBeforeRoundStart(t *testing.T) {
 	require.Equal(t, 0, snapshot.Players[0].Seat)
 }
 
-func TestLeaveConvertsHumanToBotDuringRound(t *testing.T) {
+func TestLeavePausesGameDuringRound(t *testing.T) {
 	runtime := NewTable("leave-during-round")
 	defer runtime.Close()
 
@@ -44,17 +44,173 @@ func TestLeaveConvertsHumanToBotDuringRound(t *testing.T) {
 	runtime.Leave(bob.PlayerID)
 
 	snapshot := runtime.Snapshot("")
-	require.Len(t, snapshot.Players, 4)
+	require.Len(t, snapshot.Players, 4, "all players remain seated")
+	require.True(t, snapshot.Paused, "game should be paused after disconnect")
 
 	for _, player := range snapshot.Players {
-		if player.PlayerID != bob.PlayerID {
-			continue
+		if player.PlayerID == bob.PlayerID {
+			require.True(t, player.IsBot, "disconnected player should be converted to bot")
 		}
-		require.True(t, player.IsBot, "expected leaving player to become bot")
-		return
 	}
 
-	t.Fatal("expected to find leaving player in snapshot")
+	// Game commands should be rejected while paused.
+	aliceSnap := runtime.Snapshot(alice.PlayerID)
+	if len(aliceSnap.Hand) > 0 {
+		play := runtime.Play(alice.PlayerID, aliceSnap.Hand[0])
+		require.False(t, play.Accepted, "play should be rejected while paused")
+		require.Equal(t, "game is paused", play.Reason)
+	}
+}
+
+func TestResumeGameAfterDisconnect(t *testing.T) {
+	runtime := NewTable("resume-game")
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err, "join alice")
+	_, err = runtime.Join("Bob", "bob-token")
+	require.NoError(t, err, "join bob")
+	_, err = runtime.AddBot("")
+	require.NoError(t, err, "add bot 1")
+	_, err = runtime.AddBot("")
+	require.NoError(t, err, "add bot 2")
+
+	start := runtime.Start(alice.PlayerID)
+	require.True(t, start.Accepted, "expected start accepted, got %s", start.Reason)
+
+	runtime.Leave(alice.PlayerID)
+	require.True(t, runtime.Snapshot("").Paused, "game should be paused")
+
+	rejoin, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err, "rejoin alice")
+	require.True(t, rejoin.Accepted, "rejoin should be accepted")
+
+	resp := runtime.ResumeGame(rejoin.PlayerID)
+	// Game already resumed on reconnect, so this should say "not paused".
+	require.False(t, resp.Accepted, "game already resumed on reconnect")
+
+	snapshot := runtime.Snapshot("")
+	require.False(t, snapshot.Paused, "game should not be paused")
+}
+
+func TestResumeGameWithoutReconnect(t *testing.T) {
+	runtime := NewTable("resume-no-reconnect")
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err, "join alice")
+	bob, err := runtime.Join("Bob", "bob-token")
+	require.NoError(t, err, "join bob")
+	_, err = runtime.AddBot("")
+	require.NoError(t, err, "add bot 1")
+	_, err = runtime.AddBot("")
+	require.NoError(t, err, "add bot 2")
+
+	start := runtime.Start(alice.PlayerID)
+	require.True(t, start.Accepted, "expected start accepted, got %s", start.Reason)
+
+	runtime.Leave(bob.PlayerID)
+	snapshot := runtime.Snapshot("")
+	require.True(t, snapshot.Paused, "game should be paused")
+	require.Equal(t, bob.PlayerID, snapshot.PausedForPlayerID)
+
+	resp := runtime.ResumeGame(alice.PlayerID)
+	require.True(t, resp.Accepted, "expected resume accepted, got %s", resp.Reason)
+
+	snapshot = runtime.Snapshot("")
+	require.False(t, snapshot.Paused, "game should resume")
+}
+
+func TestReconnectResumesGame(t *testing.T) {
+	runtime := NewTable("reconnect")
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err, "join alice")
+	_, err = runtime.Join("Bob", "bob-token")
+	require.NoError(t, err, "join bob")
+	_, err = runtime.AddBot("")
+	require.NoError(t, err, "add bot 1")
+	_, err = runtime.AddBot("")
+	require.NoError(t, err, "add bot 2")
+
+	start := runtime.Start(alice.PlayerID)
+	require.True(t, start.Accepted, "expected start accepted, got %s", start.Reason)
+
+	runtime.Leave(alice.PlayerID)
+	require.True(t, runtime.Snapshot("").Paused, "game should be paused")
+
+	rejoin, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err, "rejoin alice")
+	require.True(t, rejoin.Accepted, "expected rejoin accepted")
+	require.Equal(t, alice.PlayerID, rejoin.PlayerID, "should reclaim same player ID")
+
+	snapshot := runtime.Snapshot("")
+	require.False(t, snapshot.Paused, "game should resume after reconnection")
+
+	for _, player := range snapshot.Players {
+		if player.PlayerID == alice.PlayerID {
+			require.False(t, player.IsBot, "reconnected player should not be a bot")
+		}
+	}
+}
+
+func TestMultipleDisconnectsOverwritePausedPlayer(t *testing.T) {
+	runtime := NewTable("multi-disconnect")
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+	bob, err := runtime.Join("Bob", "bob-token")
+	require.NoError(t, err)
+	carol, err := runtime.Join("Carol", "carol-token")
+	require.NoError(t, err)
+	_, err = runtime.Join("Dave", "dave-token")
+	require.NoError(t, err)
+
+	start := runtime.Start(alice.PlayerID)
+	require.True(t, start.Accepted, "start: %s", start.Reason)
+
+	runtime.Leave(bob.PlayerID)
+	snapshot := runtime.Snapshot("")
+	require.True(t, snapshot.Paused)
+	require.Equal(t, bob.PlayerID, snapshot.PausedForPlayerID)
+
+	// Second disconnect overwrites the paused-for player but stays paused.
+	runtime.Leave(carol.PlayerID)
+	snapshot = runtime.Snapshot("")
+	require.True(t, snapshot.Paused)
+	require.Equal(t, carol.PlayerID, snapshot.PausedForPlayerID)
+
+	// Resume clears pause even though two players disconnected.
+	resp := runtime.ResumeGame(alice.PlayerID)
+	require.True(t, resp.Accepted, "resume: %s", resp.Reason)
+	require.False(t, runtime.Snapshot("").Paused)
+}
+
+func TestResumeGameRejectsBot(t *testing.T) {
+	runtime := NewTable("resume-rejects-bot")
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+	_, err = runtime.Join("Bob", "bob-token")
+	require.NoError(t, err)
+	bot1, err := runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+
+	start := runtime.Start(alice.PlayerID)
+	require.True(t, start.Accepted, "start: %s", start.Reason)
+
+	runtime.Leave(alice.PlayerID)
+	require.True(t, runtime.Snapshot("").Paused)
+
+	// A bot should not be able to resume.
+	resp := runtime.ResumeGame(bot1.JoinResponse.PlayerID)
+	require.False(t, resp.Accepted)
+	require.Equal(t, "only seated human players can resume", resp.Reason)
 }
 
 func TestStartBeginsInPassingPhaseAndBlocksPlay(t *testing.T) {

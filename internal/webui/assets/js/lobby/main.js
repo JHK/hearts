@@ -62,8 +62,16 @@
       meta.className = 'table-meta';
 
       const badge = document.createElement('span');
-      badge.className = table.started ? 'badge badge-active' : 'badge badge-waiting';
-      badge.textContent = table.started ? 'In progress' : 'Waiting';
+      if (table.paused) {
+        badge.className = 'badge badge-paused';
+        badge.textContent = 'Paused';
+      } else if (table.started) {
+        badge.className = 'badge badge-active';
+        badge.textContent = 'In progress';
+      } else {
+        badge.className = 'badge badge-waiting';
+        badge.textContent = 'Waiting';
+      }
 
       const players = document.createElement('span');
       players.className = 'table-players';

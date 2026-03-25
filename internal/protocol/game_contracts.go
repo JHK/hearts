@@ -63,3 +63,9 @@ type GameOverData struct {
 	FinalScores map[PlayerID]game.Points `json:"final_scores"`
 	Winners     []PlayerID               `json:"winners"`
 }
+
+type GamePausedData struct {
+	Player PlayerInfo `json:"player"`
+}
+
+type GameResumedData struct{}

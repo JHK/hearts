@@ -34,6 +34,9 @@ export function createTableDom({ tableId, eventsEnabled }) {
   const seatBottomNameEl = document.getElementById('seatBottomName');
   const seatBottomHandEl = document.getElementById('seatBottomHand');
   const trickSlotEls = createTrickSlots(trickCenterEl);
+  const gamePausedOverlayEl = document.getElementById('gamePausedOverlay');
+  const gamePausedMessageEl = document.getElementById('gamePausedMessage');
+  const gamePausedActionsEl = document.getElementById('gamePausedActions');
   const gameOverOverlayEl = document.getElementById('gameOverOverlay');
   const gameOverWinnerEl = document.getElementById('gameOverWinner');
   const gameOverScoresEl = document.getElementById('gameOverScores');
@@ -82,6 +85,9 @@ export function createTableDom({ tableId, eventsEnabled }) {
     seatBottomNameEl,
     seatBottomHandEl,
     trickSlotEls,
+    gamePausedOverlayEl,
+    gamePausedMessageEl,
+    gamePausedActionsEl,
     gameOverOverlayEl,
     gameOverWinnerEl,
     gameOverScoresEl,

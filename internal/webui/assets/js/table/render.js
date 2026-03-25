@@ -475,6 +475,28 @@ export function createRenderer({ dom, state, send }) {
     dom.readyAfterPassEl.disabled = passReady;
   }
 
+  function renderPausedPanel(snapshot) {
+    const players = Array.isArray(snapshot.players) ? snapshot.players : [];
+    const pid = snapshot.paused_for_player_id || '';
+    const match = players.find((p) => p.player_id === pid);
+    const who = match ? match.name : 'A player';
+    dom.gamePausedMessageEl.textContent = `${who} disconnected`;
+
+    dom.gamePausedActionsEl.innerHTML = '';
+    if (state.isObserver) {
+      return;
+    }
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'secondary';
+    btn.textContent = 'Continue with Bot';
+    btn.onclick = () => {
+      send({ type: 'resume_game' });
+    };
+    dom.gamePausedActionsEl.appendChild(btn);
+  }
+
   function renderState(snapshot, { log }) {
     state.lastSnapshot = snapshot || {};
     const players = snapshot.players || [];
@@ -518,6 +540,12 @@ export function createRenderer({ dom, state, send }) {
     dom.gameOverOverlayEl.classList.toggle('hidden', !isGameOver);
     if (isGameOver) {
       renderGameOverPanel(snapshot);
+    }
+
+    const isPaused = !!snapshot.paused;
+    dom.gamePausedOverlayEl.classList.toggle('hidden', !isPaused);
+    if (isPaused) {
+      renderPausedPanel(snapshot);
     }
 
     const waitingForPlayers = !snapshot.started && players.length < 4;

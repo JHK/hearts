@@ -15,4 +15,6 @@ const (
 	EventRoundCompleted    EventType = "round_completed"
 	EventHandUpdated       EventType = "hand_updated"
 	EventGameOver          EventType = "game_over"
+	EventGamePaused        EventType = "game_paused"
+	EventGameResumed       EventType = "game_resumed"
 )
