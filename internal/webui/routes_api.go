@@ -19,25 +19,7 @@ func registerAPIRoutes(r chi.Router, cfg Config, manager *session.Manager) {
 		})
 
 		if cfg.Dev {
-			api.Get("/debug/bots", func(w http.ResponseWriter, r *http.Request) {
-				tableID := r.URL.Query().Get("table_id")
-				rt, ok := manager.Get(tableID)
-				if !ok {
-					http.Error(w, "table not found", http.StatusNotFound)
-					return
-				}
-				snap := rt.DebugBotContext()
-				if snap == nil {
-					http.Error(w, "table stopped", http.StatusGone)
-					return
-				}
-				if r.URL.Query().Get("format") == "json" {
-					writeJSON(w, snap)
-					return
-				}
-				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-				_, _ = w.Write([]byte(snap.FormatMarkdown()))
-			})
+			registerDevAPIRoutes(api, manager)
 		}
 	})
 }
