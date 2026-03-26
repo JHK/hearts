@@ -460,7 +460,7 @@ func (r *Table) handleBotTurn(state *tableState, playerID protocol.PlayerID) {
 		return
 	}
 
-	input := state.round.TurnInput(player.position)
+	input := state.round.TurnInput(player.position, state.game.Scores())
 	card, err := player.bot.ChoosePlay(input)
 	if err != nil {
 		return

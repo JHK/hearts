@@ -73,8 +73,8 @@ func (r *Table) buildDebugBotContext(state *tableState) *DebugBotSnapshot {
 	// Previously played cards.
 	played := rd.PlayedCards()
 	snap.PlayedCards = make([]string, 0, len(played))
-	for _, c := range played {
-		snap.PlayedCards = append(snap.PlayedCards, c.String())
+	for _, p := range played {
+		snap.PlayedCards = append(snap.PlayedCards, p.Card.String())
 	}
 
 	// Turn info.

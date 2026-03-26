@@ -13,6 +13,7 @@ type Hard struct {
 	moonShotAborted  bool
 	winningAllTricks bool // true while bot has won every trick this round
 	prevPlayedCount  int
+	blockMoonTarget  int // seat index of suspected shooter, or -1
 }
 
 var hardBotNames = []string{"Kasparov", "Carlsen", "Neumann", "Turing", "Lovelace", "Hopper", "Knuth", "Dijkstra"}
@@ -27,7 +28,7 @@ func (s *Hard) MoonShotAborted() bool { return s.moonShotAborted }
 
 // NewHardBot creates a hard bot for testing.
 func NewHardBot() *Hard {
-	return &Hard{}
+	return &Hard{blockMoonTarget: -1}
 }
 
 func (s *Hard) ChoosePass(input game.PassInput) ([]game.Card, error) {
@@ -40,6 +41,7 @@ func (s *Hard) ChoosePass(input game.PassInput) ([]game.Card, error) {
 	s.moonShotAborted = false
 	s.winningAllTricks = true
 	s.prevPlayedCount = 0
+	s.blockMoonTarget = -1
 
 	switch strategy {
 	case strategyMoonShot:
@@ -50,7 +52,9 @@ func (s *Hard) ChoosePass(input game.PassInput) ([]game.Card, error) {
 }
 
 func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
-	legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
+	trick := input.TrickCards()
+	playedCards := input.PlayedCardsList()
+	legal := game.LegalPlays(input.Hand, trick, input.HeartsBroken, input.FirstTrick)
 	if len(legal) == 0 {
 		return game.Card{}, ErrNoLegalPlays
 	}
@@ -62,6 +66,7 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 		s.moonShotActive = hardEvaluateMoonShot(input.Hand)
 		s.moonShotAborted = false
 		s.winningAllTricks = true
+		s.blockMoonTarget = -1
 	}
 
 	// Re-evaluate at trick 1 of a passing round with the actual post-pass hand.
@@ -82,7 +87,7 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 			// Only abort if we've lost penalty points to other players.
 			// If we hold all penalty points scored so far, keep pursuing —
 			// we may still control remaining tricks.
-			totalPenalty := penaltyPointsInCards(input.PlayedCards)
+			totalPenalty := penaltyPointsInCards(playedCards)
 			if input.RoundPoints[input.MySeat] < totalPenalty {
 				s.moonShotAborted = true
 			}
@@ -95,14 +100,14 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	// Hearts may not be legal leads yet (hearts not broken), but they're still
 	// valid future winners — don't self-abort just because they're temporarily illegal.
 	allSafeHighCards := filterCards(input.Hand, func(c game.Card) bool {
-		return isSafeHighCard(c, input.Hand, input.PlayedCards)
+		return isSafeHighCard(c, input.Hand, playedCards)
 	})
 	remainingTricks := len(input.Hand)
 
 	// Dynamic activation: if we hold guaranteed wins for ALL remaining tricks
 	// AND we haven't lost penalty points to other players, pursue moon shot
 	// regardless of prior history.
-	totalPenaltyPlayed := penaltyPointsInCards(input.PlayedCards)
+	totalPenaltyPlayed := penaltyPointsInCards(playedCards)
 	ownsAllPenalties := totalPenaltyPlayed == 0 || input.RoundPoints[input.MySeat] >= totalPenaltyPlayed
 	if ownsAllPenalties && len(allSafeHighCards) >= remainingTricks && remainingTricks > 0 {
 		s.moonShotActive = true
@@ -114,7 +119,7 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	// (only one higher card unaccounted for) to fill the gap, still pursue.
 	if !pursuing && ownsAllPenalties && remainingTricks > 0 &&
 		len(allSafeHighCards) == remainingTricks-1 {
-		nearSafe := countNearSafeCards(input.Hand, input.PlayedCards)
+		nearSafe := countNearSafeCards(input.Hand, playedCards)
 		if nearSafe > 0 {
 			s.moonShotActive = true
 			s.moonShotAborted = false
@@ -128,21 +133,41 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 		pursuing = false
 	}
 
+	// --- Moon-shot prevention: detect opponent shooting ---
+	if !pursuing {
+		s.blockMoonTarget = detectMoonShooter(input.RoundPoints, input.PlayedCards, input.MySeat)
+		// Score-aware: skip blocking if the shooter is the sole last-place
+		// player. Their moon shot hurts all opponents equally, so spending
+		// our own points to block benefits competitors as much as us.
+		if s.blockMoonTarget >= 0 && !shouldBlockShooter(s.blockMoonTarget, input.GameScores) {
+			s.blockMoonTarget = -1
+		}
+	} else {
+		s.blockMoonTarget = -1
+	}
+	blocking := s.blockMoonTarget >= 0
+
 	if len(input.Trick) == 0 {
 		if pursuing {
-			return hardMoonShotLead(input.Hand, legal, input.PlayedCards), nil
+			return hardMoonShotLead(input.Hand, legal, playedCards), nil
 		}
-		return smartChooseLead(input.Hand, legal, input.PlayedCards, false), nil
+		if blocking {
+			return hardBlockMoonLead(input.Hand, legal, playedCards), nil
+		}
+		return smartChooseLead(input.Hand, legal, playedCards, false), nil
 	}
 
-	leadSuit := input.Trick[0].Suit
+	leadSuit := input.Trick[0].Card.Suit
 	if game.HasSuit(input.Hand, leadSuit) {
 		if pursuing {
-			return hardMoonShotFollow(input.Trick, legal), nil
+			return hardMoonShotFollow(trick, legal), nil
 		}
-		return smartChooseFollow(input.Trick, legal, input.Hand, input.PlayedCards, false), nil
+		return smartChooseFollow(trick, legal, input.Hand, playedCards, false), nil
 	}
 
+	if blocking {
+		return hardBlockMoonDiscard(input.Trick, legal, s.blockMoonTarget), nil
+	}
 	return smartChooseDiscard(legal, pursuing), nil
 }
 
@@ -286,6 +311,136 @@ func hardMoonShotLead(hand, legal, playedCards []game.Card) game.Card {
 	}
 
 	return highestRankedCard(safeLeads)
+}
+
+// --- Moon-shot prevention ---
+
+// shouldBlockShooter returns true if it's worth spending points to block
+// the given shooter. Returns false if the shooter has the sole highest game
+// score (clearly in last place) — their moon shot hurts all opponents
+// equally, so the blocker gains no relative advantage.
+func shouldBlockShooter(shooterSeat int, gameScores [game.PlayersPerTable]game.Points) bool {
+	shooterScore := gameScores[shooterSeat]
+	for seat, score := range gameScores {
+		if seat != shooterSeat && score >= shooterScore {
+			return true // someone else is as bad or worse — worth blocking
+		}
+	}
+	return false
+}
+
+// detectMoonShooter returns the seat of an opponent who appears to be
+// shooting the moon, or -1 if no shooter is detected. Uses two detection
+// paths:
+//
+// Strong signal (high confidence): 4+ completed tricks, 14+ penalty points
+// (Q♠ taken), and one opponent holds all penalties via roundPoints.
+//
+// Early signal (pattern-based): 3+ completed tricks, 3+ penalty points,
+// and one opponent has won EVERY trick that contained a penalty card.
+// Confirmed against roundPoints to prevent false positives.
+func detectMoonShooter(roundPoints [game.PlayersPerTable]game.Points, plays []game.Play, mySeat int) int {
+	completedTricks := len(plays) / 4
+	if completedTricks < 3 {
+		return -1
+	}
+	playedCards := game.CardsFrom(plays)
+	totalPenalty := penaltyPointsInCards(playedCards)
+
+	// Strong signal: Q♠ taken + all penalties held by one opponent.
+	if totalPenalty >= 14 && completedTricks >= 4 {
+		for seat := range game.PlayersPerTable {
+			if seat != mySeat && roundPoints[seat] >= totalPenalty {
+				return seat
+			}
+		}
+	}
+
+	// Early signal: one opponent winning all penalty tricks consistently.
+	if totalPenalty >= 3 {
+		penaltyWinner := -1
+		consistent := true
+		for i := 0; i+3 < len(plays); i += 4 {
+			trick := plays[i : i+4]
+			hasPenalty := false
+			for _, p := range trick {
+				if game.IsPenaltyCard(p.Card) {
+					hasPenalty = true
+					break
+				}
+			}
+			if !hasPenalty {
+				continue
+			}
+			winner := trickWinnerSeat(trick)
+			if winner == mySeat {
+				consistent = false
+				break
+			}
+			if penaltyWinner == -1 {
+				penaltyWinner = winner
+			} else if winner != penaltyWinner {
+				consistent = false
+				break
+			}
+		}
+		if consistent && penaltyWinner >= 0 && roundPoints[penaltyWinner] >= totalPenalty {
+			return penaltyWinner
+		}
+	}
+
+	return -1
+}
+
+// hardBlockMoonLead picks a card to lead when trying to block an opponent's
+// moon shot. Leads a safe high heart (guaranteed to win the trick) to capture
+// a heart and break the shoot. Falls back to normal defensive lead otherwise
+// to avoid pointlessly sacrificing points.
+func hardBlockMoonLead(hand, legal, playedCards []game.Card) game.Card {
+	// Lead a safe high heart — guaranteed to win the trick and capture
+	// at least one heart, breaking the shoot.
+	safeHearts := filterCards(legal, func(c game.Card) bool {
+		return c.Suit == game.SuitHearts && isSafeHighCard(c, hand, playedCards)
+	})
+	if len(safeHearts) > 0 {
+		return highestRankedCard(safeHearts)
+	}
+	// No guaranteed heart lead — play defensively.
+	return smartChooseLead(hand, legal, playedCards, false)
+}
+
+// hardBlockMoonDiscard picks the best discard when void in the led suit while
+// blocking a moon shot. If the shooter is winning the current trick, we hold
+// penalty cards to avoid feeding them. If a non-shooter is winning, we dump
+// penalties normally to split the shoot.
+func hardBlockMoonDiscard(trick []game.Play, legal []game.Card, shooterSeat int) game.Card {
+	leadSuit := trick[0].Card.Suit
+	winningRank := 0
+	winnerSeat := trick[0].Seat
+	shooterPlayed := false
+
+	for _, p := range trick {
+		if p.Seat == shooterSeat {
+			shooterPlayed = true
+		}
+		if p.Card.Suit == leadSuit && p.Card.Rank > winningRank {
+			winningRank = p.Card.Rank
+			winnerSeat = p.Seat
+		}
+	}
+
+	// Shooter has played and is winning — don't feed them penalty cards.
+	if shooterPlayed && winnerSeat == shooterSeat {
+		nonPenalty := filterCards(legal, func(c game.Card) bool { return !game.IsPenaltyCard(c) })
+		if len(nonPenalty) > 0 {
+			return highestRiskCard(nonPenalty)
+		}
+		// Only penalty cards left — dump lowest to minimize damage.
+		return lowestRankedCard(legal)
+	}
+
+	// Non-shooter is winning, or shooter hasn't played yet — dump normally.
+	return smartChooseDiscard(legal, false)
 }
 
 // hardMoonShotFollow picks the best card when following suit during moonshot.

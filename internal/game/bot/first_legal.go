@@ -18,7 +18,7 @@ func (f *FirstLegal) ChoosePlay(input game.TurnInput) (game.Card, error) {
 		err := game.ValidatePlay(game.ValidatePlayInput{
 			Hand:         input.Hand,
 			Card:         card,
-			Trick:        input.Trick,
+			Trick:        input.TrickCards(),
 			HeartsBroken: input.HeartsBroken,
 			FirstTrick:   input.FirstTrick,
 		})

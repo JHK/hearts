@@ -98,7 +98,8 @@ func NewEasyBot() *Easy {
 }
 
 func (s *Easy) ChoosePlay(input game.TurnInput) (game.Card, error) {
-	legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
+	trick := input.TrickCards()
+	legal := game.LegalPlays(input.Hand, trick, input.HeartsBroken, input.FirstTrick)
 	if len(legal) == 0 {
 		return game.Card{}, ErrNoLegalPlays
 	}
@@ -107,9 +108,9 @@ func (s *Easy) ChoosePlay(input game.TurnInput) (game.Card, error) {
 		return chooseSmartLead(input.Hand, legal), nil
 	}
 
-	leadSuit := input.Trick[0].Suit
+	leadSuit := input.Trick[0].Card.Suit
 	if game.HasSuit(input.Hand, leadSuit) {
-		return chooseSmartFollow(input.Trick, legal), nil
+		return chooseSmartFollow(trick, legal), nil
 	}
 
 	return chooseSmartDiscard(legal), nil

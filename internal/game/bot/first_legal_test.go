@@ -25,7 +25,7 @@ func TestFirstLegalChoosePlayFollowsSuit(t *testing.T) {
 
 	card, err := NewFirstLegalBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
-		Trick:        parseCards(t, []string{"2S"}),
+		Trick:        parsePlays(t, []string{"2S"}),
 		HeartsBroken: true,
 		FirstTrick:   false,
 	})
@@ -76,4 +76,16 @@ func parseCards(t *testing.T, raw []string) []game.Card {
 	require.NoError(t, err, "parse cards")
 
 	return cards
+}
+
+// parsePlays creates plays from card strings with sequential seat assignment (0,1,2,3,0,...).
+// Suitable for constructing trick and played-cards data in tests.
+func parsePlays(t *testing.T, raw []string) []game.Play {
+	t.Helper()
+	cards := parseCards(t, raw)
+	plays := make([]game.Play, len(cards))
+	for i, c := range cards {
+		plays[i] = game.Play{Seat: i % game.PlayersPerTable, Card: c}
+	}
+	return plays
 }

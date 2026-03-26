@@ -25,7 +25,7 @@ func TestEasyChoosePlayAvoidsTakingPenaltyTrick(t *testing.T) {
 
 	card, err := NewEasyBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
-		Trick:        parseCards(t, []string{"JS", "QS"}),
+		Trick:        parsePlays(t, []string{"JS", "QS"}),
 		HeartsBroken: true,
 		FirstTrick:   false,
 	})
@@ -38,7 +38,7 @@ func TestEasyChoosePlayDiscardsQueenOfSpades(t *testing.T) {
 
 	card, err := NewEasyBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
-		Trick:        parseCards(t, []string{"5C"}),
+		Trick:        parsePlays(t, []string{"5C"}),
 		HeartsBroken: true,
 		FirstTrick:   false,
 	})

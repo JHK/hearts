@@ -100,8 +100,8 @@ func (s *Simulation) runGame(rng *rand.Rand) ([]int, [game.PlayersPerTable]int) 
 
 		for round.Phase() == game.PhasePlaying {
 			seat := round.TurnSeat()
-			input := round.TurnInput(seat)
-			legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
+			input := round.TurnInput(seat, g.Scores())
+			legal := game.LegalPlays(input.Hand, input.TrickCards(), input.HeartsBroken, input.FirstTrick)
 
 			card, err := bots[seat].ChoosePlay(input)
 			if err != nil || !game.ContainsCard(legal, card) {

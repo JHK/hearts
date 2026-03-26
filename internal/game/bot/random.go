@@ -28,7 +28,7 @@ func NewRandomBot(rng *rand.Rand) *Random {
 }
 
 func (r *Random) ChoosePlay(input game.TurnInput) (game.Card, error) {
-	legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
+	legal := game.LegalPlays(input.Hand, input.TrickCards(), input.HeartsBroken, input.FirstTrick)
 	if len(legal) == 0 {
 		return game.Card{}, ErrNoLegalPlays
 	}

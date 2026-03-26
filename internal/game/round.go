@@ -28,14 +28,31 @@ type RoundScores struct {
 }
 
 // TurnInput is the game state delivered to a decision-maker when it must choose a card to play.
+// Trick and PlayedCards include seat info (who played each card), matching what a human can observe.
 type TurnInput struct {
-	Hand        []Card
-	Trick       []Card
+	Hand         []Card
+	Trick        []Play                   // cards played in current trick (0-3), with seat info
 	HeartsBroken bool
-	FirstTrick  bool
-	PlayedCards []Card                    // all cards played in completed tricks this round
-	RoundPoints [PlayersPerTable]Points   // penalty points captured per seat this round
-	MySeat      int                       // this decision-maker's seat index
+	FirstTrick   bool
+	PlayedCards  []Play                   // all plays from completed tricks this round, with seat info
+	RoundPoints  [PlayersPerTable]Points  // penalty points captured per seat this round
+	GameScores   [PlayersPerTable]Points  // cumulative game scores across rounds (lower is better)
+	MySeat       int                      // this decision-maker's seat index
+}
+
+// TrickCards returns just the cards from the current trick (no seat info).
+func (t TurnInput) TrickCards() []Card { return CardsFrom(t.Trick) }
+
+// PlayedCardsList returns just the cards from completed tricks (no seat info).
+func (t TurnInput) PlayedCardsList() []Card { return CardsFrom(t.PlayedCards) }
+
+// CardsFrom extracts the card from each play, discarding seat info.
+func CardsFrom(plays []Play) []Card {
+	cards := make([]Card, len(plays))
+	for i, p := range plays {
+		cards[i] = p.Card
+	}
+	return cards
 }
 
 // PassInput is the game state delivered to a decision-maker when it must choose cards to pass.
@@ -63,7 +80,7 @@ type Round struct {
 	turnSeat     int
 	heartsBroken bool
 	currentTrick []Play
-	playedCards  []Card
+	playedCards  []Play
 	roundPoints  [PlayersPerTable]Points
 }
 
@@ -93,7 +110,7 @@ func (r *Round) PassDirection() PassDirection { return r.passDir }
 func (r *Round) TurnSeat() int                { return r.turnSeat }
 func (r *Round) TrickNumber() int             { return r.trickNumber }
 func (r *Round) HeartsBroken() bool           { return r.heartsBroken }
-func (r *Round) PlayedCards() []Card          { return r.playedCards }
+func (r *Round) PlayedCards() []Play          { return r.playedCards }
 func (r *Round) CurrentTrick() []Play         { return r.currentTrick }
 func (r *Round) RoundPoints(seat int) Points  { return r.roundPoints[seat] }
 
@@ -104,14 +121,16 @@ func (r *Round) PassSent(seat int) []Card       { return r.passSubmitted[seat] }
 func (r *Round) PassReceived(seat int) []Card   { return r.passReceived[seat] }
 
 // TurnInput builds the decision input for a bot or UI at the given seat.
-func (r *Round) TurnInput(seat int) TurnInput {
+// gameScores is the cumulative score array from the Game tracker.
+func (r *Round) TurnInput(seat int, gameScores [PlayersPerTable]Points) TurnInput {
 	return TurnInput{
 		Hand:         r.hands[seat],
-		Trick:        r.currentTrickCards(),
+		Trick:        append([]Play(nil), r.currentTrick...),
 		HeartsBroken: r.heartsBroken,
 		FirstTrick:   r.trickNumber == 0,
 		PlayedCards:  r.playedCards,
 		RoundPoints:  r.roundPoints,
+		GameScores:   gameScores,
 		MySeat:       seat,
 	}
 }
@@ -220,7 +239,7 @@ func (r *Round) Play(seat int, card Card) (*TrickResult, error) {
 	if err := ValidatePlay(ValidatePlayInput{
 		Hand:         r.hands[seat],
 		Card:         card,
-		Trick:        r.currentTrickCards(),
+		Trick:        CardsFrom(r.currentTrick),
 		HeartsBroken: r.heartsBroken,
 		FirstTrick:   r.trickNumber == 0,
 	}); err != nil {
@@ -254,9 +273,7 @@ func (r *Round) Play(seat int, card Card) (*TrickResult, error) {
 	}
 
 	// Advance to next trick.
-	for _, p := range r.currentTrick {
-		r.playedCards = append(r.playedCards, p.Card)
-	}
+	r.playedCards = append(r.playedCards, r.currentTrick...)
 	r.currentTrick = nil
 	r.trickNumber++
 	r.turnSeat = winnerSeat
@@ -275,14 +292,6 @@ func (r *Round) Scores() RoundScores {
 }
 
 // --- Internal helpers ---
-
-func (r *Round) currentTrickCards() []Card {
-	cards := make([]Card, len(r.currentTrick))
-	for i, p := range r.currentTrick {
-		cards[i] = p.Card
-	}
-	return cards
-}
 
 func errWrongPhase(action, expected string) error {
 	return fmt.Errorf("cannot %s: round is not in %s phase: %w", action, expected, ErrWrongPhase)

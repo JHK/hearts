@@ -58,7 +58,9 @@ func (s *Medium) ChoosePass(input game.PassInput) ([]game.Card, error) {
 }
 
 func (s *Medium) ChoosePlay(input game.TurnInput) (game.Card, error) {
-	legal := game.LegalPlays(input.Hand, input.Trick, input.HeartsBroken, input.FirstTrick)
+	trick := input.TrickCards()
+	playedCards := input.PlayedCardsList()
+	legal := game.LegalPlays(input.Hand, trick, input.HeartsBroken, input.FirstTrick)
 	if len(legal) == 0 {
 		return game.Card{}, ErrNoLegalPlays
 	}
@@ -98,7 +100,7 @@ func (s *Medium) ChoosePlay(input game.TurnInput) (game.Card, error) {
 		// Hearts may not be legal leads yet (hearts not broken), but they're still
 		// valid future winners — don't self-abort just because they're temporarily illegal.
 		allSafeHighCards := filterCards(input.Hand, func(c game.Card) bool {
-			return isSafeHighCard(c, input.Hand, input.PlayedCards)
+			return isSafeHighCard(c, input.Hand, playedCards)
 		})
 		remainingTricks := len(input.Hand)
 
@@ -119,12 +121,12 @@ func (s *Medium) ChoosePlay(input game.TurnInput) (game.Card, error) {
 			pursuing = false
 		}
 
-		return smartChooseLead(input.Hand, legal, input.PlayedCards, pursuing), nil
+		return smartChooseLead(input.Hand, legal, playedCards, pursuing), nil
 	}
 
-	leadSuit := input.Trick[0].Suit
+	leadSuit := input.Trick[0].Card.Suit
 	if game.HasSuit(input.Hand, leadSuit) {
-		return smartChooseFollow(input.Trick, legal, input.Hand, input.PlayedCards, pursuing), nil
+		return smartChooseFollow(trick, legal, input.Hand, playedCards, pursuing), nil
 	}
 
 	return smartChooseDiscard(legal, pursuing), nil

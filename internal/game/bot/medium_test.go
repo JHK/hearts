@@ -78,7 +78,7 @@ func TestMediumPassSelectsDefensiveStrategy(t *testing.T) {
 func TestMediumPlaysAceWhenOnlyLegalOption(t *testing.T) {
 	// Holds A♣ as the only non-heart; K♣ and Q♣ already played → A♣ is safe and only legal lead.
 	hand := parseCards(t, []string{"AC", "7H"})
-	played := parseCards(t, []string{"KC", "QC"})
+	played := parsePlays(t, []string{"KC", "QC"})
 
 	card, err := NewMediumBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
@@ -93,7 +93,7 @@ func TestMediumDoesNotLeadUnsafeKing(t *testing.T) {
 	// Holds K♣ but A♣ not yet played → K♣ is not safe (A♣ is still out)
 	// The bot should prefer leading a shorter/safer suit instead.
 	hand := parseCards(t, []string{"KC", "2D", "3D", "4D"})
-	played := parseCards(t, []string{"QC"}) // A♣ still outstanding
+	played := parsePlays(t, []string{"QC"}) // A♣ still outstanding
 
 	card, err := NewMediumBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
@@ -169,7 +169,7 @@ func TestMediumDiscardsQueenOfSpadesWhenVoid(t *testing.T) {
 
 	card, err := NewMediumBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
-		Trick:        parseCards(t, []string{"5C"}),
+		Trick:        parsePlays(t, []string{"5C"}),
 		HeartsBroken: true,
 	})
 	require.NoError(t, err)
@@ -182,7 +182,7 @@ func TestMediumDiscardsHighHeartWhenVoidAndNoQueenSpades(t *testing.T) {
 
 	card, err := NewMediumBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
-		Trick:        parseCards(t, []string{"5C"}),
+		Trick:        parsePlays(t, []string{"5C"}),
 		HeartsBroken: true,
 	})
 	require.NoError(t, err)
@@ -238,10 +238,10 @@ func TestMediumAbortsMoonShotWhenOtherLeads(t *testing.T) {
 
 	_, err := bot.ChoosePlay(game.TurnInput{
 		Hand:         hand,
-		Trick:        parseCards(t, []string{"3D"}), // someone else led
+		Trick:        parsePlays(t, []string{"3D"}), // someone else led
 		HeartsBroken: false,
 		FirstTrick:   false,
-		PlayedCards:  parseCards(t, []string{"2C", "5D", "7S", "8H"}), // 1 completed trick
+		PlayedCards:  parsePlays(t, []string{"2C", "5D", "7S", "8H"}), // 1 completed trick
 	})
 	require.NoError(t, err)
 	require.True(t, bot.moonShotAborted, "expected moon shot to be aborted when another player leads")
@@ -258,7 +258,7 @@ func TestMediumContinuesMoonShotWhenLeadingEveryTrick(t *testing.T) {
 		Trick:        nil, // bot is leading
 		HeartsBroken: true,
 		FirstTrick:   false,
-		PlayedCards:  parseCards(t, []string{"2C", "5D", "7S", "8H"}),
+		PlayedCards:  parsePlays(t, []string{"2C", "5D", "7S", "8H"}),
 	})
 	require.NoError(t, err)
 	require.False(t, bot.moonShotAborted, "moon shot should not abort when bot is leading every trick")

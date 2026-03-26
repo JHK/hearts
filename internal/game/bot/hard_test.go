@@ -7,6 +7,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// c is a shorthand for constructing a game.Card from a string like "QS".
+// Panics on invalid input — test-only.
+func c(s string) game.Card {
+	card, err := game.ParseCard(s)
+	if err != nil {
+		panic("bad card: " + s)
+	}
+	return card
+}
+
 // --- Trade strategy selection ---
 
 func TestHardPassSelectsMoonShotStrategy(t *testing.T) {
@@ -78,7 +88,7 @@ func TestHardPassSelectsDefensiveStrategy(t *testing.T) {
 func TestHardPlaysAceWhenOnlyLegalOption(t *testing.T) {
 	// Holds A♣ as the only non-heart; K♣ and Q♣ already played → A♣ is safe and only legal lead.
 	hand := parseCards(t, []string{"AC", "7H"})
-	played := parseCards(t, []string{"KC", "QC"})
+	played := parsePlays(t, []string{"KC", "QC"})
 
 	card, err := NewHardBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
@@ -93,7 +103,7 @@ func TestHardDoesNotLeadUnsafeKing(t *testing.T) {
 	// Holds K♣ but A♣ not yet played → K♣ is not safe (A♣ is still out)
 	// The bot should prefer leading a shorter/safer suit instead.
 	hand := parseCards(t, []string{"KC", "2D", "3D", "4D"})
-	played := parseCards(t, []string{"QC"}) // A♣ still outstanding
+	played := parsePlays(t, []string{"QC"}) // A♣ still outstanding
 
 	card, err := NewHardBot().ChoosePlay(game.TurnInput{
 		Hand:        hand,
@@ -169,7 +179,7 @@ func TestHardDiscardsQueenOfSpadesWhenVoid(t *testing.T) {
 
 	card, err := NewHardBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
-		Trick:        parseCards(t, []string{"5C"}),
+		Trick:        parsePlays(t, []string{"5C"}),
 		HeartsBroken: true,
 	})
 	require.NoError(t, err)
@@ -182,7 +192,7 @@ func TestHardDiscardsHighHeartWhenVoidAndNoQueenSpades(t *testing.T) {
 
 	card, err := NewHardBot().ChoosePlay(game.TurnInput{
 		Hand:         hand,
-		Trick:        parseCards(t, []string{"5C"}),
+		Trick:        parsePlays(t, []string{"5C"}),
 		HeartsBroken: true,
 	})
 	require.NoError(t, err)
@@ -239,10 +249,10 @@ func TestHardAbortsMoonShotWhenOtherLeads(t *testing.T) {
 
 	_, err := bot.ChoosePlay(game.TurnInput{
 		Hand:          hand,
-		Trick:         parseCards(t, []string{"3D"}), // someone else led
+		Trick:         parsePlays(t, []string{"3D"}), // someone else led
 		HeartsBroken:  false,
 		FirstTrick:    false,
-		PlayedCards: parseCards(t, []string{"2C", "5D", "7S", "8H"}), // 1 completed trick
+		PlayedCards: parsePlays(t, []string{"2C", "5D", "7S", "8H"}), // 1 completed trick
 		RoundPoints: [game.PlayersPerTable]game.Points{0, 1, 0, 0},    // bot (seat 0) didn't win the 8H
 		MySeat:      0,
 	})
@@ -259,7 +269,7 @@ func TestHardKeepsMoonShotWhenFollowingWithAllPenalties(t *testing.T) {
 	// 8 tricks completed (32 played cards), QS was taken by bot (13 pts).
 	// Someone else leads 6H. Bot holds AC/JD/3H/KH/AH with 5 remaining tricks.
 	hand := parseCards(t, []string{"AC", "JD", "3H", "KH", "AH"})
-	played := parseCards(t, []string{
+	played := parsePlays(t, []string{
 		// 8 completed tricks (32 cards); QS was in one of them
 		"QS", "2S", "3S", "4S",
 		"2C", "3C", "4C", "5C",
@@ -273,7 +283,7 @@ func TestHardKeepsMoonShotWhenFollowingWithAllPenalties(t *testing.T) {
 
 	_, err := bot.ChoosePlay(game.TurnInput{
 		Hand:          hand,
-		Trick:         parseCards(t, []string{"6H"}), // someone else led
+		Trick:         parsePlays(t, []string{"6H"}), // someone else led
 		HeartsBroken:  true,
 		FirstTrick:    false,
 		PlayedCards:   played,
@@ -296,7 +306,7 @@ func TestHardContinuesMoonShotWhenLeadingEveryTrick(t *testing.T) {
 		Trick:        nil, // bot is leading
 		HeartsBroken: true,
 		FirstTrick:   false,
-		PlayedCards:  parseCards(t, []string{"2C", "5D", "7S", "8H"}),
+		PlayedCards:  parsePlays(t, []string{"2C", "5D", "7S", "8H"}),
 	})
 	require.NoError(t, err)
 	require.False(t, bot.moonShotAborted, "moon shot should not abort when bot is leading every trick")
@@ -390,6 +400,168 @@ func TestCountNearSafeCards(t *testing.T) {
 	count := countNearSafeCards(hand, played)
 	// KC is safe (AC played). KD, QD, JD each have 1 gap (AD). 5S has many gaps.
 	require.Equal(t, 3, count, "expected 3 near-safe cards (KD, QD, JD)")
+}
+
+// --- Moon-shot prevention (blocking) ---
+
+func TestDetectMoonShooterFindsOpponentWithAllPenalties(t *testing.T) {
+	// 5 completed tricks, 14 penalty points, all held by seat 2.
+	played := []game.Play{
+		{Seat: 1, Card: c("QS")}, {Seat: 2, Card: c("AS")}, {Seat: 3, Card: c("3S")}, {Seat: 0, Card: c("4S")}, // seat 2 wins (AS)
+		{Seat: 2, Card: c("2H")}, {Seat: 3, Card: c("5C")}, {Seat: 0, Card: c("6C")}, {Seat: 1, Card: c("7C")}, // seat 2 wins (only heart)
+		{Seat: 2, Card: c("AC")}, {Seat: 3, Card: c("3C")}, {Seat: 0, Card: c("4C")}, {Seat: 1, Card: c("5D")}, // no penalty
+		{Seat: 2, Card: c("AD")}, {Seat: 3, Card: c("7D")}, {Seat: 0, Card: c("8D")}, {Seat: 1, Card: c("9D")}, // no penalty
+		{Seat: 2, Card: c("KS")}, {Seat: 3, Card: c("JS")}, {Seat: 0, Card: c("TS")}, {Seat: 1, Card: c("9S")}, // no penalty
+	}
+	roundPoints := [game.PlayersPerTable]game.Points{0, 0, 14, 0}
+
+	target := detectMoonShooter(roundPoints, played, 0)
+	require.Equal(t, 2, target, "should detect seat 2 as shooter")
+}
+
+func TestDetectMoonShooterReturnsNegativeWhenNoShooter(t *testing.T) {
+	// 5 completed tricks, penalties split between two players.
+	played := []game.Play{
+		{Seat: 0, Card: c("QS")}, {Seat: 1, Card: c("AS")}, {Seat: 2, Card: c("3S")}, {Seat: 3, Card: c("4S")}, // seat 1 wins
+		{Seat: 2, Card: c("2H")}, {Seat: 3, Card: c("AH")}, {Seat: 0, Card: c("5C")}, {Seat: 1, Card: c("6C")}, // seat 3 wins (AH)
+		{Seat: 2, Card: c("3H")}, {Seat: 3, Card: c("KH")}, {Seat: 0, Card: c("8C")}, {Seat: 1, Card: c("9C")}, // seat 3 wins
+		{Seat: 0, Card: c("2C")}, {Seat: 1, Card: c("3C")}, {Seat: 2, Card: c("4C")}, {Seat: 3, Card: c("5D")}, // no penalty
+		{Seat: 0, Card: c("6D")}, {Seat: 1, Card: c("7D")}, {Seat: 2, Card: c("8D")}, {Seat: 3, Card: c("9D")}, // no penalty
+	}
+	roundPoints := [game.PlayersPerTable]game.Points{0, 13, 2, 0} // split
+
+	target := detectMoonShooter(roundPoints, played, 1)
+	require.Equal(t, -1, target, "should not detect shooter when penalties are split")
+}
+
+func TestDetectMoonShooterIgnoresSelf(t *testing.T) {
+	// Bot (seat 0) has all penalties — should not return self as target.
+	played := []game.Play{
+		{Seat: 0, Card: c("AS")}, {Seat: 1, Card: c("QS")}, {Seat: 2, Card: c("3S")}, {Seat: 3, Card: c("4S")}, // seat 0 wins
+		{Seat: 0, Card: c("AH")}, {Seat: 1, Card: c("5C")}, {Seat: 2, Card: c("6C")}, {Seat: 3, Card: c("7C")}, // seat 0 wins
+		{Seat: 0, Card: c("AC")}, {Seat: 1, Card: c("3C")}, {Seat: 2, Card: c("4C")}, {Seat: 3, Card: c("5D")}, // no penalty
+		{Seat: 0, Card: c("AD")}, {Seat: 1, Card: c("7D")}, {Seat: 2, Card: c("8D")}, {Seat: 3, Card: c("9D")}, // no penalty
+		{Seat: 0, Card: c("KS")}, {Seat: 1, Card: c("JS")}, {Seat: 2, Card: c("TS")}, {Seat: 3, Card: c("9S")}, // no penalty
+	}
+	roundPoints := [game.PlayersPerTable]game.Points{14, 0, 0, 0}
+
+	target := detectMoonShooter(roundPoints, played, 0)
+	require.Equal(t, -1, target, "should not detect self as shooter")
+}
+
+func TestDetectMoonShooterRequiresMinTricks(t *testing.T) {
+	// Only 2 completed tricks — too early (need 3+).
+	played := []game.Play{
+		{Seat: 1, Card: c("QS")}, {Seat: 2, Card: c("AS")}, {Seat: 3, Card: c("3S")}, {Seat: 0, Card: c("4S")},
+		{Seat: 2, Card: c("2H")}, {Seat: 3, Card: c("5C")}, {Seat: 0, Card: c("6C")}, {Seat: 1, Card: c("7C")},
+	}
+	roundPoints := [game.PlayersPerTable]game.Points{0, 0, 14, 0}
+
+	target := detectMoonShooter(roundPoints, played, 0)
+	require.Equal(t, -1, target, "should not detect shooter before trick 3")
+}
+
+func TestDetectMoonShooterRequiresMinPenalty(t *testing.T) {
+	// 4 completed tricks but only 2 penalty points — too low (< 3).
+	played := []game.Play{
+		{Seat: 1, Card: c("2H")}, {Seat: 2, Card: c("AH")}, {Seat: 3, Card: c("5C")}, {Seat: 0, Card: c("6C")},
+		{Seat: 2, Card: c("3H")}, {Seat: 3, Card: c("KH")}, {Seat: 0, Card: c("7C")}, {Seat: 1, Card: c("8C")},
+		{Seat: 0, Card: c("2C")}, {Seat: 1, Card: c("3C")}, {Seat: 2, Card: c("4C")}, {Seat: 3, Card: c("5D")},
+		{Seat: 0, Card: c("6D")}, {Seat: 1, Card: c("7D")}, {Seat: 2, Card: c("8D")}, {Seat: 3, Card: c("9D")},
+	}
+	roundPoints := [game.PlayersPerTable]game.Points{0, 0, 2, 0}
+
+	target := detectMoonShooter(roundPoints, played, 0)
+	require.Equal(t, -1, target, "should not detect shooter with < 3 penalty points")
+}
+
+func TestDetectMoonShooterEarlyDetectionBeforeQueenSpades(t *testing.T) {
+	// 3 completed tricks, seat 1 won all penalty tricks (5 heart points).
+	// Q♠ not yet taken, but the pattern is consistent — detect early.
+	played := []game.Play{
+		{Seat: 0, Card: c("2H")}, {Seat: 1, Card: c("AH")}, {Seat: 2, Card: c("5C")}, {Seat: 3, Card: c("6C")}, // seat 1 wins (AH)
+		{Seat: 1, Card: c("KH")}, {Seat: 2, Card: c("3H")}, {Seat: 3, Card: c("4H")}, {Seat: 0, Card: c("7C")}, // seat 1 wins (KH)
+		{Seat: 1, Card: c("AC")}, {Seat: 2, Card: c("3C")}, {Seat: 3, Card: c("4C")}, {Seat: 0, Card: c("5D")}, // no penalty
+	}
+	roundPoints := [game.PlayersPerTable]game.Points{0, 5, 0, 0}
+
+	target := detectMoonShooter(roundPoints, played, 0)
+	require.Equal(t, 1, target, "should detect seat 1 as early shooter via trick-winner pattern")
+}
+
+func TestDetectMoonShooterEarlyRequiresConsistentWinner(t *testing.T) {
+	// 3 completed tricks with hearts, but penalty tricks won by different players.
+	played := []game.Play{
+		{Seat: 0, Card: c("2H")}, {Seat: 1, Card: c("AH")}, {Seat: 2, Card: c("5C")}, {Seat: 3, Card: c("6C")}, // seat 1 wins
+		{Seat: 2, Card: c("3H")}, {Seat: 3, Card: c("KH")}, {Seat: 0, Card: c("7C")}, {Seat: 1, Card: c("8C")}, // seat 3 wins
+		{Seat: 0, Card: c("2C")}, {Seat: 1, Card: c("3C")}, {Seat: 2, Card: c("4C")}, {Seat: 3, Card: c("5D")},
+	}
+	roundPoints := [game.PlayersPerTable]game.Points{0, 1, 0, 2} // split
+
+	target := detectMoonShooter(roundPoints, played, 0)
+	require.Equal(t, -1, target, "should not detect shooter when penalty tricks are split")
+}
+
+func TestHardBlockMoonLeadPrefersSafeHeart(t *testing.T) {
+	// Bot holds AH (safe — no higher heart exists) and low non-hearts.
+	hand := parseCards(t, []string{"AH", "2C", "3D"})
+	legal := hand // all legal to lead (hearts broken)
+	played := parseCards(t, []string{})
+
+	card := hardBlockMoonLead(hand, legal, played)
+	require.Equal(t, "AH", card.String(), "block lead should play safe high heart")
+}
+
+func TestHardBlockMoonLeadFallsBackWhenNoSafeHeart(t *testing.T) {
+	// Bot holds KH but AH not played — KH is not safe. Should fall back to defensive.
+	hand := parseCards(t, []string{"KH", "2C", "3D"})
+	legal := hand
+	played := parseCards(t, []string{})
+
+	card := hardBlockMoonLead(hand, legal, played)
+	// Should NOT lead KH (not safe), should lead 2C or 3D defensively.
+	require.NotEqual(t, "KH", card.String(), "block lead should not lead unsafe heart")
+}
+
+// --- Block discard: avoid feeding shooter ---
+
+func TestHardBlockMoonDiscardHoldsPenaltiesWhenShooterWins(t *testing.T) {
+	// Shooter (seat 1) has played and is winning. Don't feed penalties.
+	trick := []game.Play{
+		{Seat: 1, Card: c("AC")},
+		{Seat: 2, Card: c("3C")},
+	}
+	legal := parseCards(t, []string{"QS", "AH", "5D"})
+
+	card := hardBlockMoonDiscard(trick, legal, 1)
+	require.False(t, game.IsPenaltyCard(card),
+		"should not dump penalty card when shooter is winning, got %s", card)
+}
+
+func TestHardBlockMoonDiscardDumpsPenaltiesWhenNonShooterWins(t *testing.T) {
+	// Non-shooter (seat 3) is winning. Dump penalties to break the shoot.
+	trick := []game.Play{
+		{Seat: 3, Card: c("AC")},
+		{Seat: 1, Card: c("3C")}, // shooter played but is losing
+	}
+	legal := parseCards(t, []string{"QS", "AH", "5D"})
+
+	card := hardBlockMoonDiscard(trick, legal, 1)
+	// Normal defensive discard should dump QS.
+	require.Equal(t, "QS", card.String(), "should dump QS when non-shooter is winning")
+}
+
+func TestHardBlockMoonDiscardDumpsWhenShooterHasNotPlayed(t *testing.T) {
+	// Shooter (seat 3) hasn't played yet — uncertain, dump normally.
+	trick := []game.Play{
+		{Seat: 0, Card: c("AC")},
+		{Seat: 1, Card: c("3C")},
+	}
+	legal := parseCards(t, []string{"QS", "AH", "5D"})
+
+	card := hardBlockMoonDiscard(trick, legal, 3)
+	// Normal defensive discard — dump QS.
+	require.Equal(t, "QS", card.String(), "should dump penalties when shooter hasn't played")
 }
 
 // --- Pass requires three cards ---

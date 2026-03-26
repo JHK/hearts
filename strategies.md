@@ -17,9 +17,9 @@ This document describes every heuristic and decision rule used by the bot strate
 Bots receive two input types from the game engine:
 
 - **`PassInput`**: hand (13 cards), pass direction (left / right / across / hold).
-- **`TurnInput`**: hand, current trick cards, played cards (all completed tricks), round points per seat, seat index, hearts-broken flag, first-trick flag.
+- **`TurnInput`**: hand, current trick (`[]Play`), completed tricks (`[]Play`), round points per seat, cumulative game scores per seat, seat index, hearts-broken flag, first-trick flag. Each `Play` is a `{Seat, Card}` pair.
 
-Bots have **no access** to: cumulative game scores, other players' hands, or what was passed to/from them in previous rounds.
+Bots have **no access** to: other players' hands, or what was passed to/from them in previous rounds.
 
 ---
 
@@ -210,6 +210,21 @@ If one safe-high-card short of full coverage, count "near-safe" cards (exactly o
 
 If pursuing and no safe-high-cards exist anywhere in hand, abort.
 
+### Hard-Only: Opponent Moon-Shot Detection (`detectMoonShooter`)
+
+Two detection paths, both confirmed against `roundPoints`:
+- **Strong**: 4+ tricks, 14+ penalty points, one opponent holds all penalties.
+- **Early**: 3+ tricks, 3+ penalty points, one opponent won every penalty trick (`trickWinnerSeat` on `PlayedCards`).
+
+Score-aware gating (`shouldBlockShooter`): skip blocking if the shooter has the sole highest `GameScores` entry (clearly in last place — their moon shot hurts all opponents equally).
+
+### Hard-Only: Moon-Shot Blocking (Lead / Discard)
+
+Activated when `detectMoonShooter` identifies a shooter and `shouldBlockShooter` confirms blocking is worthwhile.
+- **Lead** (`hardBlockMoonLead`): safe high heart if available, else defensive lead.
+- **Discard** (`hardBlockMoonDiscard`): if shooter played and winning, hold penalties (dump non-penalty); else normal defensive discard.
+- **Follow**: normal defensive (follow blocking was removed — overtaking penalty tricks costs too many points for the win-rate benefit).
+
 ---
 
 ## Card Analysis Helpers
@@ -232,6 +247,10 @@ Estimates cards opponents still hold in a suit: `13 - inHand - played`. Used to 
 - `guaranteedNonHeartTricks`: sum of consecutive top-card runs across clubs, diamonds, spades.
 - `guaranteedTricks`: heart + non-heart total.
 
+### Trick Winner Seat (`trickWinnerSeat`)
+
+Given a completed trick (`[]Play`), returns the seat with the highest rank in the lead suit.
+
 ### Near-Safe Cards (Hard only)
 
 `countNearSafeCards`: cards where exactly one higher card in their suit is unaccounted for. Used for soft re-activation of moon-shot with marginal hands.
@@ -240,10 +259,8 @@ Estimates cards opponents still hold in a suit: `13 - inHand - played`. Used to 
 
 ## Strategies Not Yet Implemented
 
-- **Opponent moon-shot detection**: no mechanism to notice an opponent collecting all penalties and save a high heart to block.
 - **Spade flushing**: no deliberate low-spade leads to smoke out Q♠.
 - **Pass direction weighting**: `passRisk` ignores whether passing left (dangerous) or right (safer).
-- **Cumulative score awareness**: bots optimize each round independently; no adjustment for leading/trailing.
 - **Monte Carlo evaluation**: all decisions are heuristic; no sampling of opponent hands to compare outcomes.
 - **Suit establishment**: no deliberate strategy of leading low from long suits to establish later winners.
 - **Cooperative play**: bots act independently; no implicit coordination against a shooter or leader.
