@@ -25,7 +25,7 @@ Bots have **no access** to: other players' hands, or what was passed to/from the
 
 ## Passing Strategies
 
-### Defensive Pass (Easy, Medium, Hard)
+### Defensive Pass (Easy, Medium)
 
 Used when neither moon-shot nor void-creation is selected.
 
@@ -40,6 +40,22 @@ Used when neither moon-shot nor void-creation is selected.
    - Low clubs (2-4): -25 (safe to keep, useful for opening trick)
    - Low diamonds (2-4): -10 (safe to keep)
 2. Sort descending by risk; pass the top 3.
+
+### Defensive Pass — Hard: `hardChooseDefensivePass`
+
+Same base `passRisk` scoring as Easy/Medium, plus direction-aware adjustments:
+
+**Passing left** (recipient plays after you — most dangerous):
+- High spades (J♠+): +25 (recipient can lead them right back at you)
+- High hearts (10♥+): +15
+- Singletons: +15 (void a suit before the left neighbor can exploit it)
+- Doubletons: +8
+
+**Passing right** (recipient plays before you — safer):
+- J♠: -15 (can react to their plays; less urgency to shed)
+- Low singletons (rank ≤ 8): -15 (void exploitation is weaker)
+
+**Passing across**: no adjustments (standard risk scoring).
 
 ### Void-Creation Pass (Medium, Hard)
 
@@ -300,7 +316,6 @@ Given a completed trick (`[]Play`), returns the seat with the highest rank in th
 ## Strategies Not Yet Implemented
 
 - **Proactive spade-flush leads**: leading low spades to smoke out Q♠ consistently decreased win rate by 0.2-1.3% in sim testing, likely due to opportunity cost vs. the well-tuned defensive lead logic. Not implemented.
-- **Pass direction weighting**: `passRisk` ignores whether passing left (dangerous) or right (safer).
 - **Early/mid-game MC**: MC sampling currently gates to trick 8+ (hand ≤ 5). Extending to earlier tricks requires optimization (allocation-free rollout, reduced candidate set) to keep sim runtime acceptable.
 - **UCT sample efficiency**: current MC uses flat sampling; Upper Confidence bounds applied to Trees could improve sample efficiency for the same compute budget.
 - **MC for Medium/Easy**: only Hard uses MC; Medium and Easy remain heuristic-only.

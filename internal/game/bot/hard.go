@@ -49,7 +49,7 @@ func (s *Hard) ChoosePass(input game.PassInput) ([]game.Card, error) {
 	case strategyMoonShot:
 		return hardChooseMoonShotPass(input.Hand), nil
 	default:
-		return chooseDefensivePass(input.Hand), nil
+		return hardChooseDefensivePass(input.Hand, input.Direction), nil
 	}
 }
 
@@ -283,6 +283,79 @@ func hardChooseMoonShotPass(hand []game.Card) []game.Card {
 			return a.score - b.score
 		}
 		return a.card.Rank - b.card.Rank
+	})
+
+	return []game.Card{candidates[0].card, candidates[1].card, candidates[2].card}
+}
+
+// hardChooseDefensivePass adjusts pass selection based on direction.
+// Passing left is most dangerous (recipient plays right after you), so we
+// increase the urgency to shed dangerous cards. Passing right is safer,
+// so we can afford to keep slightly riskier cards.
+func hardChooseDefensivePass(hand []game.Card, dir game.PassDirection) []game.Card {
+	suitCounts := make(map[game.Suit]int, 4)
+	for _, card := range hand {
+		suitCounts[card.Suit]++
+	}
+
+	type scored struct {
+		card game.Card
+		risk int
+	}
+
+	candidates := make([]scored, len(hand))
+	for i, card := range hand {
+		risk := passRisk(card, suitCounts)
+		candidates[i] = scored{card, risk}
+	}
+
+	// Direction adjustments: boost/penalise risk to shift pass priorities.
+	switch dir {
+	case game.PassDirectionLeft:
+		// Passing left — recipient plays after us and can weaponize our
+		// passed cards immediately. Shed dangerous cards more aggressively,
+		// and value void creation higher (short suits become exploitable).
+		for i, sc := range candidates {
+			if sc.card.Suit == game.SuitSpades && sc.card.Rank >= 11 {
+				candidates[i].risk += 25
+			}
+			if sc.card.Suit == game.SuitHearts && sc.card.Rank >= 10 {
+				candidates[i].risk += 15
+			}
+			// Boost singleton/doubleton value: voiding a suit protects us
+			// from the left neighbor leading it and trapping us.
+			// Exclude hearts — voiding hearts is undesirable defensively.
+			if sc.card.Suit != game.SuitHearts {
+				if suitCounts[sc.card.Suit] == 1 {
+					candidates[i].risk += 15
+				} else if suitCounts[sc.card.Suit] == 2 {
+					candidates[i].risk += 8
+				}
+			}
+		}
+	case game.PassDirectionRight:
+		// Passing right — safer; recipient acts before us. Keep high cards
+		// we can use reactively. Reduce urgency to shed mid-range spades.
+		for i, sc := range candidates {
+			if sc.card.Suit == game.SuitSpades && sc.card.Rank == 11 {
+				candidates[i].risk -= 15
+			}
+			// Singletons are less dangerous when passing right — we play
+			// after the recipient so void exploitation is weaker.
+			if suitCounts[sc.card.Suit] == 1 && sc.card.Rank <= 8 {
+				candidates[i].risk -= 15
+			}
+		}
+	}
+
+	slices.SortFunc(candidates, func(a, b scored) int {
+		if a.risk != b.risk {
+			return b.risk - a.risk
+		}
+		if a.card.Rank != b.card.Rank {
+			return b.card.Rank - a.card.Rank
+		}
+		return smartSuitPriority(b.card.Suit) - smartSuitPriority(a.card.Suit)
 	})
 
 	return []game.Card{candidates[0].card, candidates[1].card, candidates[2].card}

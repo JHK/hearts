@@ -46,7 +46,6 @@ func TestHardPassSelectsMoonShotStrategy(t *testing.T) {
 
 func TestHardPassSelectsDefensiveStrategyForShortSuit(t *testing.T) {
 	// Only 1 club but no moon-shot potential — falls through to defensive pass.
-	// Defensive pass should send the three highest-risk cards.
 	hand := parseCards(t, []string{
 		"3C",
 		"5D", "7D", "9D", "JD",
@@ -58,11 +57,13 @@ func TestHardPassSelectsDefensiveStrategyForShortSuit(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, cards, 3)
 
-	// Defensive pass: highest-risk cards. JD (rank 11) and 8S/8H are the riskiest non-penalty cards.
-	// Just verify 3 cards are returned and none is an obviously wrong choice (e.g. a 2).
+	// Passing left: singleton 3C gets a void-creation boost, making it a top
+	// pass candidate. Hearts outscore diamonds due to penalty points.
+	passed := map[string]struct{}{}
 	for _, c := range cards {
-		require.False(t, c.Rank == 2 || c.Rank == 3, "defensive pass should not include very low card %s", c)
+		passed[c.String()] = struct{}{}
 	}
+	require.Contains(t, passed, "3C", "passing left should void the singleton club")
 }
 
 func TestHardPassSelectsDefensiveStrategy(t *testing.T) {
@@ -81,6 +82,56 @@ func TestHardPassSelectsDefensiveStrategy(t *testing.T) {
 		_, ok := want[c.String()]
 		require.True(t, ok, "defensive pass expected QS/AS/KH, got unexpected %s", c)
 	}
+}
+
+func TestHardPassDirectionAwareness(t *testing.T) {
+	// Hand with J♠ (rank 11) and moderate hearts — direction should shift priorities.
+	hand := parseCards(t, []string{
+		"JS", "9S", "7S",
+		"KH", "TH", "5H",
+		"AD", "QD", "8D",
+		"AC", "6C", "4C", "2C",
+	})
+
+	t.Run("left boosts high spade risk", func(t *testing.T) {
+		cards, err := NewHardBot().ChoosePass(game.PassInput{Hand: hand, Direction: game.PassDirectionLeft})
+		require.NoError(t, err)
+		require.Len(t, cards, 3)
+
+		passed := map[string]struct{}{}
+		for _, c := range cards {
+			passed[c.String()] = struct{}{}
+		}
+		// When passing left, J♠ gets a +25 boost — should be passed.
+		require.Contains(t, passed, "JS", "passing left should shed J♠")
+		require.Contains(t, passed, "KH", "passing left should shed K♥")
+	})
+
+	t.Run("right reduces J♠ urgency", func(t *testing.T) {
+		cards, err := NewHardBot().ChoosePass(game.PassInput{Hand: hand, Direction: game.PassDirectionRight})
+		require.NoError(t, err)
+		require.Len(t, cards, 3)
+
+		passed := map[string]struct{}{}
+		for _, c := range cards {
+			passed[c.String()] = struct{}{}
+		}
+		// When passing right, J♠ risk is reduced — may not be passed.
+		// KH and TH should still be passed (hearts penalty unchanged).
+		require.Contains(t, passed, "KH", "passing right should still shed K♥")
+	})
+
+	t.Run("across uses standard scoring", func(t *testing.T) {
+		cards, err := NewHardBot().ChoosePass(game.PassInput{Hand: hand, Direction: game.PassDirectionAcross})
+		require.NoError(t, err)
+		require.Len(t, cards, 3)
+
+		passed := map[string]struct{}{}
+		for _, c := range cards {
+			passed[c.String()] = struct{}{}
+		}
+		require.Contains(t, passed, "KH", "passing across should shed K♥")
+	})
 }
 
 // --- Card tracking / safe-high-card play ---
