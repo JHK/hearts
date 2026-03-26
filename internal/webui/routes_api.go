@@ -9,7 +9,7 @@ import (
 )
 
 // registerAPIRoutes mounts all REST API handlers under /api.
-func registerAPIRoutes(r chi.Router, manager *session.Manager) {
+func registerAPIRoutes(r chi.Router, cfg Config, manager *session.Manager) {
 	r.Route("/api", func(api chi.Router) {
 		api.Get("/tables", func(w http.ResponseWriter, r *http.Request) {
 			handleTablesAPI(manager, w, r)
@@ -17,6 +17,28 @@ func registerAPIRoutes(r chi.Router, manager *session.Manager) {
 		api.Post("/tables", func(w http.ResponseWriter, r *http.Request) {
 			handleTablesAPI(manager, w, r)
 		})
+
+		if cfg.Dev {
+			api.Get("/debug/bots", func(w http.ResponseWriter, r *http.Request) {
+				tableID := r.URL.Query().Get("table_id")
+				rt, ok := manager.Get(tableID)
+				if !ok {
+					http.Error(w, "table not found", http.StatusNotFound)
+					return
+				}
+				snap := rt.DebugBotContext()
+				if snap == nil {
+					http.Error(w, "table stopped", http.StatusGone)
+					return
+				}
+				if r.URL.Query().Get("format") == "json" {
+					writeJSON(w, snap)
+					return
+				}
+				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				_, _ = w.Write([]byte(snap.FormatMarkdown()))
+			})
+		}
 	})
 }
 
