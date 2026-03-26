@@ -1,11 +1,11 @@
 ---
 # hearts-3ub1
 title: Extract WebSocket handlers into ws.go
-status: todo
+status: completed
 type: task
 priority: low
 created_at: 2026-03-26T09:55:30Z
-updated_at: 2026-03-26T10:36:26Z
+updated_at: 2026-03-26T11:06:36Z
 parent: hearts-aazx
 ---
 
@@ -19,10 +19,10 @@ Part of the server.go decomposition (hearts-aazx). Reduce server.go to pure wiri
 
 ## Acceptance Criteria
 
-- [ ] WebSocket handlers, types, and dispatch live in `ws.go` (or split into `ws_lobby.go` + `ws_table.go` if that reads better after re-evaluation)
-- [ ] `server.go` calls registration functions from the new file(s)
-- [ ] All existing tests pass without modification
-- [ ] Re-evaluated current state of server.go before extracting
+- [x] WebSocket handlers, types, and dispatch live in `ws.go`
+- [x] `server.go` calls registration functions from the new file(s)
+- [x] All existing tests pass without modification
+- [x] Re-evaluated current state of server.go before extracting
 
 ## Guidance
 
@@ -36,3 +36,7 @@ Part of the server.go decomposition (hearts-aazx). Reduce server.go to pure wiri
 
 
 > **Update (hearts-5fnr):** Presence trackers and ConnTracker now live in `internal/webui/tracker/`. The WS handlers already import this package, so extracting to `ws.go` (same package) means no new imports. If extracting to a sub-package (`internal/webui/ws`), both `tracker` and `session` would be imported — still a narrow interface.
+
+## Summary of Changes
+
+Extracted WebSocket handlers (`handleLobbyWebSocket`, `handleTableWebSocket`), message types (`wsMessage`, `wsCommand`), constants, and `truncateUTF8` from `server.go` into `ws.go`. server.go reduced from 723 to 393 lines. Route registration and upgrader creation remain in `server.go`. Kept as a single file since lobby and table handlers share types.
