@@ -3,14 +3,18 @@ package webui
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/JHK/hearts/internal/session"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 // registerAPIRoutes mounts all REST API handlers under /api.
 func registerAPIRoutes(r chi.Router, cfg Config, manager *session.Manager) {
 	r.Route("/api", func(api chi.Router) {
+		api.Use(middleware.Timeout(10 * time.Second))
+
 		api.Get("/tables", func(w http.ResponseWriter, r *http.Request) {
 			handleTablesAPI(manager, w, r)
 		})
