@@ -35,6 +35,17 @@ type wsCommand struct {
 const maxLobbyNameLen = 32
 const maxLobbyTokenLen = 128
 
+// registerWSRoutes mounts WebSocket upgrade endpoints.
+func registerWSRoutes(r chi.Router, manager *session.Manager, lobby *lobbyHub, presence *tracker.HumanPresence, playerPresence *tracker.PlayerPresence, ct *tracker.ConnTracker) {
+	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+	r.Get("/ws/lobby", func(w http.ResponseWriter, r *http.Request) {
+		handleLobbyWebSocket(lobby, ct, upgrader, w, r)
+	})
+	r.Get("/ws/table/{tableID}", func(w http.ResponseWriter, r *http.Request) {
+		handleTableWebSocket(manager, presence, playerPresence, ct, upgrader, w, r)
+	})
+}
+
 func handleLobbyWebSocket(lobby *lobbyHub, ct *tracker.ConnTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

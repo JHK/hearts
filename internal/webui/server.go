@@ -21,7 +21,6 @@ import (
 	"github.com/JHK/hearts/internal/webui/tracker"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/gorilla/websocket"
 )
 
 // templateData holds the values injected into HTML templates.
@@ -221,14 +220,7 @@ func NewHandler(cfg Config, manager *session.Manager, ct *tracker.ConnTracker) (
 	}
 
 	// API endpoints group
-	r.Route("/api", func(api chi.Router) {
-		api.Get("/tables", func(w http.ResponseWriter, r *http.Request) {
-			handleTablesAPI(manager, w, r)
-		})
-		api.Post("/tables", func(w http.ResponseWriter, r *http.Request) {
-			handleTablesAPI(manager, w, r)
-		})
-	})
+	registerAPIRoutes(r, manager)
 
 	// Dev-only routes group
 	if cfg.Dev {
@@ -272,13 +264,7 @@ console.log('[dev] debugBot() — full bot decision context (markdown). debugBot
 	}
 
 	// WebSocket endpoints group
-	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
-	r.Get("/ws/lobby", func(w http.ResponseWriter, r *http.Request) {
-		handleLobbyWebSocket(lobby, ct, upgrader, w, r)
-	})
-	r.Get("/ws/table/{tableID}", func(w http.ResponseWriter, r *http.Request) {
-		handleTableWebSocket(manager, presence, playerPresence, ct, upgrader, w, r)
-	})
+	registerWSRoutes(r, manager, lobby, presence, playerPresence, ct)
 
 	return r, nil
 }
@@ -289,32 +275,6 @@ func immutableCacheMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		next.ServeHTTP(w, r)
 	})
-}
-
-func handleTablesAPI(manager *session.Manager, w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		writeJSON(w, map[string]any{"tables": manager.List()})
-	case http.MethodPost:
-		var req struct {
-			TableID string `json:"table_id"`
-		}
-
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, wsMessage{Type: "error", Error: "invalid JSON"})
-			return
-		}
-
-		runtime, created, err := manager.Create(req.TableID)
-		if err != nil {
-			writeJSON(w, wsMessage{Type: "error", Error: err.Error()})
-			return
-		}
-
-		writeJSON(w, map[string]any{"table_id": runtime.ID(), "created": created})
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
 }
 
 // registerDevAssetHandlers serves CSS and JS at their plain paths without
