@@ -2,6 +2,7 @@ package webui
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"embed"
 	"encoding/json"
@@ -10,9 +11,11 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/JHK/hearts/internal/protocol"
@@ -21,6 +24,95 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/websocket"
 )
+
+// connTracker tracks active WebSocket connections so they can be interrupted
+// during shutdown. srv.Shutdown does not close hijacked (WebSocket) connections,
+// so we expire their read deadlines to unblock ReadJSON loops.
+//
+// All state is owned by a single goroutine (actor pattern), eliminating
+// mutex-based race conditions. track/untrack/shutdown send messages to the
+// actor; the drained channel is closed once shutdown has been requested and
+// all tracked connections have been untracked.
+type connTracker struct {
+	ops     chan connOp
+	drained chan struct{}
+}
+
+type connOpKind int
+
+const (
+	opTrack connOpKind = iota
+	opUntrack
+	opShutdown
+)
+
+type connOp struct {
+	kind connOpKind
+	conn *websocket.Conn
+}
+
+func newConnTracker() *connTracker {
+	ct := &connTracker{
+		ops:     make(chan connOp),
+		drained: make(chan struct{}),
+	}
+	go ct.run()
+	return ct
+}
+
+func (ct *connTracker) run() {
+	conns := make(map[*websocket.Conn]struct{})
+	closing := false
+
+	for op := range ct.ops {
+		switch op.kind {
+		case opTrack:
+			conns[op.conn] = struct{}{}
+			if closing {
+				_ = op.conn.SetReadDeadline(time.Now())
+			}
+		case opUntrack:
+			delete(conns, op.conn)
+			if closing && len(conns) == 0 && ct.drained != nil {
+				close(ct.drained)
+				ct.drained = nil
+			}
+		case opShutdown:
+			if closing {
+				continue
+			}
+			closing = true
+			for conn := range conns {
+				_ = conn.SetReadDeadline(time.Now())
+			}
+			if len(conns) == 0 {
+				close(ct.drained)
+				ct.drained = nil
+			}
+		}
+	}
+}
+
+func (ct *connTracker) track(conn *websocket.Conn) {
+	ct.ops <- connOp{kind: opTrack, conn: conn}
+}
+
+func (ct *connTracker) untrack(conn *websocket.Conn) {
+	ct.ops <- connOp{kind: opUntrack, conn: conn}
+}
+
+func (ct *connTracker) shutdown() {
+	ct.ops <- connOp{kind: opShutdown}
+}
+
+// wait blocks until all tracked connections have been untracked after
+// shutdown, or the context expires.
+func (ct *connTracker) wait(ctx context.Context) {
+	select {
+	case <-ct.drained:
+	case <-ctx.Done():
+	}
+}
 
 // templateData holds the values injected into HTML templates.
 type templateData struct {
@@ -126,17 +218,67 @@ func Run(cfg Config) error {
 		cfg.Addr = ":8080"
 	}
 
-	handler, err := NewHandler(cfg, nil)
+	manager := session.NewManager()
+	tracker := newConnTracker()
+
+	handler, err := NewHandler(cfg, manager, tracker)
 	if err != nil {
 		return err
 	}
 
-	return http.ListenAndServe(cfg.Addr, handler)
+	srv := &http.Server{
+		Addr:    cfg.Addr,
+		Handler: handler,
+	}
+
+	// Start server in a goroutine so we can block on signal handling.
+	errCh := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case sig := <-quit:
+		slog.Info("shutdown signal received", "signal", sig)
+	case err := <-errCh:
+		return err
+	}
+	signal.Stop(quit)
+
+	const shutdownTimeout = 5 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	// Stop accepting new connections.
+	slog.Info("shutting down HTTP server", "timeout", shutdownTimeout)
+	if err := srv.Shutdown(ctx); err != nil {
+		slog.Error("HTTP shutdown error", "err", err)
+	}
+
+	// Interrupt active WebSocket read loops and wait for handlers to exit.
+	slog.Info("draining WebSocket connections")
+	tracker.shutdown()
+	tracker.wait(ctx)
+
+	slog.Info("closing all tables")
+	manager.Close()
+
+	slog.Info("shutdown complete")
+	return nil
 }
 
-func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
+func NewHandler(cfg Config, manager *session.Manager, tracker *connTracker) (http.Handler, error) {
 	if manager == nil {
 		manager = session.NewManager()
+	}
+	if tracker == nil {
+		tracker = newConnTracker()
 	}
 
 	indexTmpl, err := template.New("index").Parse(string(mustReadAsset("assets/index.html")))
@@ -305,10 +447,10 @@ console.log('[dev] debugBot() — full bot decision context (markdown). debugBot
 	// WebSocket endpoints group
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	r.Get("/ws/lobby", func(w http.ResponseWriter, r *http.Request) {
-		handleLobbyWebSocket(lobby, upgrader, w, r)
+		handleLobbyWebSocket(lobby, tracker, upgrader, w, r)
 	})
 	r.Get("/ws/table/{tableID}", func(w http.ResponseWriter, r *http.Request) {
-		handleTableWebSocket(manager, presence, playerPresence, upgrader, w, r)
+		handleTableWebSocket(manager, presence, playerPresence, tracker, upgrader, w, r)
 	})
 
 	return r, nil
@@ -351,12 +493,14 @@ func handleTablesAPI(manager *session.Manager, w http.ResponseWriter, r *http.Re
 const maxLobbyNameLen = 32
 const maxLobbyTokenLen = 128
 
-func handleLobbyWebSocket(lobby *lobbyHub, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
+func handleLobbyWebSocket(lobby *lobbyHub, tracker *connTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
+	tracker.track(conn)
+	defer tracker.untrack(conn)
 
 	slog.Info("lobby client connected", "event", "lobby_connected", "addr", r.RemoteAddr)
 
@@ -437,7 +581,7 @@ func handleLobbyWebSocket(lobby *lobbyHub, upgrader websocket.Upgrader, w http.R
 	<-writerDone
 }
 
-func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTracker, playerPresence *playerPresenceTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
+func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTracker, playerPresence *playerPresenceTracker, tracker *connTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
 	tableID := chi.URLParam(r, "tableID")
 	if tableID == "" {
 		http.NotFound(w, r)
@@ -455,6 +599,8 @@ func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTrack
 		return
 	}
 	defer conn.Close()
+	tracker.track(conn)
+	defer tracker.untrack(conn)
 
 	slog.Info("player connected", "event", "player_connected", "table_id", tableID, "addr", r.RemoteAddr)
 

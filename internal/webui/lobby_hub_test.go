@@ -49,7 +49,7 @@ func newLobbyTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	manager := session.NewManager()
 	t.Cleanup(func() { manager.Close() })
-	handler, err := NewHandler(Config{}, manager)
+	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err)
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
