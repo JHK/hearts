@@ -1,11 +1,11 @@
 ---
 # hearts-x0fa
 title: Extract shared helpers into helpers.go
-status: todo
+status: completed
 type: task
 priority: low
 created_at: 2026-03-26T09:55:38Z
-updated_at: 2026-03-26T09:56:20Z
+updated_at: 2026-03-26T11:58:24Z
 parent: hearts-aazx
 ---
 
@@ -19,9 +19,9 @@ Part of the server.go decomposition (hearts-aazx). Reduce server.go to pure wiri
 
 ## Acceptance Criteria
 
-- [ ] Re-evaluated what helpers remain in server.go after prior extractions
+- [x] Re-evaluated what helpers remain in server.go after prior extractions
 - [ ] If 3+ helpers remain, extracted to `helpers.go`
-- [ ] If fewer remain, decided to keep them in place (and documented why in commit message)
+- [x] If fewer remain, decided to keep them in place (and documented why in commit message)
 - [ ] All existing tests pass without modification
 
 ## Guidance
@@ -33,3 +33,7 @@ Part of the server.go decomposition (hearts-aazx). Reduce server.go to pure wiri
 
 - Changing helper behavior
 - Creating a general-purpose utility package
+
+## Summary of Changes
+
+No extraction needed. After prior decompositions (routes_pages.go, routes_api.go, ws.go), only one helper (`writeJSON`) remains in server.go. Since fewer than 3 helpers remain, keeping it in place per the guidance in this ticket.
