@@ -7,7 +7,7 @@ priority: high
 tags:
     - backend
 created_at: 2026-03-25T19:02:08Z
-updated_at: 2026-03-25T19:03:24Z
+updated_at: 2026-03-26T09:21:20Z
 parent: hearts-8j8z
 ---
 
@@ -52,6 +52,7 @@ Move from purely rule-based decisions to evidence-based decisions where the bot 
 - [ ] MC evaluation integrated into hard bot for at least follow/lead decisions
 - [ ] Bot think time remains under 100ms per decision (or configurable)
 - [ ] Benchmark: 50k+ sim iterations before/after; win-rate must improve or stay neutral
+- Note: existing code/tests may be freely rewritten or removed if a 250k sim shows ≥0.3pp improvement over the previous baseline
 - [ ] Simulation runtime does not regress significantly (MC adds overhead per bot decision)
 
 ## Out of Scope

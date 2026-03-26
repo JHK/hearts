@@ -7,7 +7,7 @@ priority: normal
 tags:
     - backend
 created_at: 2026-03-25T19:02:07Z
-updated_at: 2026-03-25T19:03:03Z
+updated_at: 2026-03-26T09:21:23Z
 parent: hearts-8j8z
 ---
 
@@ -47,6 +47,7 @@ The `ChoosePass` method receives pass direction. Adjust `passRisk()` weights or 
 - [ ] Passing left increases the weight toward shedding dangerous cards
 - [ ] Passing right allows slightly more risk retention
 - [ ] Benchmark: 50k+ sim iterations before/after; win-rate must not decrease
+- Note: existing code/tests may be freely rewritten or removed if a 250k sim shows ≥0.3pp improvement over the previous baseline
 
 ## Out of Scope
 - Modeling what the recipient will pass to *their* neighbor

@@ -7,7 +7,7 @@ priority: normal
 tags:
     - backend
 created_at: 2026-03-25T19:02:10Z
-updated_at: 2026-03-25T19:03:41Z
+updated_at: 2026-03-26T09:21:27Z
 parent: hearts-8j8z
 ---
 
@@ -49,6 +49,7 @@ Make the hard bot play strategically across the full game arc, not just optimize
 - [ ] Moon-shot attempt threshold adjusts based on score differential
 - [ ] Defensive play intensity adjusts based on standings (leading = more cautious)
 - [ ] Benchmark: 50k+ sim iterations before/after; win-rate must not decrease
+- Note: existing code/tests may be freely rewritten or removed if a 250k sim shows ≥0.3pp improvement over the previous baseline
 - [ ] Edge case: bot near 100 points plays maximally defensively
 
 ## Out of Scope
