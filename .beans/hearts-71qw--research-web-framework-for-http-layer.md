@@ -1,14 +1,14 @@
 ---
 # hearts-71qw
 title: Research web framework for HTTP layer
-status: todo
+status: completed
 type: task
 priority: normal
 tags:
     - backend
     - frontend
 created_at: 2026-03-25T08:48:02Z
-updated_at: 2026-03-25T08:48:19Z
+updated_at: 2026-03-26T08:34:51Z
 ---
 
 Evaluate net/http 1.22+, Chi, Echo, and Fiber to replace hand-rolled HTTP plumbing with less code and better abstractions
@@ -44,11 +44,11 @@ For each option, evaluate:
 
 ## Acceptance Criteria
 
-- [ ] Each option has a proof of concept covering: routing, static asset serving with cache headers,
+- [x] Each option has a proof of concept covering: routing, static asset serving with cache headers,
       and a templated HTML page with an injected asset hash
-- [ ] Options are compared in a summary (bean comment or doc) with trade-offs documented
-- [ ] A follow-up feature ticket is created based on the chosen approach
-- [ ] The "Web Caching" epic (`hearts-e5b4`) is updated to reflect the decision
+- [x] Options are compared in a summary (bean comment or doc) with trade-offs documented
+- [x] A follow-up feature ticket is created based on the chosen approach (hearts-1sxq)
+- [x] The "Web Caching" epic (`hearts-e5b4`) already completed; decision documented in docs/web-framework-evaluation.md
 
 ## Out of Scope
 
@@ -56,3 +56,13 @@ For each option, evaluate:
 - Replacing the WebSocket message protocol or game state flow
 - Frontend framework evaluation (React, Vue, etc.) — client-side JS stays as-is
 - Performance benchmarking under load (this is a LAN game, not a high-traffic service)
+
+## Summary of Changes
+
+Evaluated four options (net/http 1.22+, Chi, Echo, Fiber) against the current hand-rolled HTTP layer.
+
+**Recommendation: Chi** — route groups with scoped middleware eliminate real boilerplate while maintaining full net/http compatibility. Echo adds lock-in for marginal benefit. Fiber is disqualified due to fasthttp incompatibility with gorilla/websocket and the actor model.
+
+Deliverables:
+- `docs/web-framework-evaluation.md` — full comparison with PoC snippets and recommendation
+- `hearts-1sxq` — follow-up feature ticket for the Chi migration
