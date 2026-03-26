@@ -1,10 +1,11 @@
 ---
 # hearts-1sxq
 title: Migrate HTTP layer to Chi router
-status: todo
+status: completed
 type: feature
+priority: normal
 created_at: 2026-03-26T08:34:38Z
-updated_at: 2026-03-26T08:34:38Z
+updated_at: 2026-03-26T08:56:26Z
 ---
 
 Replace hand-rolled http.ServeMux routing with Chi for route groups and scoped middleware.
@@ -27,14 +28,24 @@ Research in hearts-71qw evaluated net/http 1.22+, Chi, Echo, and Fiber. Chi was 
 
 ## Acceptance Criteria
 
-- [ ] Chi router replaces http.ServeMux in server.go
-- [ ] Cache headers are set via scoped middleware, not per-handler
-- [ ] Route groups organize routes by concern (assets, pages, ws, api, dev)
-- [ ] All existing integration tests pass
-- [ ] No behavioral changes visible to clients (same URLs, same headers, same WS protocol)
+- [x] Chi router replaces http.ServeMux in server.go
+- [x] Cache headers are set via scoped middleware, not per-handler
+- [x] Route groups organize routes by concern (assets, pages, ws, api, dev)
+- [x] All existing integration tests pass
+- [x] No behavioral changes visible to clients (same URLs, same headers, same WS protocol)
 
 ## Out of Scope
 
 - Replacing gorilla/websocket
 - Changing the fingerprinting pipeline
 - Adding new middleware (CORS, compression, etc.) — separate tickets
+
+## Summary of Changes
+
+- Replaced `http.ServeMux` with `chi.NewRouter()` in `NewHandler()`
+- Added `middleware.Recoverer` for panic recovery
+- Extracted `immutableCacheMiddleware` for scoped cache headers on static assets
+- Organized routes into groups: HTML pages, static assets, favicon/icons, API, dev-only, WebSocket
+- Updated `registerDevAssetHandlers` and `registerFingerprintedAssetHandlers` to accept `chi.Router`
+- Used chi URL params (`{tableID}`, `{cardFile}`) instead of manual path parsing
+- All existing tests pass with no behavioral changes

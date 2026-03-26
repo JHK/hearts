@@ -8,6 +8,8 @@ import (
 	"path"
 	"regexp"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // fingerprintedAssets maps original asset paths to fingerprinted URLs and
@@ -99,26 +101,24 @@ func buildFingerprintedAssets(assets fs.FS) (*fingerprintedAssets, error) {
 // registerFingerprintedAssetHandlers registers handlers that serve CSS and JS
 // at their fingerprinted URLs with immutable cache headers. Plain (non-fingerprinted)
 // CSS/JS requests are not registered and will 404.
-func registerFingerprintedAssetHandlers(mux *http.ServeMux, fa *fingerprintedAssets) {
-	const immutableCC = "public, max-age=31536000, immutable"
-
-	mux.HandleFunc("/assets/js/", func(w http.ResponseWriter, r *http.Request) {
+func registerFingerprintedAssetHandlers(router chi.Router, fa *fingerprintedAssets) {
+	router.Get("/assets/js/*", func(w http.ResponseWriter, r *http.Request) {
 		content, ok := fa.byFingerprintedURL[r.URL.Path]
 		if !ok {
 			http.NotFound(w, r)
 			return
 		}
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-		w.Header().Set("Cache-Control", immutableCC)
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		_, _ = w.Write(content)
 	})
 
 	cssURL := fa.urlMapping["/assets/styles.css"]
 	cssContent := fa.byFingerprintedURL[cssURL]
 
-	mux.HandleFunc(cssURL, func(w http.ResponseWriter, r *http.Request) {
+	router.Get(cssURL, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
-		w.Header().Set("Cache-Control", immutableCC)
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		_, _ = w.Write(cssContent)
 	})
 }

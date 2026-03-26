@@ -17,6 +17,8 @@ import (
 
 	"github.com/JHK/hearts/internal/protocol"
 	"github.com/JHK/hearts/internal/session"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/websocket"
 )
 
@@ -146,7 +148,9 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 		return nil, fmt.Errorf("parse table template: %w", err)
 	}
 
-	mux := http.NewServeMux()
+	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
+
 	presence := newHumanPresenceTracker()
 	playerPresence := newPlayerPresenceTracker()
 	lobby := newLobbyHub()
@@ -162,7 +166,7 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 	}
 
 	if cfg.Dev {
-		registerDevAssetHandlers(mux)
+		registerDevAssetHandlers(r)
 		tableData.ExtraScripts = `<script src="/dev.js"></script>`
 	} else {
 		fp, fpErr := buildFingerprintedAssets(assetsFS)
@@ -174,7 +178,7 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 		tableData.StylesURL = fp.urlMapping["/assets/styles.css"]
 		tableData.ScriptURL = fp.urlMapping["/assets/js/table/main.js"]
 		tableData.ChartJSURL = fp.urlMapping["/assets/js/vendor/chart.umd.js"]
-		registerFingerprintedAssetHandlers(mux, fp)
+		registerFingerprintedAssetHandlers(r, fp)
 	}
 
 	indexHTML := mustRenderTemplate(indexTmpl, indexData)
@@ -183,18 +187,14 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 	indexETag := contentETag(indexHTML)
 	tableETag := contentETag(tableHTML)
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
+	// HTML pages group
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		serveHTMLWithETag(w, r, indexHTML, indexETag)
 	})
 
-	mux.HandleFunc("/table/", func(w http.ResponseWriter, r *http.Request) {
-		tableID := strings.TrimPrefix(r.URL.Path, "/table/")
-		tableID = strings.TrimSpace(tableID)
-		if tableID == "" || strings.Contains(tableID, "/") {
+	r.Get("/table/{tableID}", func(w http.ResponseWriter, r *http.Request) {
+		tableID := chi.URLParam(r, "tableID")
+		if tableID == "" {
 			http.NotFound(w, r)
 			return
 		}
@@ -207,29 +207,29 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 		serveHTMLWithETag(w, r, tableHTML, tableETag)
 	})
 
-	mux.HandleFunc("/api/tables", func(w http.ResponseWriter, r *http.Request) {
-		handleTablesAPI(manager, w, r)
+	// Static assets group — immutable cache middleware
+	r.Route("/assets", func(assets chi.Router) {
+		assets.Use(immutableCacheMiddleware)
+
+		assets.Get("/cards/{cardFile}", func(w http.ResponseWriter, r *http.Request) {
+			cardFile := chi.URLParam(r, "cardFile")
+			if cardFile == "" || !strings.HasSuffix(cardFile, ".svg") {
+				http.NotFound(w, r)
+				return
+			}
+
+			content, err := assetsFS.ReadFile("assets/cards/" + cardFile)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+
+			w.Header().Set("Content-Type", "image/svg+xml")
+			_, _ = w.Write(content)
+		})
 	})
 
-	mux.HandleFunc("/assets/cards/", func(w http.ResponseWriter, r *http.Request) {
-		cardFile := strings.TrimPrefix(r.URL.Path, "/assets/cards/")
-		cardFile = strings.TrimSpace(cardFile)
-		if cardFile == "" || strings.Contains(cardFile, "/") || !strings.HasSuffix(cardFile, ".svg") {
-			http.NotFound(w, r)
-			return
-		}
-
-		content, err := assetsFS.ReadFile("assets/cards/" + cardFile)
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-
-		w.Header().Set("Content-Type", "image/svg+xml")
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		_, _ = w.Write(content)
-	})
-
+	// Favicon/icon assets — immutable cache
 	for _, f := range []struct {
 		path        string
 		asset       string
@@ -239,18 +239,29 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 		{"/icon.svg", "assets/icon.svg", "image/svg+xml"},
 		{"/apple-touch-icon.png", "assets/apple-touch-icon.png", "image/png"},
 	} {
-		f := f
 		data, err := assetsFS.ReadFile(f.asset)
 		if err != nil {
 			return nil, fmt.Errorf("read embedded %s: %w", f.asset, err)
 		}
-		mux.HandleFunc(f.path, func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", f.contentType)
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-			_, _ = w.Write(data)
+		contentType := f.contentType
+		content := data
+		r.With(immutableCacheMiddleware).Get(f.path, func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", contentType)
+			_, _ = w.Write(content)
 		})
 	}
 
+	// API endpoints group
+	r.Route("/api", func(api chi.Router) {
+		api.Get("/tables", func(w http.ResponseWriter, r *http.Request) {
+			handleTablesAPI(manager, w, r)
+		})
+		api.Post("/tables", func(w http.ResponseWriter, r *http.Request) {
+			handleTablesAPI(manager, w, r)
+		})
+	})
+
+	// Dev-only routes group
 	if cfg.Dev {
 		devJS := []byte(`window.debugBot = async function(opts) {
   opts = opts || {};
@@ -265,12 +276,12 @@ func NewHandler(cfg Config, manager *session.Manager) (http.Handler, error) {
 };
 console.log('[dev] debugBot() — full bot decision context (markdown). debugBot({json:true}) for JSON.');
 `)
-		mux.HandleFunc("/dev.js", func(w http.ResponseWriter, r *http.Request) {
+		r.Get("/dev.js", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 			_, _ = w.Write(devJS)
 		})
 
-		mux.HandleFunc("/api/debug/bots", func(w http.ResponseWriter, r *http.Request) {
+		r.Get("/api/debug/bots", func(w http.ResponseWriter, r *http.Request) {
 			tableID := r.URL.Query().Get("table_id")
 			rt, ok := manager.Get(tableID)
 			if !ok {
@@ -291,15 +302,24 @@ console.log('[dev] debugBot() — full bot decision context (markdown). debugBot
 		})
 	}
 
+	// WebSocket endpoints group
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
-	mux.HandleFunc("/ws/lobby", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/ws/lobby", func(w http.ResponseWriter, r *http.Request) {
 		handleLobbyWebSocket(lobby, upgrader, w, r)
 	})
-	mux.HandleFunc("/ws/table/", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/ws/table/{tableID}", func(w http.ResponseWriter, r *http.Request) {
 		handleTableWebSocket(manager, presence, playerPresence, upgrader, w, r)
 	})
 
-	return mux, nil
+	return r, nil
+}
+
+// immutableCacheMiddleware sets Cache-Control headers for immutable static assets.
+func immutableCacheMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		next.ServeHTTP(w, r)
+	})
 }
 
 func handleTablesAPI(manager *session.Manager, w http.ResponseWriter, r *http.Request) {
@@ -418,9 +438,8 @@ func handleLobbyWebSocket(lobby *lobbyHub, upgrader websocket.Upgrader, w http.R
 }
 
 func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTracker, playerPresence *playerPresenceTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
-	tableID := strings.TrimPrefix(r.URL.Path, "/ws/table/")
-	tableID = strings.TrimSpace(tableID)
-	if tableID == "" || strings.Contains(tableID, "/") {
+	tableID := chi.URLParam(r, "tableID")
+	if tableID == "" {
 		http.NotFound(w, r)
 		return
 	}
@@ -630,11 +649,11 @@ func handleTableWebSocket(manager *session.Manager, presence *humanPresenceTrack
 
 // registerDevAssetHandlers serves CSS and JS at their plain paths without
 // fingerprinting or cache headers, so hot-reload works without stale-cache issues.
-func registerDevAssetHandlers(mux *http.ServeMux) {
+func registerDevAssetHandlers(router chi.Router) {
 	stylesPath := filepath.Join("internal", "webui", "assets", "styles.css")
 	embeddedStyles, _ := assetsFS.ReadFile("assets/styles.css")
 
-	mux.HandleFunc("/assets/styles.css", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/assets/styles.css", func(w http.ResponseWriter, r *http.Request) {
 		styles, err := os.ReadFile(stylesPath)
 		if err != nil {
 			styles = embeddedStyles
@@ -643,7 +662,7 @@ func registerDevAssetHandlers(mux *http.ServeMux) {
 		_, _ = w.Write(styles)
 	})
 
-	mux.HandleFunc("/assets/js/", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/assets/js/*", func(w http.ResponseWriter, r *http.Request) {
 		scriptFile := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/assets/js/"))
 		if scriptFile == "" || strings.HasPrefix(scriptFile, "/") || strings.Contains(scriptFile, "..") || !strings.HasSuffix(scriptFile, ".js") {
 			http.NotFound(w, r)
