@@ -1,13 +1,13 @@
 ---
 # hearts-i07j
 title: Monte Carlo hand sampling for play selection
-status: todo
+status: completed
 type: task
 priority: high
 tags:
     - backend
 created_at: 2026-03-25T19:02:08Z
-updated_at: 2026-03-26T09:21:20Z
+updated_at: 2026-03-26T10:32:42Z
 parent: hearts-8j8z
 ---
 
@@ -47,13 +47,13 @@ Move from purely rule-based decisions to evidence-based decisions where the bot 
 4. Finally: tune N and evaluate full replacement of heuristics
 
 ## Acceptance Criteria
-- [ ] Hand sampler generates valid opponent hands respecting played cards and known voids
-- [ ] Fast trick simulator can play out remaining tricks using simple heuristics
-- [ ] MC evaluation integrated into hard bot for at least follow/lead decisions
-- [ ] Bot think time remains under 100ms per decision (or configurable)
-- [ ] Benchmark: 50k+ sim iterations before/after; win-rate must improve or stay neutral
+- [x] Hand sampler generates valid opponent hands respecting played cards and known voids
+- [x] Fast trick simulator can play out remaining tricks using simple heuristics
+- [x] MC evaluation integrated into hard bot for at least follow/lead decisions
+- [x] Bot think time remains under 100ms per decision (or configurable)
+- [x] Benchmark: 50k+ sim iterations before/after; win-rate must improve or stay neutral
 - Note: existing code/tests may be freely rewritten or removed if a 250k sim shows ≥0.3pp improvement over the previous baseline
-- [ ] Simulation runtime does not regress significantly (MC adds overhead per bot decision)
+- [x] Simulation runtime does not regress significantly (MC adds overhead per bot decision)
 
 ## Out of Scope
 - Opponent modeling (inferring strategy from play patterns)
@@ -65,3 +65,22 @@ Move from purely rule-based decisions to evidence-based decisions where the bot 
 - [HeartsAI Framework](https://github.com/Devking/HeartsAI): open-source Hearts AI framework for algorithm comparison
 - [Sturtevant & White](https://webdocs.cs.ualberta.ca/~nathanst/papers/heartslearning.pdf): feature construction for RL in Hearts
 - [Stanford CS230 Hearts RL](http://cs230.stanford.edu/projects_spring_2021/reports/9.pdf): reinforcement learning approaches to Hearts
+
+## Summary of Changes
+
+Implemented Monte Carlo hand sampling for the hard bot's late-game defensive play decisions.
+
+**New files:**
+- `internal/game/bot/mc.go`: MC evaluator with hand sampler, trick simulator, and seat-void detection
+- `internal/game/bot/mc_test.go`: Tests for hand sampling, void detection, trick simulation, and MC evaluation
+- `internal/game/bot/mc_bench_test.go`: Benchmark (~0.7ms per MC decision)
+
+**Modified files:**
+- `internal/game/bot/hard.go`: Added `mc` field and MC gating logic (hand ≤ 5 cards, non-moon-shot, non-blocking)
+- `internal/game/bot/strategy_kind.go`: `NewBot()` creates MC-enabled hard bots
+- `strategies.md`: Documented MC algorithm, configuration, and updated tier descriptions
+
+**Benchmark results (250k games):**
+- Hard bot: 37.5% → 41.3% (+3.8pp)
+- Moon shots: 4698 → 6269 (+33%)
+- Think time: ~0.7ms per MC decision (well under 100ms budget)

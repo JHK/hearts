@@ -8,7 +8,7 @@ This document describes every heuristic and decision rule used by the bot strate
 |---|---|---|---|
 | Easy | `Easy` | Stateless | Rule-based defensive play. No moon-shot pursuit. No card counting beyond suit lengths. |
 | Medium | `Medium` | Stateful | Adds moon-shot pursuit/detection, card counting, safe-high-card tracking, void detection. |
-| Hard | `Hard` | Stateful | Currently identical structure to Medium, with a relaxed moon-shot threshold and improved moon-shot pass/lead/follow logic. |
+| Hard | `Hard` | Stateful | Relaxed moon-shot threshold, improved moon-shot pass/lead/follow, Monte Carlo hand sampling for defensive play. |
 | Random | `Random` | Stateless | Picks a uniformly random legal play. Baseline for benchmarks. |
 | FirstLegal | `FirstLegal` | Stateless | Picks the first legal play. Testing only. |
 
@@ -119,7 +119,7 @@ A "guaranteed trick" is a card in a consecutive run from the top of its suit. Ex
 
 ### Hard Discard: `hardChooseDiscard`
 
-Q♠-aware discard prioritization. When Q♠ is still at large, dumps A♠/K♠ before hearts: A♠/K♠ risk winning Q♠ (13 pts) when forced to follow spades later, while a heart costs only 1 pt. After Q♠ is played, falls through to standard defensive discard. **Sim impact: +0.7pp** (36.8% → 37.5%).
+Q♠-aware discard prioritization (used for tricks 1-7 before MC takes over). When Q♠ is still at large, dumps A♠/K♠ before hearts: A♠/K♠ risk winning Q♠ (13 pts) when forced to follow spades later, while a heart costs only 1 pt. After Q♠ is played, falls through to standard defensive discard. **Sim impact: +0.7pp** (36.8% → 37.5%).
 
 ### Hard Moon-Shot Lead: `hardMoonShotLead`
 
@@ -240,6 +240,33 @@ Activated when `detectMoonShooter` identifies a shooter and `shouldBlockShooter`
 
 ---
 
+## Monte Carlo Evaluation (Hard only)
+
+Hard bot uses Monte Carlo hand sampling for defensive play decisions (lead, follow, discard) when not pursuing or blocking a moon shot, when more than one legal play exists, and when hand size ≤ 5 cards (trick 8+). Earlier decisions use heuristics where MC cost is high and accuracy is low due to many unknown cards.
+
+### Algorithm
+
+1. **Detect seat voids**: scan completed tricks and current trick for off-suit follows, tracking which seats are void in which suits.
+2. **Compute remaining cards**: deck minus own hand, played cards, and current trick cards.
+3. **For each legal play**:
+   a. Sample N opponent hands from remaining cards, respecting void constraints and correct hand sizes.
+   b. Apply the candidate play to the current trick state.
+   c. Simulate all remaining tricks using easy-bot heuristics (`chooseSmartLead`/`chooseSmartFollow`/`chooseSmartDiscard`).
+   d. Score using shoot-the-moon-adjusted penalty points for the bot's seat.
+4. **Pick the play with lowest average score** across all samples.
+
+### Hand Sampling
+
+For each sample, remaining cards are shuffled and dealt card-by-card to random eligible opponent seats (respecting void constraints and required hand sizes). If dealing fails due to constraint conflicts, retry with a new shuffle (up to 50 attempts). Fallback: deal without void constraints.
+
+### Configuration
+
+- `defaultMCSamples = 20`: samples per candidate play.
+- Easy-bot rollout policy: stateless, fast (~0.7ms per MC decision at 20 samples).
+- MC is created in `NewBot()` but not in `NewHardBot()` (test constructor).
+
+---
+
 ## Card Analysis Helpers
 
 ### Safe High Card (`isSafeHighCard`)
@@ -274,7 +301,9 @@ Given a completed trick (`[]Play`), returns the seat with the highest rank in th
 
 - **Proactive spade-flush leads**: leading low spades to smoke out Q♠ consistently decreased win rate by 0.2-1.3% in sim testing, likely due to opportunity cost vs. the well-tuned defensive lead logic. Not implemented.
 - **Pass direction weighting**: `passRisk` ignores whether passing left (dangerous) or right (safer).
-- **Monte Carlo evaluation**: all decisions are heuristic; no sampling of opponent hands to compare outcomes.
+- **Early/mid-game MC**: MC sampling currently gates to trick 8+ (hand ≤ 5). Extending to earlier tricks requires optimization (allocation-free rollout, reduced candidate set) to keep sim runtime acceptable.
+- **UCT sample efficiency**: current MC uses flat sampling; Upper Confidence bounds applied to Trees could improve sample efficiency for the same compute budget.
+- **MC for Medium/Easy**: only Hard uses MC; Medium and Easy remain heuristic-only.
 - **Suit establishment**: no deliberate strategy of leading low from long suits to establish later winners.
 - **Cooperative play**: bots act independently; no implicit coordination against a shooter or leader.
 

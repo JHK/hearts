@@ -7,13 +7,15 @@ import (
 )
 
 // Hard is a stateful bot that selects a per-round strategy during the pass
-// phase and maintains moon-shot state across tricks.
+// phase and maintains moon-shot state across tricks. For defensive play
+// decisions it uses Monte Carlo hand sampling to evaluate outcomes.
 type Hard struct {
 	moonShotActive   bool
 	moonShotAborted  bool
 	winningAllTricks bool // true while bot has won every trick this round
 	prevPlayedCount  int
 	blockMoonTarget  int // seat index of suspected shooter, or -1
+	mc               *mcEvaluator
 }
 
 var hardBotNames = []string{"Kasparov", "Carlsen", "Neumann", "Turing", "Lovelace", "Hopper", "Knuth", "Dijkstra"}
@@ -146,6 +148,13 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 		s.blockMoonTarget = -1
 	}
 	blocking := s.blockMoonTarget >= 0
+
+	// Monte Carlo evaluation for defensive play (non-moon-shot, non-blocking).
+	// Gate to late game (hand ≤ 5 cards, i.e., trick 8+) where MC is most
+	// accurate (fewer unknown cards) and cost-effective.
+	if s.mc != nil && !pursuing && !blocking && len(legal) > 1 && len(input.Hand) <= 5 {
+		return s.mc.evaluate(input, legal), nil
+	}
 
 	if len(input.Trick) == 0 {
 		if pursuing {

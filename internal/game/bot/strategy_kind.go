@@ -44,7 +44,7 @@ func (k StrategyKind) Valid() bool {
 func (k StrategyKind) NewBot() Bot {
 	switch k {
 	case StrategyHard:
-		return &Hard{}
+		return &Hard{mc: newMCEvaluator(defaultMCSamples)}
 	case StrategyMedium:
 		return &Medium{}
 	case StrategyEasy:
