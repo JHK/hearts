@@ -116,6 +116,7 @@ func handleLobbyWebSocket(lobby *lobbyHub, ct *tracker.ConnTracker, upgrader web
 				token = cmd.Token
 				myID = lobby.Join(token, name)
 				send(wsMessage{Type: "lobby_self", Data: map[string]any{"id": myID}})
+				lobby.Broadcast()
 			} else if cmd.Token == token {
 				lobby.UpdateName(token, name)
 			}

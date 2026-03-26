@@ -51,6 +51,7 @@ func newLobbyTestServer(t *testing.T) *httptest.Server {
 	t.Cleanup(func() { manager.Close() })
 	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err)
+	t.Cleanup(handler.Close)
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv

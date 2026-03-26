@@ -28,6 +28,7 @@ func TestGzipCompressionOnCompressibleResponses(t *testing.T) {
 
 	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err, "new handler")
+	defer handler.Close()
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -77,6 +78,7 @@ func TestImmutableCacheHeadersOnStaticAssets(t *testing.T) {
 
 	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err, "new handler")
+	defer handler.Close()
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -103,6 +105,7 @@ func TestHTMLETagAndConditionalRequests(t *testing.T) {
 
 	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err, "new handler")
+	defer handler.Close()
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -147,6 +150,7 @@ func TestDevModeServesPlainAssetPaths(t *testing.T) {
 
 	handler, err := NewHandler(Config{Dev: true}, manager, nil)
 	require.NoError(t, err, "new handler")
+	defer handler.Close()
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -178,6 +182,7 @@ func TestFingerprintedAssetURLsAndCaching(t *testing.T) {
 
 	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err, "new handler")
+	defer handler.Close()
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -255,6 +260,7 @@ func TestWebSocketJoinAndStateFlow(t *testing.T) {
 
 	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err, "new handler")
+	defer handler.Close()
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -300,6 +306,7 @@ func TestWebSocketJoinReusesPlayerByToken(t *testing.T) {
 
 	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err, "new handler")
+	defer handler.Close()
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -334,6 +341,7 @@ func TestDisconnectLeavesTableBeforeRoundStart(t *testing.T) {
 
 	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err, "new handler")
+	defer handler.Close()
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -368,6 +376,7 @@ func TestTablePageRedirectsForNonExistentTable(t *testing.T) {
 
 	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err, "new handler")
+	defer handler.Close()
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -393,6 +402,7 @@ func TestTableClosesWhenLastHumanLeaves(t *testing.T) {
 
 	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err, "new handler")
+	defer handler.Close()
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -416,6 +426,7 @@ func TestPassPhaseAndReviewFlowOverWebSocket(t *testing.T) {
 
 	handler, err := NewHandler(Config{}, manager, nil)
 	require.NoError(t, err, "new handler")
+	defer handler.Close()
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()

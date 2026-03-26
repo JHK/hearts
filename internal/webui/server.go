@@ -79,6 +79,9 @@ func Run(cfg Config) error {
 	connTracker.Shutdown()
 	connTracker.Wait(ctx)
 
+	slog.Info("closing lobby hub")
+	handler.Close()
+
 	slog.Info("closing all tables")
 	manager.Close()
 
@@ -86,7 +89,23 @@ func Run(cfg Config) error {
 	return nil
 }
 
-func NewHandler(cfg Config, manager *session.Manager, ct *tracker.ConnTracker) (http.Handler, error) {
+// Handler wraps the HTTP handler and owns background actors that need
+// graceful shutdown.
+type Handler struct {
+	http.Handler
+	lobby          *lobbyHub
+	presence       *tracker.HumanPresence
+	playerPresence *tracker.PlayerPresence
+}
+
+// Close shuts down background actors owned by the handler.
+func (h *Handler) Close() {
+	h.lobby.Shutdown()
+	h.presence.Shutdown()
+	h.playerPresence.Shutdown()
+}
+
+func NewHandler(cfg Config, manager *session.Manager, ct *tracker.ConnTracker) (*Handler, error) {
 	if manager == nil {
 		manager = session.NewManager()
 	}
@@ -111,7 +130,12 @@ func NewHandler(cfg Config, manager *session.Manager, ct *tracker.ConnTracker) (
 	// WebSocket endpoints — no compression (upgrade must pass through unmodified)
 	registerWSRoutes(r, manager, lobby, presence, playerPresence, ct)
 
-	return r, nil
+	return &Handler{
+		Handler:        r,
+		lobby:          lobby,
+		presence:       presence,
+		playerPresence: playerPresence,
+	}, nil
 }
 
 func writeJSON(w http.ResponseWriter, value any) {
