@@ -13,6 +13,7 @@ import (
 // registerAPIRoutes mounts all REST API handlers under /api.
 func registerAPIRoutes(r chi.Router, cfg Config, manager *session.Manager) {
 	r.Route("/api", func(api chi.Router) {
+		api.Use(requestLoggingMiddleware)
 		api.Use(middleware.Timeout(10 * time.Second))
 
 		api.Get("/tables", func(w http.ResponseWriter, r *http.Request) {

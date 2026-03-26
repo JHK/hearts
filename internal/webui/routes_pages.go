@@ -65,23 +65,27 @@ func registerPageRoutes(r chi.Router, cfg Config, manager *session.Manager) erro
 	tableETag := contentETag(tableHTML)
 
 	// HTML pages
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		serveHTMLWithETag(w, r, indexHTML, indexETag)
-	})
+	r.Group(func(pages chi.Router) {
+		pages.Use(requestLoggingMiddleware)
 
-	r.Get("/table/{tableID}", func(w http.ResponseWriter, r *http.Request) {
-		tableID := chi.URLParam(r, "tableID")
-		if tableID == "" {
-			http.NotFound(w, r)
-			return
-		}
+		pages.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			serveHTMLWithETag(w, r, indexHTML, indexETag)
+		})
 
-		if _, ok := manager.Get(tableID); !ok {
-			http.Redirect(w, r, "/", http.StatusSeeOther)
-			return
-		}
+		pages.Get("/table/{tableID}", func(w http.ResponseWriter, r *http.Request) {
+			tableID := chi.URLParam(r, "tableID")
+			if tableID == "" {
+				http.NotFound(w, r)
+				return
+			}
 
-		serveHTMLWithETag(w, r, tableHTML, tableETag)
+			if _, ok := manager.Get(tableID); !ok {
+				http.Redirect(w, r, "/", http.StatusSeeOther)
+				return
+			}
+
+			serveHTMLWithETag(w, r, tableHTML, tableETag)
+		})
 	})
 
 	// Static card assets — immutable cache
