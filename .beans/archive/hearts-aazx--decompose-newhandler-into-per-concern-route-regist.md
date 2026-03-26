@@ -1,11 +1,11 @@
 ---
 # hearts-aazx
 title: Decompose NewHandler into per-concern route registration files
-status: todo
+status: completed
 type: epic
 priority: low
 created_at: 2026-03-26T09:10:56Z
-updated_at: 2026-03-26T09:56:46Z
+updated_at: 2026-03-26T12:22:25Z
 parent: hearts-p6hh
 ---
 
@@ -28,3 +28,7 @@ After the Chi router migration (hearts-1sxq), the routing code is well-structure
 - Changing behavior or public API — this is purely structural
 - Refactoring the WebSocket protocol or message types
 - Extracting `fingerprint.go` or `lobby_hub.go` (already well-separated)
+
+## Summary of Changes
+
+All 7 subtasks completed. server.go reduced from 732 to 123 lines of pure wiring (embed, Config, Run, NewHandler, writeJSON). Concerns extracted to: ws.go (WebSocket), routes_pages.go (page handlers), routes_api.go (API handlers), routes_dev.go (dev-only routes), and tracker/ sub-package (presence + connection tracking). Cross-concern wsMessage dependency also cleaned up.
