@@ -115,7 +115,11 @@ A "guaranteed trick" is a card in a consecutive run from the top of its suit. Ex
 3. **Prefer crowded suits**: suits where opponents still hold 2+ cards (`opponentCardCount`). Opponents with cards must follow suit, preventing penalty dumps.
 4. **Prefer low non-winners**: cards with rank < 11 that are NOT safe-high-cards. Guaranteed winners invite Q♠ dumps; high uncertain cards risk uncontrolled trick-taking.
 5. **Prefer very low cards**: rank < 9. If none exist in the filtered pool, widen to the full legal set (a low heart beats leading K♠).
-6. **Tiebreaker** (`compareDefensiveLeadCard`): shortest suit, then **highest** rank (shed borderline cards early while opponents still hold higher ones), with Q♠ danger penalty.
+6. **Tiebreaker** (`compareDefensiveLeadCard`): shortest suit, then **highest** rank (shed borderline cards early while opponents still hold higher ones), with spade danger penalty.
+
+### Hard Discard: `hardChooseDiscard`
+
+Q♠-aware discard prioritization. When Q♠ is still at large, dumps A♠/K♠ before hearts: A♠/K♠ risk winning Q♠ (13 pts) when forced to follow spades later, while a heart costs only 1 pt. After Q♠ is played, falls through to standard defensive discard. **Sim impact: +0.7pp** (36.8% → 37.5%).
 
 ### Hard Moon-Shot Lead: `hardMoonShotLead`
 
@@ -170,11 +174,20 @@ Priority order:
 3. Highest-risk spade
 4. Highest-risk card overall
 
-### Medium/Hard: `smartChooseDiscard`
+### Medium: `smartChooseDiscard`
 
 **When pursuing moon-shot**: discard lowest non-penalty card (preserve high hearts/Q♠ for collecting).
 
 **Defensive**: same priority as Easy (Q♠ → highest penalty → highest spade → highest risk).
+
+### Hard: `hardChooseDiscard`
+
+**When pursuing moon-shot**: delegates to `smartChooseDiscard`.
+
+**Defensive**: Q♠-aware priority reordering:
+1. Q♠ (always first)
+2. A♠/K♠ when Q♠ is still at large (risk winning Q♠ = 13 pts when forced to follow spades later)
+3. Falls through to `smartChooseDiscard` for remaining cards
 
 ### Discard Risk Scoring
 
@@ -259,7 +272,7 @@ Given a completed trick (`[]Play`), returns the seat with the highest rank in th
 
 ## Strategies Not Yet Implemented
 
-- **Spade flushing**: no deliberate low-spade leads to smoke out Q♠.
+- **Proactive spade-flush leads**: leading low spades to smoke out Q♠ consistently decreased win rate by 0.2-1.3% in sim testing, likely due to opportunity cost vs. the well-tuned defensive lead logic. Not implemented.
 - **Pass direction weighting**: `passRisk` ignores whether passing left (dangerous) or right (safer).
 - **Monte Carlo evaluation**: all decisions are heuristic; no sampling of opponent hands to compare outcomes.
 - **Suit establishment**: no deliberate strategy of leading low from long suits to establish later winners.

@@ -564,6 +564,67 @@ func TestHardBlockMoonDiscardDumpsWhenShooterHasNotPlayed(t *testing.T) {
 	require.Equal(t, "QS", card.String(), "should dump penalties when shooter hasn't played")
 }
 
+// --- Q♠-aware discard ---
+
+func TestHardDiscardDumpsAceSpadeBeforeHeartsWhenQueenOut(t *testing.T) {
+	// Q♠ at large — A♠ risks winning Q♠ (13 pts) later. Dump it before hearts.
+	legal := parseCards(t, []string{"AS", "KH", "2H"})
+	played := parseCards(t, []string{}) // Q♠ not played
+
+	card := hardChooseDiscard(legal, played, false)
+	require.Equal(t, "AS", card.String(), "should dump A♠ before hearts when Q♠ is at large")
+}
+
+func TestHardDiscardDumpsKingSpadeWhenQueenOut(t *testing.T) {
+	// Q♠ at large — K♠ also risks winning Q♠.
+	legal := parseCards(t, []string{"KS", "AH", "2H"})
+	played := parseCards(t, []string{})
+
+	card := hardChooseDiscard(legal, played, false)
+	require.Equal(t, "KS", card.String(), "should dump K♠ before hearts when Q♠ is at large")
+}
+
+func TestHardDiscardPrefersAceOverKingSpade(t *testing.T) {
+	// Both A♠ and K♠ available — dump A♠ first (higher risk).
+	legal := parseCards(t, []string{"AS", "KS", "2H"})
+	played := parseCards(t, []string{})
+
+	card := hardChooseDiscard(legal, played, false)
+	require.Equal(t, "AS", card.String(), "should dump A♠ before K♠")
+}
+
+func TestHardDiscardDumpsQueenSpadeFirst(t *testing.T) {
+	// Q♠ in hand — always dump it first regardless of other cards.
+	legal := parseCards(t, []string{"QS", "AS", "AH"})
+	played := parseCards(t, []string{})
+
+	card := hardChooseDiscard(legal, played, false)
+	require.Equal(t, "QS", card.String(), "should dump Q♠ first")
+}
+
+func TestHardDiscardNormalAfterQueenPlayed(t *testing.T) {
+	// Q♠ already played — A♠/K♠ are safe. Standard discard (hearts first).
+	legal := parseCards(t, []string{"AS", "AH", "2D"})
+	played := parseCards(t, []string{"QS"})
+
+	card := hardChooseDiscard(legal, played, false)
+	require.Equal(t, "AH", card.String(), "should dump heart when Q♠ is already played")
+}
+
+func TestHardDiscardIntegration(t *testing.T) {
+	// Full ChoosePlay: void in clubs, Q♠ at large, holds A♠ and hearts.
+	hand := parseCards(t, []string{"AS", "KH", "3H", "5D"})
+
+	card, err := NewHardBot().ChoosePlay(game.TurnInput{
+		Hand:         hand,
+		Trick:        parsePlays(t, []string{"5C"}), // clubs led, bot void
+		HeartsBroken: true,
+		PlayedCards:  nil,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "AS", card.String(), "should dump A♠ when void in clubs and Q♠ at large")
+}
+
 // --- Pass requires three cards ---
 
 func TestHardChoosePassRequiresThreeCards(t *testing.T) {

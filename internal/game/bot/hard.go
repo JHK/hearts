@@ -168,7 +168,7 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	if blocking {
 		return hardBlockMoonDiscard(input.Trick, legal, s.blockMoonTarget), nil
 	}
-	return smartChooseDiscard(legal, pursuing), nil
+	return hardChooseDiscard(legal, playedCards, pursuing), nil
 }
 
 // --- Hard-specific moonshot evaluation ---
@@ -440,6 +440,37 @@ func hardBlockMoonDiscard(trick []game.Play, legal []game.Card, shooterSeat int)
 	}
 
 	// Non-shooter is winning, or shooter hasn't played yet — dump normally.
+	return smartChooseDiscard(legal, false)
+}
+
+// hardChooseDiscard picks the best discard when void in the led suit, with
+// Q♠-aware high-spade prioritization. When Q♠ is still at large, dumping
+// A♠ or K♠ takes priority over dumping hearts: A♠/K♠ risk winning Q♠ (13 pts)
+// when forced to follow spades later, while a heart costs only 1 pt.
+func hardChooseDiscard(legal, playedCards []game.Card, pursuing bool) game.Card {
+	if pursuing {
+		return smartChooseDiscard(legal, true)
+	}
+
+	queenSpades := game.Card{Suit: game.SuitSpades, Rank: 12}
+
+	// Always dump Q♠ first.
+	if game.ContainsCard(legal, queenSpades) {
+		return queenSpades
+	}
+
+	// When Q♠ is at large, dump A♠/K♠ before hearts — they risk winning
+	// Q♠ (13 pts) when forced to follow spades later.
+	if !game.ContainsCard(playedCards, queenSpades) {
+		highSpades := filterCards(legal, func(c game.Card) bool {
+			return c.Suit == game.SuitSpades && c.Rank >= 13
+		})
+		if len(highSpades) > 0 {
+			return highestRankedCard(highSpades) // A♠ before K♠
+		}
+	}
+
+	// Fall through to standard defensive discard.
 	return smartChooseDiscard(legal, false)
 }
 
