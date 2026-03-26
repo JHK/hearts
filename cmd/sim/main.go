@@ -9,8 +9,13 @@ import (
 )
 
 func main() {
-	n := flag.Int("n", 1000, "number of games to simulate")
+	n := flag.Int("n", 1000, "number of games to simulate (max 250000)")
 	flag.Parse()
+
+	if *n > 250000 {
+		fmt.Println("capping -n to 250000 (see strategies.md for statistical power reference)")
+		*n = 250000
+	}
 
 	strategies := [4]bot.StrategyKind{
 		bot.StrategyHard,

@@ -267,6 +267,27 @@ Given a completed trick (`[]Play`), returns the seat with the highest rank in th
 
 ---
 
+## Simulation Benchmarking
+
+The `cmd/sim` tool runs N full games between all four strategies and reports win rates per slot.
+
+### Statistical Power
+
+At 50,000 runs, the 95% confidence interval margin of error is approximately ±0.4pp for win rates around 37%. This is sufficient to detect differences of ~1-2pp or larger, but not smaller improvements.
+
+Improvements below 0.3pp are not worth pursuing — the complexity cost outweighs the gain. To detect a **0.3pp improvement** with 95% confidence and 80% power, approximately **250,000 runs** are needed (conservative independent-samples estimate; paired data from same-game play may require slightly fewer).
+
+| Target Δ | Required runs (approx.) |
+|----------|------------------------|
+| 2.0pp | ~7,000 |
+| 1.0pp | ~25,000 |
+| 0.5pp | ~100,000 |
+| 0.3pp | ~250,000 |
+
+These assume win rates near 37% (hard/medium range). Lower base rates (e.g. random at 1.3%) need fewer runs for the same absolute Δ.
+
+---
+
 ## References
 
 Strategy research that informed the current implementation and planned improvements.
