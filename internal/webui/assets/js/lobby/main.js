@@ -3,11 +3,10 @@
   const tokenKey = 'hearts.player.token';
 
   const nameEl = document.getElementById('name');
-  const newTableIdEl = document.getElementById('newTableId');
-  const createResultEl = document.getElementById('createResult');
   const tablesEl = document.getElementById('tables');
-  const presenceSection = document.getElementById('presenceSection');
-  const presenceText = document.getElementById('presenceText');
+  const tablesAreaEl = document.getElementById('tablesArea');
+  const settingsToggleEl = document.getElementById('settingsToggle');
+  const settingsPanelEl = document.getElementById('settingsPanel');
 
   function ensureToken() {
     let token = localStorage.getItem(tokenKey);
@@ -33,22 +32,85 @@
     window.location.href = '/table/' + encodeURIComponent(tableId);
   }
 
+  // --- Settings popover ---
+
+  settingsToggleEl.onclick = () => {
+    settingsPanelEl.classList.toggle('hidden');
+  };
+
+  document.addEventListener('pointerdown', (e) => {
+    if (!settingsPanelEl.classList.contains('hidden') &&
+        !settingsPanelEl.contains(e.target) &&
+        !settingsToggleEl.contains(e.target)) {
+      settingsPanelEl.classList.add('hidden');
+    }
+  });
+
+  // --- Table cards ---
+
+  const flippedTables = new Set();
+
+  function activateCard(li, handler) {
+    li.tabIndex = 0;
+    li.setAttribute('role', 'button');
+    li.addEventListener('click', handler);
+    li.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handler(e);
+      }
+    });
+  }
+
+  function buildPlusCard() {
+    const li = document.createElement('li');
+    li.setAttribute('aria-label', 'Create new table');
+    const card = document.createElement('div');
+    card.className = 'table-card create-card';
+
+    const front = document.createElement('div');
+    front.className = 'table-card-front';
+
+    const icon = document.createElement('span');
+    icon.className = 'create-icon';
+    icon.textContent = '+';
+
+    front.appendChild(icon);
+    card.appendChild(front);
+    li.appendChild(card);
+
+    activateCard(li, () => createTable());
+
+    return li;
+  }
+
   function renderTables(tables) {
-    if (tables.length === 0) {
-      tablesEl.innerHTML = '<li class="muted">No open tables yet.</li>';
-      return;
+    // Prune flipped state for tables that no longer exist
+    const currentIds = new Set(tables.map(t => t.table_id));
+    for (const id of flippedTables) {
+      if (!currentIds.has(id)) flippedTables.delete(id);
     }
 
     tablesEl.innerHTML = '';
+
     for (const table of tables) {
       const li = document.createElement('li');
+      const isFlipped = flippedTables.has(table.table_id);
 
-      const info = document.createElement('div');
-      info.className = 'table-info';
+      const card = document.createElement('div');
+      card.className = 'table-card' + (isFlipped ? ' flipped' : '');
 
-      const name = document.createElement('span');
-      name.className = 'table-name';
-      name.textContent = table.table_id;
+      li.setAttribute('aria-label', `Table ${table.table_id}`);
+      li.setAttribute('aria-expanded', String(isFlipped));
+
+      // --- Front face ---
+      const front = document.createElement('div');
+      front.className = 'table-card-front';
+
+      const logo = document.createElement('img');
+      logo.src = '/icon.svg';
+      logo.alt = '';
+      logo.className = 'table-logo';
 
       const meta = document.createElement('span');
       meta.className = 'table-meta';
@@ -67,64 +129,133 @@
 
       const players = document.createElement('span');
       players.className = 'table-players';
-      players.textContent = `${table.players}/${table.max_players} players`;
+      players.textContent = `${table.players}/${table.max_players}`;
 
       meta.appendChild(badge);
       meta.appendChild(players);
-      info.appendChild(name);
-      info.appendChild(meta);
+
+      front.appendChild(logo);
+      front.appendChild(meta);
+
+      // --- Back face ---
+      const back = document.createElement('div');
+      back.className = 'table-card-back';
+
+      const backName = document.createElement('span');
+      backName.className = 'table-name';
+      backName.textContent = table.table_id;
 
       const btn = document.createElement('button');
-      btn.textContent = 'Join';
-      btn.onclick = () => openTable(table.table_id);
+      btn.textContent = 'Join Table';
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        openTable(table.table_id);
+      };
 
-      li.appendChild(info);
-      li.appendChild(btn);
+      back.appendChild(backName);
+      back.appendChild(btn);
+
+      card.appendChild(front);
+      card.appendChild(back);
+      li.appendChild(card);
+
+      activateCard(li, () => {
+        const nowFlipped = card.classList.toggle('flipped');
+        li.setAttribute('aria-expanded', String(nowFlipped));
+        if (nowFlipped) {
+          flippedTables.add(table.table_id);
+        } else {
+          flippedTables.delete(table.table_id);
+        }
+      });
+
       tablesEl.appendChild(li);
     }
+    tablesEl.appendChild(buildPlusCard());
   }
 
   function createTable() {
-    if (!lobbyWs || lobbyWs.readyState !== WebSocket.OPEN) {
-      createResultEl.textContent = 'Not connected, please wait...';
-      return;
-    }
-    lobbyWs.send(JSON.stringify({ type: 'create_table', table_id: newTableIdEl.value.trim() }));
+    if (!lobbyWs || lobbyWs.readyState !== WebSocket.OPEN) return;
+    lobbyWs.send(JSON.stringify({ type: 'create_table', table_id: '' }));
   }
 
-  // --- Lobby WebSocket ---
+  // --- Lobby WebSocket (floating names) ---
 
-  const MAX_VISIBLE_NAMES = 8;
   let lobbyWs = null;
   let selfId = null;
   let lastPlayers = [];
+  const floatingNames = new Map();
+  let floatingAnimId = 0;
 
   function renderPresence(players) {
-    // Don't render until we know our own ID so we can filter ourselves out.
-    if (selfId == null) {
-      presenceSection.style.display = 'none';
-      return;
-    }
-
+    if (selfId == null) return;
     const others = players.filter(p => p.id !== selfId);
+    const othersById = new Map(others.map(p => [p.id, p]));
 
-    if (others.length === 0) {
-      presenceSection.style.display = 'none';
+    // Remove departed players
+    for (const [id, entry] of floatingNames) {
+      if (!othersById.has(id)) {
+        entry.el.remove();
+        floatingNames.delete(id);
+      }
+    }
+
+    const hadNames = floatingNames.size > 0;
+
+    // Add new or update existing
+    for (const p of others) {
+      if (!floatingNames.has(p.id)) {
+        const el = document.createElement('span');
+        el.className = 'floating-name';
+        el.textContent = p.name;
+        tablesAreaEl.appendChild(el);
+
+        const rect = tablesAreaEl.getBoundingClientRect();
+        const w = Math.max(rect.width - 80, 1);
+        const h = Math.max(rect.height - 24, 1);
+        floatingNames.set(p.id, {
+          el,
+          x: Math.random() * w,
+          y: Math.random() * h,
+          dx: (Math.random() - 0.5) * 0.3,
+          dy: (Math.random() - 0.5) * 0.3,
+        });
+      } else {
+        floatingNames.get(p.id).el.textContent = p.name;
+      }
+    }
+
+    // Start animation loop when names appear; it self-stops when empty
+    if (!hadNames && floatingNames.size > 0) {
+      floatingAnimId = requestAnimationFrame(animateFloatingNames);
+    }
+  }
+
+  let cachedAreaRect = null;
+  window.addEventListener('resize', () => { cachedAreaRect = null; });
+
+  function animateFloatingNames() {
+    if (floatingNames.size === 0) {
+      floatingAnimId = 0;
       return;
     }
 
-    presenceSection.style.display = '';
-    const names = others.map(p => p.name);
+    if (!cachedAreaRect) cachedAreaRect = tablesAreaEl.getBoundingClientRect();
+    const w = Math.max(cachedAreaRect.width - 80, 1);
+    const h = Math.max(cachedAreaRect.height - 24, 1);
 
-    let text;
-    if (names.length <= MAX_VISIBLE_NAMES) {
-      text = names.join(', ') + (names.length === 1 ? ' is' : ' are') + ' also in the lobby';
-    } else {
-      const visible = names.slice(0, MAX_VISIBLE_NAMES);
-      const remaining = names.length - MAX_VISIBLE_NAMES;
-      text = visible.join(', ') + ' and ' + remaining + (remaining === 1 ? ' other' : ' others') + ' also in the lobby';
+    for (const entry of floatingNames.values()) {
+      entry.x += entry.dx;
+      entry.y += entry.dy;
+
+      if (entry.x < 0 || entry.x > w) entry.dx *= -1;
+      if (entry.y < 0 || entry.y > h) entry.dy *= -1;
+      entry.x = Math.max(0, Math.min(w, entry.x));
+      entry.y = Math.max(0, Math.min(h, entry.y));
+
+      entry.el.style.transform = `translate(${entry.x}px, ${entry.y}px)`;
     }
-    presenceText.textContent = text;
+    floatingAnimId = requestAnimationFrame(animateFloatingNames);
   }
 
   function connectLobbyWs() {
@@ -149,18 +280,20 @@
         renderTables(msg.data.tables);
       } else if (msg.type === 'create_table_result' && msg.data) {
         if (msg.data.table_id) {
-          createResultEl.textContent = msg.data.created ? `created ${msg.data.table_id}` : `using existing ${msg.data.table_id}`;
           openTable(msg.data.table_id);
         }
       } else if (msg.type === 'error' && msg.error) {
-        createResultEl.textContent = msg.error;
+        console.warn('lobby error:', msg.error);
       }
     };
 
     lobbyWs.onclose = () => {
       lobbyWs = null;
       selfId = null;
-      presenceSection.style.display = 'none';
+      // Remove all floating names on disconnect
+      for (const entry of floatingNames.values()) entry.el.remove();
+      floatingNames.clear();
+      if (floatingAnimId) { cancelAnimationFrame(floatingAnimId); floatingAnimId = 0; }
       setTimeout(connectLobbyWs, 2000);
     };
   }
@@ -178,8 +311,6 @@
     clearTimeout(announceTimer);
     announceTimer = setTimeout(announceSelf, 300);
   });
-
-  document.getElementById('createTable').onclick = createTable;
 
   nameEl.value = localStorage.getItem(nameKey) || 'Player';
   ensureToken();
