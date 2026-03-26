@@ -1,11 +1,11 @@
 ---
 # hearts-5fnr
 title: Extract presence trackers into own file or sub-package
-status: todo
+status: completed
 type: task
 priority: low
 created_at: 2026-03-26T09:55:32Z
-updated_at: 2026-03-26T09:56:08Z
+updated_at: 2026-03-26T10:36:35Z
 parent: hearts-aazx
 ---
 
@@ -19,10 +19,10 @@ Part of the server.go decomposition (hearts-aazx). Reduce server.go to pure wiri
 
 ## Acceptance Criteria
 
-- [ ] Presence trackers live in their own file or sub-package
-- [ ] All existing tests pass without modification
-- [ ] Re-evaluated current state of server.go before extracting
-- [ ] Decision on file vs sub-package is documented in a code comment or commit message
+- [x] Presence trackers live in their own file or sub-package
+- [x] All existing tests pass without modification
+- [x] Re-evaluated current state of server.go before extracting
+- [x] Decision on file vs sub-package is documented in a code comment or commit message
 
 ## Guidance
 
@@ -33,3 +33,7 @@ Part of the server.go decomposition (hearts-aazx). Reduce server.go to pure wiri
 
 - Changing presence tracking behavior or grace period logic
 - The lobby hub (lobby_hub.go is already separate)
+
+## Summary of Changes
+
+Extracted all three trackers (`ConnTracker`, `HumanPresence`, `PlayerPresence`) from `server.go` into `internal/webui/tracker/` sub-package. Each file exports its own API with no inner-package dependencies — see `tracker.md` for rationale. server.go reduced from 878 to ~630 lines. Updated hearts-3ub1 (WS extraction) guidance to note the new package layout.

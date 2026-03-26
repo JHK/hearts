@@ -5,7 +5,7 @@ status: todo
 type: task
 priority: low
 created_at: 2026-03-26T09:55:30Z
-updated_at: 2026-03-26T09:56:03Z
+updated_at: 2026-03-26T10:36:26Z
 parent: hearts-aazx
 ---
 
@@ -33,3 +33,6 @@ Part of the server.go decomposition (hearts-aazx). Reduce server.go to pure wiri
 
 - Changing the WebSocket protocol or message format
 - Refactoring command dispatch logic
+
+
+> **Update (hearts-5fnr):** Presence trackers and ConnTracker now live in `internal/webui/tracker/`. The WS handlers already import this package, so extracting to `ws.go` (same package) means no new imports. If extracting to a sub-package (`internal/webui/ws`), both `tracker` and `session` would be imported — still a narrow interface.
