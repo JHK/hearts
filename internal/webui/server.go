@@ -101,15 +101,14 @@ func NewHandler(cfg Config, manager *session.Manager, ct *tracker.ConnTracker) (
 	playerPresence := tracker.NewPlayerPresence()
 	lobby := newLobbyHub()
 
-	// Page handlers, static assets, and dev routes
-	if err := registerPageRoutes(r, cfg, manager); err != nil {
+	// Page handlers, static assets, API — with gzip compression
+	compressed := r.With(middleware.Compress(5))
+	if err := registerPageRoutes(compressed, cfg, manager); err != nil {
 		return nil, err
 	}
+	registerAPIRoutes(compressed, cfg, manager)
 
-	// API endpoints
-	registerAPIRoutes(r, cfg, manager)
-
-	// WebSocket endpoints
+	// WebSocket endpoints — no compression (upgrade must pass through unmodified)
 	registerWSRoutes(r, manager, lobby, presence, playerPresence, ct)
 
 	return r, nil

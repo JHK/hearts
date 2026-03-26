@@ -22,6 +22,55 @@ type testWSMessage struct {
 	Error string          `json:"error,omitempty"`
 }
 
+func TestGzipCompressionOnCompressibleResponses(t *testing.T) {
+	manager := session.NewManager()
+	defer manager.Close()
+
+	handler, err := NewHandler(Config{}, manager, nil)
+	require.NoError(t, err, "new handler")
+
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	// Disable transparent decompression so we can inspect Content-Encoding.
+	noDecompressClient := &http.Client{
+		Transport: &http.Transport{DisableCompression: true},
+	}
+
+	mustCreateTable(t, manager, "gzip-test")
+
+	// Compressible responses should be gzipped.
+	for _, tc := range []struct {
+		path        string
+		contentType string
+	}{
+		{"/", "text/html"},
+		{"/table/gzip-test", "text/html"},
+		{"/assets/cards/2_of_clubs.svg", "image/svg+xml"},
+	} {
+		req, err := http.NewRequest("GET", srv.URL+tc.path, nil)
+		require.NoError(t, err)
+		req.Header.Set("Accept-Encoding", "gzip")
+
+		resp, err := noDecompressClient.Do(req)
+		require.NoError(t, err, "get %s", tc.path)
+		require.Equal(t, http.StatusOK, resp.StatusCode, "status for %s", tc.path)
+		require.Equal(t, "gzip", resp.Header.Get("Content-Encoding"),
+			"expected gzip Content-Encoding for %s", tc.path)
+		_ = resp.Body.Close()
+	}
+
+	// Without Accept-Encoding, no compression.
+	req, err := http.NewRequest("GET", srv.URL+"/", nil)
+	require.NoError(t, err)
+
+	resp, err := noDecompressClient.Do(req)
+	require.NoError(t, err, "get / without accept-encoding")
+	require.Empty(t, resp.Header.Get("Content-Encoding"),
+		"no Content-Encoding without Accept-Encoding")
+	_ = resp.Body.Close()
+}
+
 func TestImmutableCacheHeadersOnStaticAssets(t *testing.T) {
 	manager := session.NewManager()
 	defer manager.Close()
