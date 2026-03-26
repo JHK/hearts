@@ -14,4 +14,4 @@ that documents the contract between the tracker and its consumers.
   graceful shutdown (actor pattern, single goroutine).
 - **presence.go** — HumanPresence / PlayerPresence: ref-counted
   presence tracking per table and per player, used for leave detection
-  across multi-tab sessions.
+  across multi-tab sessions (actor pattern, single goroutine each).
