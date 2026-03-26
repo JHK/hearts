@@ -1,11 +1,11 @@
 ---
 # hearts-g7wu
 title: Multiplayer
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-03-24T11:04:40Z
-updated_at: 2026-03-25T09:17:50Z
+updated_at: 2026-03-26T06:47:08Z
 ---
 
 ## Vision
