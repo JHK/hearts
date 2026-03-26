@@ -52,13 +52,13 @@ func handleTablesAPI(manager *session.Manager, w http.ResponseWriter, r *http.Re
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeJSON(w, wsMessage{Type: "error", Error: "invalid JSON"})
+			writeJSON(w, map[string]any{"type": "error", "error": "invalid JSON"})
 			return
 		}
 
 		runtime, created, err := manager.Create(req.TableID)
 		if err != nil {
-			writeJSON(w, wsMessage{Type: "error", Error: err.Error()})
+			writeJSON(w, map[string]any{"type": "error", "error": err.Error()})
 			return
 		}
 

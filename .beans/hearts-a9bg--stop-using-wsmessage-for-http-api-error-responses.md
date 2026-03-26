@@ -1,11 +1,11 @@
 ---
 # hearts-a9bg
 title: Stop using wsMessage for HTTP API error responses
-status: todo
+status: completed
 type: task
 priority: low
 created_at: 2026-03-26T11:16:52Z
-updated_at: 2026-03-26T11:16:57Z
+updated_at: 2026-03-26T12:04:03Z
 parent: hearts-aazx
 ---
 
@@ -21,11 +21,15 @@ Keep the server.go decomposition (hearts-aazx) clean by ensuring each concern us
 
 ## Acceptance Criteria
 
-- [ ] `handleTablesAPI` uses a plain `map[string]any` or a local struct for error responses instead of `wsMessage`
-- [ ] HTTP error response shape (`{"type":"error","error":"..."}`) is preserved for client compatibility
-- [ ] All existing tests pass without modification
+- [x] `handleTablesAPI` uses a plain `map[string]any` or a local struct for error responses instead of `wsMessage`
+- [x] HTTP error response shape (`{"type":"error","error":"..."}`) is preserved for client compatibility
+- [x] All existing tests pass without modification
 
 ## Out of Scope
 
 - Changing the WebSocket message types or protocol
 - Introducing a shared error type across HTTP and WS — the duplication is fine for two call sites
+
+## Summary of Changes
+
+Replaced two `wsMessage{Type: "error", Error: "..."}` usages in `routes_api.go` with `map[string]any{"type": "error", "error": "..."}`, removing the cross-concern dependency on WebSocket types from HTTP handlers. Response shape is identical.
