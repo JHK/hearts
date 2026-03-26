@@ -31,13 +31,13 @@ type RoundScores struct {
 // Trick and PlayedCards include seat info (who played each card), matching what a human can observe.
 type TurnInput struct {
 	Hand         []Card
-	Trick        []Play                   // cards played in current trick (0-3), with seat info
+	Trick        []Play // cards played in current trick (0-3), with seat info
 	HeartsBroken bool
 	FirstTrick   bool
-	PlayedCards  []Play                   // all plays from completed tricks this round, with seat info
-	RoundPoints  [PlayersPerTable]Points  // penalty points captured per seat this round
-	GameScores   [PlayersPerTable]Points  // cumulative game scores across rounds (lower is better)
-	MySeat       int                      // this decision-maker's seat index
+	PlayedCards  []Play                  // all plays from completed tricks this round, with seat info
+	RoundPoints  [PlayersPerTable]Points // penalty points captured per seat this round
+	GameScores   [PlayersPerTable]Points // cumulative game scores across rounds (lower is better)
+	MySeat       int                     // this decision-maker's seat index
 }
 
 // TrickCards returns just the cards from the current trick (no seat info).

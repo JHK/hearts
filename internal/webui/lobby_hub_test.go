@@ -32,17 +32,26 @@ func readLobbyMsg(t *testing.T, conn *websocket.Conn) testWSMessage {
 func lobbyAnnounce(t *testing.T, conn *websocket.Conn, name, token string) {
 	t.Helper()
 	require.NoError(t, conn.WriteJSON(map[string]string{"type": "announce", "name": name, "token": token}))
-	msg := readLobbyMsg(t, conn) // lobby_self
-	require.Equal(t, "lobby_self", msg.Type)
+	// Read messages until we get lobby_self (may receive lobby_tables first).
+	for {
+		msg := readLobbyMsg(t, conn)
+		if msg.Type == "lobby_self" {
+			return
+		}
+	}
 }
 
 func readLobbySnap(t *testing.T, conn *websocket.Conn) lobbySnapshot {
 	t.Helper()
-	msg := readLobbyMsg(t, conn)
-	require.Equal(t, "lobby_presence", msg.Type)
-	var snap lobbySnapshot
-	require.NoError(t, json.Unmarshal(msg.Data, &snap))
-	return snap
+	// Skip non-presence messages (e.g. lobby_tables).
+	for {
+		msg := readLobbyMsg(t, conn)
+		if msg.Type == "lobby_presence" {
+			var snap lobbySnapshot
+			require.NoError(t, json.Unmarshal(msg.Data, &snap))
+			return snap
+		}
+	}
 }
 
 func newLobbyTestServer(t *testing.T) *httptest.Server {

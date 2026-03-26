@@ -66,7 +66,8 @@ type Snapshot struct {
 }
 
 type Table struct {
-	tableID string
+	tableID  string
+	onChange func() // called when lobby-visible state changes (join, leave, start, etc.)
 
 	commands  chan any
 	stop      chan struct{}
@@ -221,17 +222,18 @@ type DebugBotSnapshot struct {
 
 // BotSnapshot holds a single bot's decision context for debugging.
 type BotSnapshot struct {
-	Name             string   `json:"name"`
-	Seat             int      `json:"seat"`
-	Strategy         string   `json:"strategy"`
-	Hand             []string `json:"hand"`
-	MoonShotActive   *bool    `json:"moon_shot_active,omitempty"`
-	MoonShotAborted  *bool    `json:"moon_shot_aborted,omitempty"`
+	Name            string   `json:"name"`
+	Seat            int      `json:"seat"`
+	Strategy        string   `json:"strategy"`
+	Hand            []string `json:"hand"`
+	MoonShotActive  *bool    `json:"moon_shot_active,omitempty"`
+	MoonShotAborted *bool    `json:"moon_shot_aborted,omitempty"`
 }
 
-func NewTable(tableID string) *Table {
+func NewTable(tableID string, onChange func()) *Table {
 	r := &Table{
 		tableID:   tableID,
+		onChange:  onChange,
 		commands:  make(chan any),
 		stop:      make(chan struct{}),
 		stoppedCh: make(chan struct{}),
@@ -462,8 +464,21 @@ func (r *Table) run() {
 	}
 }
 
+// lobbyRelevantEvents are event types that change how a table appears in the lobby list.
+var lobbyRelevantEvents = map[protocol.EventType]bool{
+	protocol.EventPlayerJoined: true,
+	protocol.EventPlayerLeft:   true,
+	protocol.EventGameStarted:  true,
+	protocol.EventGameOver:     true,
+	protocol.EventGamePaused:   true,
+	protocol.EventGameResumed:  true,
+}
+
 func (r *Table) publishPublic(eventType protocol.EventType, payload any) {
 	r.emit(StreamEvent{Type: eventType, Data: payload})
+	if r.onChange != nil && lobbyRelevantEvents[eventType] {
+		r.onChange()
+	}
 }
 
 func (r *Table) publishPrivate(playerID protocol.PlayerID, eventType protocol.EventType, payload any) {

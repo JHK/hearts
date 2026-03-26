@@ -213,7 +213,7 @@ func TestMCEvaluator_ReturnsLegalPlay(t *testing.T) {
 		Trick:        []game.Play{{Seat: 1, Card: c("5D")}},
 		HeartsBroken: false,
 		FirstTrick:   false,
-		PlayedCards:   nil,
+		PlayedCards:  nil,
 		MySeat:       0,
 	}
 

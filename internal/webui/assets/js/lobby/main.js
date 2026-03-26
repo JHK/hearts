@@ -33,17 +33,7 @@
     window.location.href = '/table/' + encodeURIComponent(tableId);
   }
 
-  async function fetchTables() {
-    let data;
-    try {
-      const res = await fetch('/api/tables');
-      data = await res.json();
-    } catch (err) {
-      console.warn('fetchTables failed, showing stale data:', err);
-      return;
-    }
-    const tables = data.tables || [];
-
+  function renderTables(tables) {
     if (tables.length === 0) {
       tablesEl.innerHTML = '<li class="muted">No open tables yet.</li>';
       return;
@@ -94,38 +84,15 @@
     }
   }
 
-  async function createTable() {
-    const payload = { table_id: newTableIdEl.value.trim() };
-    const maxRetries = 2;
-    let lastErr;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        const res = await fetch('/api/tables', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (data.error) {
-          createResultEl.textContent = data.error;
-          return;
-        }
-        createResultEl.textContent = data.created ? `created ${data.table_id}` : `using existing ${data.table_id}`;
-        openTable(data.table_id);
-        return;
-      } catch (err) {
-        lastErr = err;
-        console.warn(`createTable attempt ${attempt + 1} failed:`, err);
-        if (attempt < maxRetries) {
-          await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
-        }
-      }
+  function createTable() {
+    if (!lobbyWs || lobbyWs.readyState !== WebSocket.OPEN) {
+      createResultEl.textContent = 'Not connected, please wait...';
+      return;
     }
-    console.error('createTable failed after retries:', lastErr);
-    createResultEl.textContent = 'Network error, please try again.';
+    lobbyWs.send(JSON.stringify({ type: 'create_table', table_id: newTableIdEl.value.trim() }));
   }
 
-  // --- Lobby presence via WebSocket ---
+  // --- Lobby WebSocket ---
 
   const MAX_VISIBLE_NAMES = 8;
   let lobbyWs = null;
@@ -178,6 +145,15 @@
       } else if (msg.type === 'lobby_self' && msg.data) {
         selfId = msg.data.id;
         renderPresence(lastPlayers);
+      } else if (msg.type === 'lobby_tables' && msg.data && Array.isArray(msg.data.tables)) {
+        renderTables(msg.data.tables);
+      } else if (msg.type === 'create_table_result' && msg.data) {
+        if (msg.data.table_id) {
+          createResultEl.textContent = msg.data.created ? `created ${msg.data.table_id}` : `using existing ${msg.data.table_id}`;
+          openTable(msg.data.table_id);
+        }
+      } else if (msg.type === 'error' && msg.error) {
+        createResultEl.textContent = msg.error;
       }
     };
 
@@ -207,7 +183,5 @@
 
   nameEl.value = localStorage.getItem(nameKey) || 'Player';
   ensureToken();
-  fetchTables();
-  setInterval(fetchTables, 1500);
   connectLobbyWs();
 })();

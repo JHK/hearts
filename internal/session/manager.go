@@ -15,10 +15,45 @@ import (
 type Manager struct {
 	mu     sync.RWMutex
 	tables map[string]*Table
+
+	subsMu sync.Mutex
+	subs   map[chan<- struct{}]struct{}
 }
 
 func NewManager() *Manager {
-	return &Manager{tables: make(map[string]*Table)}
+	return &Manager{
+		tables: make(map[string]*Table),
+		subs:   make(map[chan<- struct{}]struct{}),
+	}
+}
+
+// Subscribe returns a channel that receives a signal whenever the table list
+// changes (table created, closed, or lobby-visible state changes) and an
+// unsubscribe function.
+func (m *Manager) Subscribe() (<-chan struct{}, func()) {
+	ch := make(chan struct{}, 8)
+	m.subsMu.Lock()
+	m.subs[ch] = struct{}{}
+	m.subsMu.Unlock()
+	return ch, func() {
+		m.subsMu.Lock()
+		delete(m.subs, ch)
+		m.subsMu.Unlock()
+		close(ch)
+		for range ch {
+		}
+	}
+}
+
+func (m *Manager) notifyChange() {
+	m.subsMu.Lock()
+	defer m.subsMu.Unlock()
+	for ch := range m.subs {
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
+	}
 }
 
 func (m *Manager) Get(tableID string) (*Table, bool) {
@@ -63,9 +98,10 @@ func (m *Manager) Create(tableID string) (*Table, bool, error) {
 		return existing, false, nil
 	}
 
-	created := NewTable(id)
+	created := NewTable(id, m.notifyChange)
 	m.tables[id] = created
 	slog.Info("table created", "event", "table_created", "table_id", id)
+	m.notifyChange()
 	return created, true, nil
 }
 
@@ -129,6 +165,7 @@ func (m *Manager) CloseTable(tableID string) bool {
 
 	slog.Info("table destroyed", "event", "table_destroyed", "table_id", id)
 	toClose.Close()
+	m.notifyChange()
 	return true
 }
 

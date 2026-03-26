@@ -10,7 +10,7 @@ import (
 )
 
 func TestLeaveRemovesPlayerBeforeRoundStart(t *testing.T) {
-	runtime := NewTable("leave-before-start")
+	runtime := NewTable("leave-before-start", nil)
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -27,7 +27,7 @@ func TestLeaveRemovesPlayerBeforeRoundStart(t *testing.T) {
 }
 
 func TestLeavePausesGameDuringRound(t *testing.T) {
-	runtime := NewTable("leave-during-round")
+	runtime := NewTable("leave-during-round", nil)
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -64,7 +64,7 @@ func TestLeavePausesGameDuringRound(t *testing.T) {
 }
 
 func TestResumeGameAfterDisconnect(t *testing.T) {
-	runtime := NewTable("resume-game")
+	runtime := NewTable("resume-game", nil)
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -95,7 +95,7 @@ func TestResumeGameAfterDisconnect(t *testing.T) {
 }
 
 func TestResumeGameWithoutReconnect(t *testing.T) {
-	runtime := NewTable("resume-no-reconnect")
+	runtime := NewTable("resume-no-reconnect", nil)
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -123,7 +123,7 @@ func TestResumeGameWithoutReconnect(t *testing.T) {
 }
 
 func TestReconnectResumesGame(t *testing.T) {
-	runtime := NewTable("reconnect")
+	runtime := NewTable("reconnect", nil)
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -157,7 +157,7 @@ func TestReconnectResumesGame(t *testing.T) {
 }
 
 func TestMultipleDisconnectsOverwritePausedPlayer(t *testing.T) {
-	runtime := NewTable("multi-disconnect")
+	runtime := NewTable("multi-disconnect", nil)
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -190,7 +190,7 @@ func TestMultipleDisconnectsOverwritePausedPlayer(t *testing.T) {
 }
 
 func TestResumeGameRejectsBot(t *testing.T) {
-	runtime := NewTable("resume-rejects-bot")
+	runtime := NewTable("resume-rejects-bot", nil)
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -215,7 +215,7 @@ func TestResumeGameRejectsBot(t *testing.T) {
 }
 
 func TestStartBeginsInPassingPhaseAndBlocksPlay(t *testing.T) {
-	runtime := NewTable("passing-phase")
+	runtime := NewTable("passing-phase", nil)
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -241,7 +241,7 @@ func TestStartBeginsInPassingPhaseAndBlocksPlay(t *testing.T) {
 }
 
 func TestPassingAndReviewFlowTransitionsToPlay(t *testing.T) {
-	runtime := NewTable("pass-review")
+	runtime := NewTable("pass-review", nil)
 	defer runtime.Close()
 
 	players := make([]protocol.PlayerID, 0, 4)
@@ -470,7 +470,7 @@ func TestRematchLeaveClearsVote(t *testing.T) {
 }
 
 func TestClaimSeatReplacesBot(t *testing.T) {
-	runtime := NewTable("claim-seat")
+	runtime := NewTable("claim-seat", nil)
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -503,7 +503,7 @@ func TestClaimSeatReplacesBot(t *testing.T) {
 }
 
 func TestClaimSeatRejectsHumanSeat(t *testing.T) {
-	runtime := NewTable("claim-human")
+	runtime := NewTable("claim-human", nil)
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")
@@ -525,7 +525,7 @@ func TestClaimSeatRejectsHumanSeat(t *testing.T) {
 }
 
 func TestClaimSeatRejectsAlreadySeated(t *testing.T) {
-	runtime := NewTable("claim-already-seated")
+	runtime := NewTable("claim-already-seated", nil)
 	defer runtime.Close()
 
 	_, err := runtime.Join("Alice", "alice-token")
@@ -545,7 +545,7 @@ func TestClaimSeatRejectsAlreadySeated(t *testing.T) {
 }
 
 func TestClaimSeatRaceExactlyOneSucceeds(t *testing.T) {
-	runtime := NewTable("claim-race")
+	runtime := NewTable("claim-race", nil)
 	defer runtime.Close()
 
 	_, err := runtime.Join("Alice", "alice-token")
@@ -569,7 +569,7 @@ func TestClaimSeatRaceExactlyOneSucceeds(t *testing.T) {
 }
 
 func TestClaimSeatResumesPausedGame(t *testing.T) {
-	runtime := NewTable("claim-resume")
+	runtime := NewTable("claim-resume", nil)
 	defer runtime.Close()
 
 	alice, err := runtime.Join("Alice", "alice-token")

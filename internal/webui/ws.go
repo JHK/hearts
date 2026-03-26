@@ -30,6 +30,7 @@ type wsCommand struct {
 	Cards    []string `json:"cards,omitempty"`
 	Strategy string   `json:"strategy,omitempty"`
 	Seat     *int     `json:"seat,omitempty"`
+	TableID  string   `json:"table_id,omitempty"`
 }
 
 const maxLobbyNameLen = 32
@@ -39,14 +40,14 @@ const maxLobbyTokenLen = 128
 func registerWSRoutes(r chi.Router, manager *session.Manager, lobby *lobbyHub, presence *tracker.HumanPresence, playerPresence *tracker.PlayerPresence, ct *tracker.ConnTracker) {
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	r.Get("/ws/lobby", func(w http.ResponseWriter, r *http.Request) {
-		handleLobbyWebSocket(lobby, ct, upgrader, w, r)
+		handleLobbyWebSocket(manager, lobby, ct, upgrader, w, r)
 	})
 	r.Get("/ws/table/{tableID}", func(w http.ResponseWriter, r *http.Request) {
 		handleTableWebSocket(manager, presence, playerPresence, ct, upgrader, w, r)
 	})
 }
 
-func handleLobbyWebSocket(lobby *lobbyHub, ct *tracker.ConnTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
+func handleLobbyWebSocket(manager *session.Manager, lobby *lobbyHub, ct *tracker.ConnTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
@@ -57,7 +58,8 @@ func handleLobbyWebSocket(lobby *lobbyHub, ct *tracker.ConnTracker, upgrader web
 
 	slog.Info("lobby client connected", "event", "lobby_connected", "addr", r.RemoteAddr)
 
-	events, unsubscribe := lobby.Subscribe()
+	presenceEvents, unsubPresence := lobby.Subscribe()
+	tableEvents, unsubTables := manager.Subscribe()
 
 	out := make(chan wsMessage, 16)
 	writerDone := make(chan struct{})
@@ -78,16 +80,26 @@ func handleLobbyWebSocket(lobby *lobbyHub, ct *tracker.ConnTracker, upgrader web
 		}
 	}
 
-	// Send initial snapshot before starting the events goroutine so that
-	// broadcasts triggered between Subscribe and here can't overtake it.
+	// Send initial snapshots before starting the events goroutines so that
+	// broadcasts triggered between Subscribe and here can't overtake them.
 	send(wsMessage{Type: "lobby_presence", Data: lobby.Snapshot()})
+	send(wsMessage{Type: "lobby_tables", Data: map[string]any{"tables": manager.List()}})
 
 	// Forward presence updates to the client.
-	eventsDone := make(chan struct{})
+	presenceDone := make(chan struct{})
 	go func() {
-		defer close(eventsDone)
-		for snap := range events {
+		defer close(presenceDone)
+		for snap := range presenceEvents {
 			send(wsMessage{Type: "lobby_presence", Data: snap})
+		}
+	}()
+
+	// Forward table list changes to the client.
+	tablesDone := make(chan struct{})
+	go func() {
+		defer close(tablesDone)
+		for range tableEvents {
+			send(wsMessage{Type: "lobby_tables", Data: map[string]any{"tables": manager.List()}})
 		}
 	}()
 
@@ -120,6 +132,16 @@ func handleLobbyWebSocket(lobby *lobbyHub, ct *tracker.ConnTracker, upgrader web
 			} else if cmd.Token == token {
 				lobby.UpdateName(token, name)
 			}
+		case "create_table":
+			runtime, created, err := manager.Create(cmd.TableID)
+			if err != nil {
+				send(wsMessage{Type: "error", Error: err.Error()})
+				continue
+			}
+			send(wsMessage{Type: "create_table_result", Data: map[string]any{
+				"table_id": runtime.ID(),
+				"created":  created,
+			}})
 		}
 	}
 
@@ -129,8 +151,10 @@ func handleLobbyWebSocket(lobby *lobbyHub, ct *tracker.ConnTracker, upgrader web
 
 	slog.Info("lobby client disconnected", "event", "lobby_disconnected", "addr", r.RemoteAddr)
 
-	unsubscribe()
-	<-eventsDone
+	unsubPresence()
+	unsubTables()
+	<-presenceDone
+	<-tablesDone
 	close(out)
 	<-writerDone
 }

@@ -299,13 +299,13 @@ func TestHardAbortsMoonShotWhenOtherLeads(t *testing.T) {
 	hand := parseCards(t, []string{"AH", "KH"})
 
 	_, err := bot.ChoosePlay(game.TurnInput{
-		Hand:          hand,
-		Trick:         parsePlays(t, []string{"3D"}), // someone else led
-		HeartsBroken:  false,
-		FirstTrick:    false,
-		PlayedCards: parsePlays(t, []string{"2C", "5D", "7S", "8H"}), // 1 completed trick
-		RoundPoints: [game.PlayersPerTable]game.Points{0, 1, 0, 0},    // bot (seat 0) didn't win the 8H
-		MySeat:      0,
+		Hand:         hand,
+		Trick:        parsePlays(t, []string{"3D"}), // someone else led
+		HeartsBroken: false,
+		FirstTrick:   false,
+		PlayedCards:  parsePlays(t, []string{"2C", "5D", "7S", "8H"}), // 1 completed trick
+		RoundPoints:  [game.PlayersPerTable]game.Points{0, 1, 0, 0},   // bot (seat 0) didn't win the 8H
+		MySeat:       0,
 	})
 	require.NoError(t, err)
 	require.True(t, bot.moonShotAborted, "expected moon shot to be aborted when another player leads and bot lost penalty points")
@@ -333,13 +333,13 @@ func TestHardKeepsMoonShotWhenFollowingWithAllPenalties(t *testing.T) {
 	})
 
 	_, err := bot.ChoosePlay(game.TurnInput{
-		Hand:          hand,
-		Trick:         parsePlays(t, []string{"6H"}), // someone else led
-		HeartsBroken:  true,
-		FirstTrick:    false,
-		PlayedCards:   played,
-		RoundPoints: [game.PlayersPerTable]game.Points{13, 0, 0, 0}, // bot (seat 0) captured QS
-		MySeat:      0,
+		Hand:         hand,
+		Trick:        parsePlays(t, []string{"6H"}), // someone else led
+		HeartsBroken: true,
+		FirstTrick:   false,
+		PlayedCards:  played,
+		RoundPoints:  [game.PlayersPerTable]game.Points{13, 0, 0, 0}, // bot (seat 0) captured QS
+		MySeat:       0,
 	})
 	require.NoError(t, err)
 	require.False(t, bot.moonShotAborted, "moon shot should NOT abort when bot holds all penalty points and follows")
@@ -395,7 +395,7 @@ func TestHardMoonShotLeadPrefersNonHearts(t *testing.T) {
 func TestHardMoonShotFollowPlaysHighestWhenPenaltyAndNotLast(t *testing.T) {
 	// Following a heart trick (penalty in trick), not last to play.
 	// Should play highest to maximize chance of winning the penalty trick.
-	trick := parseCards(t, []string{"5H"})            // heart led, 1 card in trick
+	trick := parseCards(t, []string{"5H"})             // heart led, 1 card in trick
 	legal := parseCards(t, []string{"7H", "TH", "KH"}) // must follow hearts
 
 	card := hardMoonShotFollow(trick, legal)
