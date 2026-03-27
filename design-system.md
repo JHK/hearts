@@ -6,10 +6,12 @@ Visual language for the Hearts card game. All future design work should referenc
 
 **Casino-inspired, mobile-first.** The game draws from the feel of a real card table -- rich felt greens, clean typography, understated chrome -- without the visual noise of actual casino software. Every element earns its place; if it doesn't help the player, it goes.
 
+**Consistency first.** Shared foundations (background, borders, typography, spacing) are the same across all pages. Individual pages express mood through content and interaction, not by diverging from the base palette.
+
 Two distinct moods govern the UI:
 
 - **In-game (table)**: Focused, lean, zen-like. The felt board dominates. Controls are minimal and tucked away. Nothing competes with the cards. Players should feel the calm concentration of a real card game.
-- **Out-of-game (lobby, pause, game over)**: Playful and engaging. Card-flip animations, inviting gradients, clear calls to action. These are social/waiting moments -- the UI should feel warm and encourage interaction.
+- **Out-of-game (lobby, pause, game over)**: Playful and engaging. Card-flip animations, clear calls to action. These are social/waiting moments -- the UI should feel warm and encourage interaction.
 
 **Bots are placeholders for humans.** The UI never treats bots as a distinct class of player. Seat slots, names, and interactions are designed for human multiplayer first; bots simply fill empty chairs until a human arrives.
 
@@ -17,16 +19,16 @@ Two distinct moods govern the UI:
 
 ## Color Palette
 
-Six semantic roles, scoped per page via CSS custom properties on `.lobby-page` and `.table-page`. Values shift slightly between contexts (lobby is lighter, table is deeper) but the roles are the same.
+Six semantic roles, set via CSS custom properties on `.lobby-page` and `.table-page`. Values are the same on both pages.
 
-| Role | Variable | Lobby | Table | Purpose |
-|---|---|---|---|---|
-| Background | `--bg` | `#edf3f8` | _(felt gradient)_ | Page canvas |
-| Surface | `--panel` | `#ffffff` | `#ffffffee` | Cards, panels, overlays |
-| Ink | `--ink` | `#1c2b3a` | `#142132` | Primary text, icon buttons |
-| Muted | `--muted` | `#5b6f83` | `#54697d` | Secondary text, metadata, labels |
-| Border | `--line` | `#d4e1ec` | `#cfdae6` | Dividers, input borders, inactive toggles |
-| Accent | `--accent` / `--green` | `#116466` | `#1f6f5f` | Primary actions, active states |
+| Role | Variable | Value | Purpose |
+|---|---|---|---|
+| Background | `--bg` | `#eae7df` | Page canvas (warm casino cream) |
+| Surface | `--panel` | `#ffffff` | Cards, panels, overlays |
+| Ink | `--ink` | `#1c2b3a` | Primary text, icon buttons |
+| Muted | `--muted` | `#5b6f83` | Secondary text, metadata, labels |
+| Border | `--line` | `#d5d1c8` | Dividers, input borders, inactive toggles |
+| Accent | `--accent` / `--green` | `#116466` / `#1f6f5f` | Primary actions, active states |
 
 All text and icon colors should use `--ink` or `--muted`. Avoid hardcoding one-off hex values for text.
 

@@ -1,5 +1,48 @@
 import { nameKey, tokenKey, speedKey, soundKey, notifyKey, ensureToken, initSettingsPopover } from '../shared/settings.js';
 
+// --- Animated card background ---
+{
+  const suits = ['clubs', 'diamonds', 'hearts', 'spades'];
+  const ranks = ['2','3','4','5','6','7','8','9','10','jack','queen','king','ace'];
+  const all = suits.flatMap(s => ranks.map(r => `${r}_of_${s}`));
+  const bg = document.getElementById('cardBg');
+  const count = 22;
+
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+
+  for (let i = 0; i < count; i++) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'card-bg-card';
+
+    const backing = document.createElement('div');
+    backing.className = 'card-bg-backing';
+
+    const img = document.createElement('img');
+    img.src = `/assets/cards/${all[i]}.svg`;
+    img.alt = '';
+    img.loading = 'lazy';
+
+    wrapper.appendChild(backing);
+    wrapper.appendChild(img);
+
+    const left = 2 + Math.random() * 90;
+    const top = 2 + Math.random() * 90;
+    const rot = Math.random() * 360;
+    const driftX = (Math.random() - 0.5) * 120;
+    const driftY = (Math.random() - 0.5) * 120;
+    const duration = 20 + Math.random() * 30;
+
+    wrapper.style.cssText = `left:${left}%;top:${top}%;rotate:${rot}deg;`
+      + `--drift-x:${driftX}px;--drift-y:${driftY}px;`
+      + `animation-duration:${duration}s;`;
+
+    bg.appendChild(wrapper);
+  }
+}
+
 const nameEl = document.getElementById('nameInput');
 const tablesEl = document.getElementById('tables');
 const tablesAreaEl = document.getElementById('tablesArea');

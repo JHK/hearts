@@ -36,21 +36,57 @@
   }
 
   .lobby-page {
-    --bg: #edf3f8;
+    --bg: #eae7df;
     --panel: #ffffff;
     --ink: #1c2b3a;
-    --line: #d4e1ec;
+    --line: #d5d1c8;
     --muted: #5b6f83;
     --accent: #116466;
     --green: #1f6f5f;
     color: var(--ink);
-    background: radial-gradient(circle at top, #ffffff, var(--bg));
+    background: var(--bg);
   }
 
   .lobby-page main {
+    position: relative;
+    z-index: 1;
     max-width: 1480px;
     padding: 20px;
     gap: 14px;
+  }
+
+  .card-bg {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .card-bg-card {
+    position: absolute;
+    width: 80px;
+    animation: card-drift linear infinite alternate;
+  }
+
+  .card-bg-card .card-bg-backing {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    border-radius: 5px;
+  }
+
+  .card-bg-card img {
+    position: relative;
+    width: 100%;
+    opacity: 0.13;
+    filter: grayscale(30%);
+    border-radius: 5px;
+  }
+
+  @keyframes card-drift {
+    from { translate: 0 0; }
+    to   { translate: var(--drift-x) var(--drift-y); }
   }
 
   .lobby-page section {
@@ -251,10 +287,11 @@
   }
 
   .table-page {
-    --ink: #142132;
-    --muted: #54697d;
-    --panel: #ffffffee;
-    --line: #cfdae6;
+    --ink: #1c2b3a;
+    --muted: #5b6f83;
+    --panel: #ffffff;
+    --line: #d5d1c8;
+    --accent: #116466;
     --green: #1f6f5f;
     --orange: #b44f26;
     --felt: #1f5f51;
@@ -268,8 +305,9 @@
     --anim-trick-capture: 1400ms;
     --anim-winner-pulse: 1200ms;
     --anim-scoreboard-flip: 400ms;
+    --bg: #eae7df;
     color: var(--ink);
-    background: radial-gradient(circle at 15% 0%, #ffffff 0%, #edf2f7 35%, #d7e1ec 100%);
+    background: var(--bg);
   }
 
   .table-page[data-speed="fast"] {
@@ -1269,5 +1307,9 @@
 
   .lobby-page .floating-name {
     display: none;
+  }
+
+  .card-bg-card {
+    animation: none;
   }
 }
