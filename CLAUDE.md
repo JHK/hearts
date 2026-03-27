@@ -53,6 +53,7 @@ When making a change that affects one of these concerns, update the relevant doc
 - **Architecture** (`architecture.md`): layer responsibilities, key interfaces, concurrency model, authority rules.
 - **Developer guidance** (`CLAUDE.md`): layer table, key design rules, development commands.
 - **Bot strategies** (`strategies.md`): every heuristic and decision rule used by bot tiers — passing, leading, following, discarding, moon-shot state machine, card analysis helpers, and known gaps.
+- **Visual design system** (`design-system.md`): color palette, typography, spacing, component patterns, animation timing — the shared visual language for all UI work.
 - **Project overview** (`README.md`): high-level description, quick start.
 - **Code comments**: doc comments on exported types, interfaces, and non-obvious logic.
 

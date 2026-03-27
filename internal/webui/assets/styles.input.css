@@ -42,7 +42,6 @@
     --line: #d4e1ec;
     --muted: #5b6f83;
     --accent: #116466;
-    --accent2: #d97b32;
     color: var(--ink);
     background: radial-gradient(circle at top, #ffffff, var(--bg));
   }
@@ -330,7 +329,6 @@
 
   .scoreboard-table thead th {
     font-weight: 700;
-    color: #254258;
   }
 
 
@@ -340,12 +338,12 @@
 
   .scoreboard-table td {
     text-align: right;
-    color: #21384d;
   }
 
-  .scoreboard-table th:first-child {
+  .scoreboard-table th:first-child,
+  .scoreboard-table td:first-child {
     text-align: left;
-    color: #304b63;
+    color: var(--muted);
   }
 
   .scoreboard-table .scoreboard-current-row {
@@ -390,7 +388,7 @@
     border-radius: 999px;
     border: 1px solid var(--line);
     background: rgba(255, 255, 255, 0.74);
-    color: #1a4c68;
+    color: var(--ink);
     text-decoration: none;
     transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
   }
@@ -432,7 +430,7 @@
     border-radius: 999px;
     border: 1px solid var(--line);
     background: rgba(255, 255, 255, 0.74);
-    color: #1a4c68;
+    color: var(--ink);
     cursor: pointer;
     transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
   }
@@ -890,17 +888,13 @@
     width: 56px;
     aspect-ratio: 167.0869141 / 242.6669922;
     padding: 0;
-    text-align: center;
     background: transparent;
-    font-family: "Cascadia Mono", "DejaVu Sans Mono", monospace;
-    font-weight: 700;
     cursor: pointer;
     transition: transform 120ms ease;
     box-shadow: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--card-ink);
     overflow: visible;
     flex: 0 0 auto;
     z-index: 1;
@@ -1023,7 +1017,6 @@
     margin: 0;
     max-height: 34vh;
     overflow: auto;
-    font-family: "Cascadia Mono", "DejaVu Sans Mono", monospace;
     white-space: pre-wrap;
     line-height: 1.35;
   }
