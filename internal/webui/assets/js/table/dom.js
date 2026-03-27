@@ -1,4 +1,4 @@
-export function createTableDom({ tableId, eventsEnabled }) {
+export function createTableDom({ tableId }) {
   const titleEl = document.getElementById('title');
   const statusEl = document.getElementById('status');
   const observerBadgeEl = document.getElementById('observerBadge');
@@ -6,8 +6,6 @@ export function createTableDom({ tableId, eventsEnabled }) {
   const botControlEl = document.getElementById('botControl');
   const addBotDefaultEl = document.getElementById('addBotDefault');
   const botStrategySelectEl = document.getElementById('botStrategySelect');
-  const eventsSectionEl = document.getElementById('eventsSection');
-  const logsEl = document.getElementById('logs');
   const startButtonEl = document.getElementById('start');
   const centerControlsEl = document.getElementById('centerControls');
   const passSummaryEl = document.getElementById('passSummary');
@@ -49,7 +47,6 @@ export function createTableDom({ tableId, eventsEnabled }) {
   const soundToggleEl = document.getElementById('soundToggle');
   const notifyToggleEl = document.getElementById('notifyToggle');
 
-  eventsSectionEl.hidden = !eventsEnabled;
   titleEl.textContent = `Hearts Table ${tableId}`;
 
   return {
@@ -60,8 +57,6 @@ export function createTableDom({ tableId, eventsEnabled }) {
     botControlEl,
     addBotDefaultEl,
     botStrategySelectEl,
-    eventsSectionEl,
-    logsEl,
     startButtonEl,
     centerControlsEl,
     passSummaryEl,

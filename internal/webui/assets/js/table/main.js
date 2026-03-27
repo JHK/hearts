@@ -10,9 +10,8 @@ const notifyKey = 'hearts.notifications.enabled';
 const trickCardInBufferMs = 80;
 
 const tableId = decodeURIComponent(location.pathname.replace('/table/', ''));
-const eventsEnabled = new URLSearchParams(location.search).get('events') === 'true';
 
-const dom = createTableDom({ tableId, eventsEnabled });
+const dom = createTableDom({ tableId });
 
 const state = {
   ws: undefined,
@@ -182,13 +181,12 @@ function prefersReducedMotion() {
 }
 
 function log(line) {
-  if (!eventsEnabled) {
+  if (!window.__HEARTS_DEV__) {
     return;
   }
 
   const ts = new Date().toLocaleTimeString();
-  dom.logsEl.textContent += `[${ts}] ${line}\n`;
-  dom.logsEl.scrollTop = dom.logsEl.scrollHeight;
+  console.log(`[${ts}] ${line}`);
 }
 
 function send(msg) {

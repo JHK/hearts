@@ -12,7 +12,8 @@ import (
 
 // registerDevRoutes mounts dev-only non-API routes (scripts, assets).
 func registerDevRoutes(r chi.Router) {
-	devJS := []byte(`window.debugBot = async function(opts) {
+	devJS := []byte(`window.__HEARTS_DEV__ = true;
+window.debugBot = async function(opts) {
   opts = opts || {};
   const tableID = opts.tableID || window.location.pathname.replace('/table/', '');
   const fmt = opts.json ? 'json' : 'markdown';
