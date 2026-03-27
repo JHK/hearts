@@ -33,6 +33,53 @@ func (s *Simulation) WithBotOptions(opts bot.BotOptions) *Simulation {
 	return s
 }
 
+// RunWithSamples plays all games and returns results plus sampled game logs.
+// sampleCount games are captured with full logs; the rest run normally.
+func (s *Simulation) RunWithSamples(sampleCount int) (Result, []GameLog) {
+	if sampleCount <= 0 {
+		return s.Run(), nil
+	}
+	if sampleCount > s.iterations {
+		sampleCount = s.iterations
+	}
+
+	// Run sampled games first (single-threaded for determinism).
+	rng := rand.New(rand.NewSource(rand.Int63()))
+	samples := make([]GameLog, sampleCount)
+	var sampledResult Result
+	for i := range sampleCount {
+		gl := s.runGameSampled(rng)
+		samples[i] = gl
+		for _, w := range gl.Winners {
+			sampledResult.Wins[w]++
+		}
+		for _, rl := range gl.Rounds {
+			for seat := range game.PlayersPerTable {
+				if rl.RawScores[seat] == int(game.ShootTheMoonPoints) {
+					sampledResult.MoonShots[gl.SeatToStrategy[seat]]++
+				}
+			}
+		}
+	}
+
+	// Run remaining games normally.
+	remaining := s.iterations - sampleCount
+	var normalResult Result
+	if remaining > 0 {
+		rs := New(s.strategies, remaining)
+		rs.botOpts = s.botOpts
+		normalResult = rs.Run()
+	}
+
+	// Merge results.
+	for i := range sampledResult.Wins {
+		normalResult.Wins[i] += sampledResult.Wins[i]
+		normalResult.MoonShots[i] += sampledResult.MoonShots[i]
+	}
+
+	return normalResult, samples
+}
+
 // Run plays all games concurrently using a worker pool and returns cumulative win counts per slot.
 func (s *Simulation) Run() Result {
 	workers := runtime.NumCPU()
