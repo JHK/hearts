@@ -1,11 +1,11 @@
 ---
 # hearts-bwkd
 title: Auto-Play Single Legal Card
-status: todo
+status: scrapped
 type: feature
 priority: normal
 created_at: 2026-03-25T09:46:55Z
-updated_at: 2026-03-25T09:47:10Z
+updated_at: 2026-03-27T10:33:26Z
 parent: hearts-5ceo
 ---
 
