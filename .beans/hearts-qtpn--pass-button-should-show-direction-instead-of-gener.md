@@ -1,14 +1,14 @@
 ---
 # hearts-qtpn
 title: Pass button should show direction instead of generic label
-status: todo
+status: completed
 type: feature
 priority: normal
 tags:
     - frontend
     - ux
 created_at: 2026-03-26T13:40:39Z
-updated_at: 2026-03-26T13:40:46Z
+updated_at: 2026-03-27T09:20:34Z
 ---
 
 ## Context
@@ -21,11 +21,15 @@ Reduce cognitive load during the passing phase by putting the most important inf
 
 ## Acceptance Criteria
 
-- [ ] Submit button text includes the pass direction (e.g. "Pass Left", "Pass Right", "Pass Across")
-- [ ] Turn indicator still shows direction as before (no regression)
-- [ ] Button text updates correctly across rounds when direction rotates
+- [x] Submit button text includes the pass direction (e.g. "Pass Left", "Pass Right", "Pass Across")
+- [x] Turn indicator still shows direction as before (no regression)
+- [x] Button text updates correctly across rounds when direction rotates
 
 ## Out of Scope
 
 - Redesigning the overall pass panel layout
 - Translating direction labels (i18n)
+
+## Summary of Changes
+
+Updated `renderPassPanel` in `render.js` to set the submit button text dynamically based on `snapshot.pass_direction`. The button now reads "Pass Left", "Pass Right", or "Pass Across" instead of the static "Pass 3 Cards". The turn indicator remains unchanged. The button text is set on every render call, so it updates correctly as the direction rotates across rounds.

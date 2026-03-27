@@ -580,6 +580,9 @@ export function createRenderer({ dom, state, send, claimSeat }) {
     dom.passSelectionEl.hidden = true;
 
     if (phase === 'passing') {
+      const dir = snapshot.pass_direction;
+      const label = dir ? `Pass ${dir.charAt(0).toUpperCase() + dir.slice(1)}` : 'Pass 3 Cards';
+      dom.submitPassEl.textContent = label;
       dom.submitPassEl.hidden = false;
       dom.submitPassEl.disabled = passSubmitted || state.selectedPassCards.length !== 3;
       dom.readyAfterPassEl.hidden = true;
