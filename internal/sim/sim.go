@@ -85,7 +85,7 @@ func (s *Simulation) runGame(rng *rand.Rand) ([]int, [game.PlayersPerTable]int) 
 
 		if passDir != game.PassDirectionHold {
 			for i := range bots {
-				cards, err := bots[i].ChoosePass(round.PassInput(i))
+				cards, err := bots[i].ChoosePass(round.PassInput(i, g.Scores()))
 				if err != nil || len(cards) != 3 {
 					cards = round.Hand(i)[:3]
 				}

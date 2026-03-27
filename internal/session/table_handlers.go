@@ -41,7 +41,7 @@ func (r *Table) handleLeave(state *tableState, playerID protocol.PlayerID) {
 		switch state.round.Phase() {
 		case game.PhasePassing:
 			if !state.round.HasSubmittedPass(player.position) {
-				input := state.round.PassInput(player.position)
+				input := state.round.PassInput(player.position, state.game.Scores())
 				cards, err := player.bot.ChoosePass(input)
 				if err == nil {
 					_ = state.round.SubmitPass(player.position, cards)
@@ -474,7 +474,7 @@ func (r *Table) handleBotPass(state *tableState, playerID protocol.PlayerID) {
 		return
 	}
 
-	input := state.round.PassInput(player.position)
+	input := state.round.PassInput(player.position, state.game.Scores())
 	cards, err := player.bot.ChoosePass(input)
 	if err != nil {
 		return

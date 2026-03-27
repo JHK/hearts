@@ -373,8 +373,56 @@ func TestHardRelaxedMoonShotThreshold(t *testing.T) {
 		"AC", "KC", "QC", "JC", "TC",
 		"2D", "3D", "4D", "5D", "6D", "7D",
 	})
-	require.True(t, hardEvaluateMoonShot(hand), "hard should trigger moonshot with 2 hearts + 7 total")
+	zeroScores := [game.PlayersPerTable]game.Points{}
+	require.True(t, hardEvaluateMoonShot(hand, zeroScores, 0), "hard should trigger moonshot with 2 hearts + 7 total")
 	require.False(t, evaluateMoonShot(hand), "medium threshold should NOT trigger for this hand")
+}
+
+func TestHardMoonShotThresholdAdjustsWithScores(t *testing.T) {
+	// Marginal hand: 1 guaranteed heart + 6 total guaranteed tricks.
+	// Only triggers when trailing by 30+.
+	hand := parseCards(t, []string{
+		"AH",
+		"AC", "KC", "QC", "JC", "TC", "9C",
+		"2D", "3D", "4D", "5D", "6D", "7D",
+	})
+
+	zeroScores := [game.PlayersPerTable]game.Points{}
+	require.False(t, hardEvaluateMoonShot(hand, zeroScores, 0),
+		"should not trigger at even scores")
+
+	trailing := [game.PlayersPerTable]game.Points{50, 20, 30, 40}
+	require.True(t, hardEvaluateMoonShot(hand, trailing, 0),
+		"should trigger when trailing by 30+")
+
+	leading := [game.PlayersPerTable]game.Points{10, 30, 40, 50}
+	require.False(t, hardEvaluateMoonShot(hand, leading, 0),
+		"should not trigger when leading")
+}
+
+func TestHardMoonShotSuppressedNearGameOver(t *testing.T) {
+	// Standard-qualifying hand (2 hearts + 7 total), but bot is near 100.
+	hand := parseCards(t, []string{
+		"AH", "KH",
+		"AC", "KC", "QC", "JC", "TC",
+		"2D", "3D", "4D", "5D", "6D", "7D",
+	})
+
+	nearEnd := [game.PlayersPerTable]game.Points{90, 50, 60, 70}
+	require.False(t, hardEvaluateMoonShot(hand, nearEnd, 0),
+		"should suppress moonshot when near game-over (needs 4 hearts + 9 total)")
+}
+
+func TestScoreDelta(t *testing.T) {
+	scores := [game.PlayersPerTable]game.Points{50, 20, 30, 40}
+	require.Equal(t, game.Points(30), scoreDelta(scores, 0), "trailing by 30")
+	require.Equal(t, game.Points(-10), scoreDelta(scores, 1), "leading by 10 vs next best")
+}
+
+func TestNearGameOver(t *testing.T) {
+	require.True(t, nearGameOver([game.PlayersPerTable]game.Points{90, 20, 30, 40}, 0))
+	require.True(t, nearGameOver([game.PlayersPerTable]game.Points{85, 20, 30, 40}, 0))
+	require.False(t, nearGameOver([game.PlayersPerTable]game.Points{84, 20, 30, 40}, 0))
 }
 
 // --- Hard moonshot lead prefers non-hearts ---

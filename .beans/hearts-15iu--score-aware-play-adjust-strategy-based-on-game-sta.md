@@ -1,13 +1,13 @@
 ---
 # hearts-15iu
 title: 'Score-aware play: adjust strategy based on game standings'
-status: todo
+status: completed
 type: task
 priority: normal
 tags:
     - backend
 created_at: 2026-03-25T19:02:10Z
-updated_at: 2026-03-26T09:21:27Z
+updated_at: 2026-03-27T10:18:57Z
 parent: hearts-8j8z
 ---
 
@@ -61,3 +61,12 @@ Make the hard bot play strategically across the full game arc, not just optimize
 - [VIP Hearts Tips](https://viphearts.com/blog/hearts-tips/): track who's close to winning, adjust strategy accordingly
 - [Mark's Advanced Hearts](https://mark.random-article.com/hearts/advanced.html): pass moon-shooting materials to trailing players to level scores
 - [Solitaired Strategy Guide](https://solitaired.com/guides/hearts-strategies-and-tips-to-win): long-game strategy awareness
+
+## Summary of Changes
+
+- Added GameScores and MySeat fields to PassInput for score-aware bot decisions
+- Moon-shot threshold adjusts based on score differential (riskier when trailing 30+, conservative when leading/near game-over 85+)
+- Moon-blocking skips when shooter is sole last-place player (no relative gain)
+- Expanded MC evaluation: threshold from hand≤5 to hand≤7 (≤9 near game-over), samples from 20 to 50
+- Near game-over suppresses soft moon-shot re-activation
+- Sim: 41.5% → 43.6% win rate (+2.1pp, 50k games)

@@ -57,8 +57,10 @@ func CardsFrom(plays []Play) []Card {
 
 // PassInput is the game state delivered to a decision-maker when it must choose cards to pass.
 type PassInput struct {
-	Hand      []Card
-	Direction PassDirection
+	Hand       []Card
+	Direction  PassDirection
+	GameScores [PlayersPerTable]Points // cumulative game scores across rounds (lower is better)
+	MySeat     int                     // this decision-maker's seat index
 }
 
 // Round is a step-at-a-time state machine for one round of Hearts.
@@ -136,10 +138,13 @@ func (r *Round) TurnInput(seat int, gameScores [PlayersPerTable]Points) TurnInpu
 }
 
 // PassInput builds the pass decision input for a bot or UI at the given seat.
-func (r *Round) PassInput(seat int) PassInput {
+// gameScores is the cumulative score array from the Game tracker.
+func (r *Round) PassInput(seat int, gameScores [PlayersPerTable]Points) PassInput {
 	return PassInput{
-		Hand:      append([]Card(nil), r.hands[seat]...),
-		Direction: r.passDir,
+		Hand:       append([]Card(nil), r.hands[seat]...),
+		Direction:  r.passDir,
+		GameScores: gameScores,
+		MySeat:     seat,
 	}
 }
 

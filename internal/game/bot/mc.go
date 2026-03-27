@@ -7,7 +7,7 @@ import (
 	"github.com/JHK/hearts/internal/game"
 )
 
-const defaultMCSamples = 20
+const defaultMCSamples = 50
 
 // mcEvaluator uses Monte Carlo hand sampling to evaluate candidate plays.
 // For each legal play it samples hypothetical opponent hands consistent with

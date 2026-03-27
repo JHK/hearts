@@ -38,7 +38,7 @@ func (s *Hard) ChoosePass(input game.PassInput) ([]game.Card, error) {
 		return nil, ErrNotEnoughCards
 	}
 
-	strategy := hardSelectRoundStrategy(input.Hand)
+	strategy := hardSelectRoundStrategy(input.Hand, input.GameScores, input.MySeat)
 	s.moonShotActive = strategy == strategyMoonShot
 	s.moonShotAborted = false
 	s.winningAllTricks = true
@@ -65,7 +65,7 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	// called (prevPlayedCount > 0 means we were mid-round last call, not a
 	// pass-phase reset). Re-evaluate hand once at round start.
 	if len(input.PlayedCards) == 0 && s.prevPlayedCount > 0 {
-		s.moonShotActive = hardEvaluateMoonShot(input.Hand)
+		s.moonShotActive = hardEvaluateMoonShot(input.Hand, input.GameScores, input.MySeat)
 		s.moonShotAborted = false
 		s.winningAllTricks = true
 		s.blockMoonTarget = -1
@@ -75,7 +75,7 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	// choosePass saw the pre-pass hand; received cards can change viability —
 	// e.g., receiving A♥ might complete a qualifying run that wasn't there before.
 	if len(input.PlayedCards) == 0 && s.prevPlayedCount == 0 {
-		s.moonShotActive = hardEvaluateMoonShot(input.Hand)
+		s.moonShotActive = hardEvaluateMoonShot(input.Hand, input.GameScores, input.MySeat)
 		s.winningAllTricks = true
 	}
 
@@ -119,8 +119,10 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 
 	// Soft re-activation: if we're one safe card short but have a near-safe card
 	// (only one higher card unaccounted for) to fill the gap, still pursue.
+	// Suppress when near game-over — the risk of a failed moon-shot is too high.
 	if !pursuing && ownsAllPenalties && remainingTricks > 0 &&
-		len(allSafeHighCards) == remainingTricks-1 {
+		len(allSafeHighCards) == remainingTricks-1 &&
+		!nearGameOver(input.GameScores, input.MySeat) {
 		nearSafe := countNearSafeCards(input.Hand, playedCards)
 		if nearSafe > 0 {
 			s.moonShotActive = true
@@ -150,10 +152,17 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	blocking := s.blockMoonTarget >= 0
 
 	// Monte Carlo evaluation for defensive play (non-moon-shot, non-blocking).
-	// Gate to late game (hand ≤ 5 cards, i.e., trick 8+) where MC is most
-	// accurate (fewer unknown cards) and cost-effective.
-	if s.mc != nil && !pursuing && !blocking && len(legal) > 1 && len(input.Hand) <= 5 {
-		return s.mc.evaluate(input, legal), nil
+	// Normally gates to late game (hand ≤ 5, trick 8+). When near game-over
+	// (score 85+), activate earlier (hand ≤ 8, trick 5+) — the cost of a
+	// bad heuristic decision is much higher when close to elimination.
+	if s.mc != nil && !pursuing && !blocking && len(legal) > 1 {
+		mcThreshold := 7
+		if nearGameOver(input.GameScores, input.MySeat) {
+			mcThreshold = 9
+		}
+		if len(input.Hand) <= mcThreshold {
+			return s.mc.evaluate(input, legal), nil
+		}
 	}
 
 	if len(input.Trick) == 0 {
@@ -180,11 +189,32 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	return hardChooseDiscard(legal, playedCards, pursuing), nil
 }
 
+// --- Score-aware standing analysis ---
+
+// scoreDelta returns (myScore - lowestOpponentScore). Positive means trailing.
+func scoreDelta(gameScores [game.PlayersPerTable]game.Points, mySeat int) game.Points {
+	myScore := gameScores[mySeat]
+	minOpp := game.Points(999)
+	for seat, score := range gameScores {
+		if seat != mySeat && score < minOpp {
+			minOpp = score
+		}
+	}
+	return myScore - minOpp
+}
+
+// nearGameOver returns true if the bot's score is within dangerZone points
+// of the game-over threshold.
+func nearGameOver(gameScores [game.PlayersPerTable]game.Points, mySeat int) bool {
+	return gameScores[mySeat] >= game.GameOverThreshold-15
+}
+
 // --- Hard-specific moonshot evaluation ---
 
-// hardSelectRoundStrategy uses the hard bot's relaxed moonshot threshold.
-func hardSelectRoundStrategy(hand []game.Card) roundStrategy {
-	if hardEvaluateMoonShot(hand) {
+// hardSelectRoundStrategy uses the hard bot's relaxed moonshot threshold,
+// adjusted by game standings.
+func hardSelectRoundStrategy(hand []game.Card, gameScores [game.PlayersPerTable]game.Points, mySeat int) roundStrategy {
+	if hardEvaluateMoonShot(hand, gameScores, mySeat) {
 		return strategyMoonShot
 	}
 
@@ -200,18 +230,37 @@ func hardSelectRoundStrategy(hand []game.Card) roundStrategy {
 	return strategyDefensive
 }
 
-// hardEvaluateMoonShot uses a relaxed threshold compared to medium.
-// EV analysis shows moonshot is profitable at ~31% success rate, so we
-// trigger more aggressively. The improved pass/lead/follow strategies
-// compensate for the lower threshold.
-func hardEvaluateMoonShot(hand []game.Card) bool {
+// hardEvaluateMoonShot uses a relaxed threshold compared to medium, adjusted
+// by game standings. When trailing by 30+, accept riskier moon-shot hands.
+// When leading or near game-over, require stronger hands.
+func hardEvaluateMoonShot(hand []game.Card, gameScores [game.PlayersPerTable]game.Points, mySeat int) bool {
 	hearts := guaranteedHeartTricks(hand)
 	total := guaranteedTricks(hand)
+
+	delta := scoreDelta(gameScores, mySeat)
+
+	// Near game-over: only attempt with very strong hands.
+	if nearGameOver(gameScores, mySeat) {
+		return hearts >= 4 && total >= 9
+	}
+
+	// Leading (score is at least 15 below the leader): raise threshold.
+	if delta <= -15 {
+		return hearts >= 3 && total >= 8
+	}
 
 	// Standard medium threshold.
 	if hearts >= 3 && total >= 8 {
 		return true
 	}
+
+	// Trailing by 30+: accept riskier hands.
+	if delta >= 30 {
+		if hearts >= 1 && total >= 6 {
+			return true
+		}
+	}
+
 	// Relaxed: 2+ guaranteed hearts with strong overall control.
 	if hearts >= 2 && total >= 7 {
 		return true
@@ -400,8 +449,16 @@ func hardMoonShotLead(hand, legal, playedCards []game.Card) game.Card {
 // shouldBlockShooter returns true if it's worth spending points to block
 // the given shooter. Returns false if the shooter has the sole highest game
 // score (clearly in last place) — their moon shot hurts all opponents
-// equally, so the blocker gains no relative advantage.
+// equally, so the blocker gains no relative advantage. Always blocks if a
+// successful moon-shot would push any non-shooter over the game-over threshold.
 func shouldBlockShooter(shooterSeat int, gameScores [game.PlayersPerTable]game.Points) bool {
+	// Always block if a moon-shot would end the game for us or another non-shooter.
+	for seat, score := range gameScores {
+		if seat != shooterSeat && score+game.ShootTheMoonPoints >= game.GameOverThreshold {
+			return true
+		}
+	}
+
 	shooterScore := gameScores[shooterSeat]
 	for seat, score := range gameScores {
 		if seat != shooterSeat && score >= shooterScore {
