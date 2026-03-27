@@ -19,11 +19,18 @@ type Result struct {
 type Simulation struct {
 	strategies [game.PlayersPerTable]bot.StrategyKind
 	iterations int
+	botOpts    bot.BotOptions
 }
 
 // New creates a Simulation that will run iterations games between the given strategies.
 func New(strategies [game.PlayersPerTable]bot.StrategyKind, iterations int) *Simulation {
 	return &Simulation{strategies: strategies, iterations: iterations}
+}
+
+// WithBotOptions sets bot creation options (e.g. reduced MC samples for faster sims).
+func (s *Simulation) WithBotOptions(opts bot.BotOptions) *Simulation {
+	s.botOpts = opts
+	return s
 }
 
 // Run plays all games concurrently using a worker pool and returns cumulative win counts per slot.
@@ -73,7 +80,7 @@ func (s *Simulation) runGame(rng *rand.Rand) ([]int, [game.PlayersPerTable]int) 
 	perm := rng.Perm(game.PlayersPerTable)
 	var bots [game.PlayersPerTable]bot.Bot
 	for stratIdx, seat := range perm {
-		bots[seat] = s.strategies[stratIdx].NewBot()
+		bots[seat] = s.strategies[stratIdx].NewBotWithOptions(s.botOpts)
 	}
 	g := game.NewGame()
 	var moonShots [game.PlayersPerTable]int

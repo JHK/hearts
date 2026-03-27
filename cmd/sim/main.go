@@ -24,7 +24,9 @@ func main() {
 		bot.StrategyRandom,
 	}
 
-	result := sim.New(strategies, *n).Run()
+	result := sim.New(strategies, *n).
+		WithBotOptions(bot.BotOptions{MCSamples: 3}).
+		Run()
 
 	fmt.Printf("Results after %d games:\n", *n)
 	for i, wins := range result.Wins {

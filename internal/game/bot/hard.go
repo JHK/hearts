@@ -152,8 +152,8 @@ func (s *Hard) ChoosePlay(input game.TurnInput) (game.Card, error) {
 	blocking := s.blockMoonTarget >= 0
 
 	// Monte Carlo evaluation for defensive play (non-moon-shot, non-blocking).
-	// Normally gates to late game (hand ≤ 5, trick 8+). When near game-over
-	// (score 85+), activate earlier (hand ≤ 8, trick 5+) — the cost of a
+	// Normally gates to late game (hand ≤ 7, trick 6+). When near game-over
+	// (score 85+), activate earlier (hand ≤ 9, trick 4+) — the cost of a
 	// bad heuristic decision is much higher when close to elimination.
 	if s.mc != nil && !pursuing && !blocking && len(legal) > 1 {
 		mcThreshold := 7

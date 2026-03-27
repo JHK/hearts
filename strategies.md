@@ -258,7 +258,7 @@ Activated when `detectMoonShooter` identifies a shooter and `shouldBlockShooter`
 
 ## Monte Carlo Evaluation (Hard only)
 
-Hard bot uses Monte Carlo hand sampling for defensive play decisions (lead, follow, discard) when not pursuing or blocking a moon shot, when more than one legal play exists, and when hand size ≤ 5 cards (trick 8+). Earlier decisions use heuristics where MC cost is high and accuracy is low due to many unknown cards.
+Hard bot uses Monte Carlo hand sampling for defensive play decisions (lead, follow, discard) when not pursuing or blocking a moon shot, when more than one legal play exists, and when hand size ≤ 7 cards (trick 6+, or ≤ 9 near game-over). Earlier decisions use heuristics where MC cost is high and accuracy is low due to many unknown cards.
 
 ### Algorithm
 
@@ -277,8 +277,9 @@ For each sample, remaining cards are shuffled and dealt card-by-card to random e
 
 ### Configuration
 
-- `defaultMCSamples = 20`: samples per candidate play.
-- Easy-bot rollout policy: stateless, fast (~0.7ms per MC decision at 20 samples).
+- `defaultMCSamples = 50`: samples per candidate play (live gameplay).
+- Sim mode uses 3 samples via `BotOptions{MCSamples: 3}` for ~15x faster runs while preserving strategy ranking.
+- Easy-bot rollout policy: stateless, fast.
 - MC is created in `NewBot()` but not in `NewHardBot()` (test constructor).
 
 ---
@@ -316,7 +317,7 @@ Given a completed trick (`[]Play`), returns the seat with the highest rank in th
 ## Strategies Not Yet Implemented
 
 - **Proactive spade-flush leads**: leading low spades to smoke out Q♠ consistently decreased win rate by 0.2-1.3% in sim testing, likely due to opportunity cost vs. the well-tuned defensive lead logic. Not implemented.
-- **Early/mid-game MC**: MC sampling currently gates to trick 8+ (hand ≤ 5). Extending to earlier tricks requires optimization (allocation-free rollout, reduced candidate set) to keep sim runtime acceptable.
+- **Early/mid-game MC**: MC sampling currently gates to trick 6+ (hand ≤ 7, or trick 4+ near game-over). Extending to earlier tricks requires optimization (allocation-free rollout, reduced candidate set) to keep sim runtime acceptable.
 - **UCT sample efficiency**: current MC uses flat sampling; Upper Confidence bounds applied to Trees could improve sample efficiency for the same compute budget.
 - **MC for Medium/Easy**: only Hard uses MC; Medium and Easy remain heuristic-only.
 - **Suit establishment**: no deliberate strategy of leading low from long suits to establish later winners.

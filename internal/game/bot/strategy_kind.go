@@ -40,11 +40,25 @@ func (k StrategyKind) Valid() bool {
 	}
 }
 
-// NewBot creates a fresh bot of this strategy kind.
+// BotOptions configures bot creation. Zero values use defaults.
+type BotOptions struct {
+	MCSamples int // Monte Carlo samples for Hard bot (0 = defaultMCSamples)
+}
+
+// NewBot creates a fresh bot of this strategy kind with default options.
 func (k StrategyKind) NewBot() Bot {
+	return k.NewBotWithOptions(BotOptions{})
+}
+
+// NewBotWithOptions creates a fresh bot of this strategy kind with the given options.
+func (k StrategyKind) NewBotWithOptions(opts BotOptions) Bot {
 	switch k {
 	case StrategyHard:
-		return &Hard{mc: newMCEvaluator(defaultMCSamples)}
+		samples := opts.MCSamples
+		if samples <= 0 {
+			samples = defaultMCSamples
+		}
+		return &Hard{mc: newMCEvaluator(samples)}
 	case StrategyMedium:
 		return &Medium{}
 	case StrategyEasy:
