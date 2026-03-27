@@ -1,13 +1,13 @@
 ---
 # hearts-6e2o
 title: Refactor mutex-protected types to actor pattern
-status: todo
+status: completed
 type: epic
 priority: normal
 tags:
     - backend
 created_at: 2026-03-26T12:54:48Z
-updated_at: 2026-03-26T12:55:02Z
+updated_at: 2026-03-27T10:46:28Z
 ---
 
 ## Vision
@@ -35,3 +35,13 @@ The codebase has two concurrency styles: `connTracker` and `session.Table` use t
 - Changing the `session.Table` game-command actor loop (already correct)
 - The local `playerMu` in `ws.go` (scoped to a single connection handler, not a shared type)
 - Persisting state across restarts
+
+## Summary of Changes
+
+All mutex-protected types have been converted to the actor pattern:
+- HumanPresence + PlayerPresence (hearts-pl10)
+- lobbyHub (hearts-x3g6)
+- session.Manager (hearts-yywx)
+- Table.subsMu (hearts-2hsh)
+
+The codebase now uses actors consistently for all shared mutable state.

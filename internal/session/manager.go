@@ -13,17 +13,47 @@ import (
 )
 
 type Manager struct {
-	mu     sync.RWMutex
 	tables map[string]*Table
-
-	subsMu sync.Mutex
 	subs   map[chan<- struct{}]struct{}
+
+	cmds      chan func()
+	stop      chan struct{}
+	stopped   chan struct{}
+	closeOnce sync.Once
 }
 
 func NewManager() *Manager {
-	return &Manager{
-		tables: make(map[string]*Table),
-		subs:   make(map[chan<- struct{}]struct{}),
+	m := &Manager{
+		tables:  make(map[string]*Table),
+		subs:    make(map[chan<- struct{}]struct{}),
+		cmds:    make(chan func()),
+		stop:    make(chan struct{}),
+		stopped: make(chan struct{}),
+	}
+	go m.run()
+	return m
+}
+
+func (m *Manager) run() {
+	defer close(m.stopped)
+	for {
+		select {
+		case cmd := <-m.cmds:
+			cmd()
+		case <-m.stop:
+			return
+		}
+	}
+}
+
+// send executes cmd on the actor goroutine and returns true.
+// Returns false if the manager is shutting down.
+func (m *Manager) send(cmd func()) bool {
+	select {
+	case m.cmds <- cmd:
+		return true
+	case <-m.stop:
+		return false
 	}
 }
 
@@ -32,22 +62,32 @@ func NewManager() *Manager {
 // unsubscribe function.
 func (m *Manager) Subscribe() (<-chan struct{}, func()) {
 	ch := make(chan struct{}, 8)
-	m.subsMu.Lock()
-	m.subs[ch] = struct{}{}
-	m.subsMu.Unlock()
+	reply := make(chan struct{}, 1)
+	if !m.send(func() {
+		m.subs[ch] = struct{}{}
+		reply <- struct{}{}
+	}) {
+		close(ch)
+		return ch, func() {}
+	}
+	<-reply
 	return ch, func() {
-		m.subsMu.Lock()
-		delete(m.subs, ch)
-		m.subsMu.Unlock()
+		done := make(chan struct{}, 1)
+		if !m.send(func() {
+			delete(m.subs, ch)
+			done <- struct{}{}
+		}) {
+			return
+		}
+		<-done
 		close(ch)
 		for range ch {
 		}
 	}
 }
 
-func (m *Manager) notifyChange() {
-	m.subsMu.Lock()
-	defer m.subsMu.Unlock()
+// notifySubs sends a signal to all subscribers. Only call from the actor goroutine.
+func (m *Manager) notifySubs() {
 	for ch := range m.subs {
 		select {
 		case ch <- struct{}{}:
@@ -56,16 +96,33 @@ func (m *Manager) notifyChange() {
 	}
 }
 
+// onTableChange is the callback passed to tables; it sends a notification
+// command to the actor.
+func (m *Manager) onTableChange() {
+	m.send(func() {
+		m.notifySubs()
+	})
+}
+
 func (m *Manager) Get(tableID string) (*Table, bool) {
 	id, err := normalizeTableID(tableID)
 	if err != nil || id == "" {
 		return nil, false
 	}
 
-	m.mu.RLock()
-	table, ok := m.tables[id]
-	m.mu.RUnlock()
-	return table, ok
+	type result struct {
+		table *Table
+		ok    bool
+	}
+	reply := make(chan result, 1)
+	if !m.send(func() {
+		t, ok := m.tables[id]
+		reply <- result{t, ok}
+	}) {
+		return nil, false
+	}
+	r := <-reply
+	return r.table, r.ok
 }
 
 func (m *Manager) Create(tableID string) (*Table, bool, error) {
@@ -74,44 +131,61 @@ func (m *Manager) Create(tableID string) (*Table, bool, error) {
 		return nil, false, err
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if id == "" {
-		for attempts := 0; attempts < 3; attempts++ {
-			candidate, candidateErr := randomTableID()
-			if candidateErr != nil {
-				return nil, false, candidateErr
-			}
-			if _, exists := m.tables[candidate]; !exists {
-				id = candidate
-				break
-			}
-		}
-
+	type result struct {
+		table   *Table
+		created bool
+		err     error
+	}
+	reply := make(chan result, 1)
+	if !m.send(func() {
 		if id == "" {
-			return nil, false, fmt.Errorf("could not create unique table after 3 attempts")
+			for range 3 {
+				candidate, candidateErr := randomTableID()
+				if candidateErr != nil {
+					reply <- result{err: candidateErr}
+					return
+				}
+				if _, exists := m.tables[candidate]; !exists {
+					id = candidate
+					break
+				}
+			}
+
+			if id == "" {
+				reply <- result{err: fmt.Errorf("could not create unique table after 3 attempts")}
+				return
+			}
 		}
-	}
 
-	if existing, ok := m.tables[id]; ok {
-		return existing, false, nil
-	}
+		if existing, ok := m.tables[id]; ok {
+			reply <- result{table: existing}
+			return
+		}
 
-	created := NewTable(id, m.notifyChange)
-	m.tables[id] = created
-	slog.Info("table created", "event", "table_created", "table_id", id)
-	m.notifyChange()
-	return created, true, nil
+		created := NewTable(id, m.onTableChange)
+		m.tables[id] = created
+		slog.Info("table created", "event", "table_created", "table_id", id)
+		m.notifySubs()
+		reply <- result{table: created, created: true}
+	}) {
+		return nil, false, fmt.Errorf("manager is shutting down")
+	}
+	r := <-reply
+	return r.table, r.created, r.err
 }
 
 func (m *Manager) List() []protocol.TableInfo {
-	m.mu.RLock()
-	tables := make([]*Table, 0, len(m.tables))
-	for _, runtime := range m.tables {
-		tables = append(tables, runtime)
+	reply := make(chan []*Table, 1)
+	if !m.send(func() {
+		tables := make([]*Table, 0, len(m.tables))
+		for _, runtime := range m.tables {
+			tables = append(tables, runtime)
+		}
+		reply <- tables
+	}) {
+		return nil
 	}
-	m.mu.RUnlock()
+	tables := <-reply
 
 	infos := make([]protocol.TableInfo, 0, len(tables))
 	for _, runtime := range tables {
@@ -130,13 +204,23 @@ func (m *Manager) List() []protocol.TableInfo {
 }
 
 func (m *Manager) Close() {
-	m.mu.Lock()
-	tables := make([]*Table, 0, len(m.tables))
-	for id, runtime := range m.tables {
-		tables = append(tables, runtime)
-		delete(m.tables, id)
+	reply := make(chan []*Table, 1)
+	sent := m.send(func() {
+		tables := make([]*Table, 0, len(m.tables))
+		for id, runtime := range m.tables {
+			tables = append(tables, runtime)
+			delete(m.tables, id)
+		}
+		reply <- tables
+	})
+
+	var tables []*Table
+	if sent {
+		tables = <-reply
 	}
-	m.mu.Unlock()
+
+	m.closeOnce.Do(func() { close(m.stop) })
+	<-m.stopped
 
 	for _, runtime := range tables {
 		slog.Info("table destroyed", "event", "table_destroyed", "table_id", runtime.ID())
@@ -150,22 +234,28 @@ func (m *Manager) CloseTable(tableID string) bool {
 		return false
 	}
 
-	var toClose *Table
-
-	m.mu.Lock()
-	if current, ok := m.tables[id]; ok {
-		delete(m.tables, id)
-		toClose = current
+	type result struct {
+		table *Table
+		found bool
 	}
-	m.mu.Unlock()
-
-	if toClose == nil {
+	reply := make(chan result, 1)
+	if !m.send(func() {
+		t, ok := m.tables[id]
+		if ok {
+			delete(m.tables, id)
+			m.notifySubs()
+		}
+		reply <- result{t, ok}
+	}) {
+		return false
+	}
+	r := <-reply
+	if !r.found {
 		return false
 	}
 
 	slog.Info("table destroyed", "event", "table_destroyed", "table_id", id)
-	toClose.Close()
-	m.notifyChange()
+	r.table.Close()
 	return true
 }
 
