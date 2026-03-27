@@ -1,11 +1,11 @@
 ---
 # hearts-14cx
 title: Make lobby more beautiful
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-03-15T16:38:51Z
-updated_at: 2026-03-26T11:51:54Z
+updated_at: 2026-03-27T15:08:40Z
 ---
 
 ## Vision
