@@ -688,13 +688,18 @@ export function createRenderer({ dom, state, send, claimSeat }) {
     }
 
     const queueIdle = !state.processingTrickEventQueue && state.trickEventQueue.length === 0;
-    const showStartControl = !state.isObserver && !snapshot.started && players.length === 4 && queueIdle && !isGameOver;
+    const showStartControl = !state.isObserver && !snapshot.started && players.length >= 1 && queueIdle && !isGameOver;
     const showPassControls = !state.isObserver && (isPassing || isPassReview);
     dom.centerControlsEl.classList.toggle('hidden', !showStartControl && !showPassControls);
     dom.startButtonEl.hidden = !showStartControl;
     dom.startButtonEl.disabled = !showStartControl;
     const hasCompletedRound = Object.values(totalPoints).some((points) => Number(points) > 0);
-    dom.startButtonEl.textContent = hasCompletedRound ? 'Continue' : 'Start';
+    const seatsOpen = players.length < 4;
+    if (hasCompletedRound) {
+      dom.startButtonEl.textContent = seatsOpen ? 'Continue with bots' : 'Continue';
+    } else {
+      dom.startButtonEl.textContent = seatsOpen ? 'Start with bots' : 'Start';
+    }
 
     const serverTrickPlays = (snapshot.trick_plays || []).slice();
     if (queueIdle) {

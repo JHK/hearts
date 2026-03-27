@@ -309,7 +309,7 @@ func TestWebSocketJoinAndStateFlow(t *testing.T) {
 	startMsg := readMessageType(t, ws, "start_result")
 	var startResp protocol.CommandResponse
 	require.NoError(t, json.Unmarshal(startMsg.Data, &startResp), "decode start response")
-	require.False(t, startResp.Accepted, "expected start rejected with insufficient players")
+	require.True(t, startResp.Accepted, "expected start accepted (empty seats auto-filled with bots)")
 
 	require.NoError(t, ws.WriteJSON(wsCommand{Type: "unknown"}), "unknown write")
 

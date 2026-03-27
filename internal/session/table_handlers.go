@@ -195,6 +195,28 @@ func (r *Table) handleAddBot(state *tableState, strategyName string) (AddedBot, 
 	}, nil
 }
 
+func (r *Table) fillEmptySeatsWithBots(state *tableState) {
+	taken := make(map[string]bool, len(state.players))
+	for _, p := range state.players {
+		taken[p.Name] = true
+	}
+
+	for len(state.players) < game.PlayersPerTable {
+		id := r.nextPlayerID(state)
+		strategyKind := bot.StrategyHard
+		player := r.addPlayer(state, id, strategyKind.BotName(taken), strategyKind.NewBot(), "")
+		taken[player.Name] = true
+
+		slog.Debug("bot auto-filled for start", "event", "bot_added", "table_id", r.tableID, "player_id", player.id, "name", player.Name, "strategy", string(strategyKind))
+
+		r.publishPublic(protocol.EventPlayerJoined, protocol.PlayerJoinedData{Player: protocol.PlayerInfo{
+			PlayerID: player.id,
+			Name:     player.Name,
+			Seat:     player.position,
+		}})
+	}
+}
+
 func (r *Table) addPlayer(state *tableState, id protocol.PlayerID, name string, b bot.Bot, token string) *playerState {
 	player := &playerState{
 		id:       id,
@@ -217,6 +239,9 @@ func (r *Table) handleStart(state *tableState, playerID protocol.PlayerID) proto
 	if reason := r.validateStartPreconditions(state, playerID); reason != "" {
 		return protocol.CommandResponse{Accepted: false, Reason: reason}
 	}
+
+	// Fill remaining empty seats with hard bots.
+	r.fillEmptySeatsWithBots(state)
 
 	state.round = r.initializeRound(state)
 	slog.Info("table started", "event", "table_started", "table_id", r.tableID, "round", state.game.RoundsPlayed()+1)
@@ -517,14 +542,8 @@ func (r *Table) validateStartPreconditions(state *tableState, playerID protocol.
 	if state.round != nil {
 		return ErrRoundInProgress.Error()
 	}
-	if len(state.players) == 0 {
-		return "at least one player must join before start"
-	}
 	if state.playersByID[playerID] == nil {
 		return "only seated players can start"
-	}
-	if len(state.players) != game.PlayersPerTable {
-		return fmt.Sprintf("table requires %d players before start", game.PlayersPerTable)
 	}
 	return ""
 }
