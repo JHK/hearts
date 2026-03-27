@@ -1,11 +1,11 @@
 ---
 # hearts-5ceo
 title: In-Game User Settings
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-03-25T09:40:37Z
-updated_at: 2026-03-25T09:40:49Z
+updated_at: 2026-03-27T12:28:31Z
 ---
 
 ## Vision
