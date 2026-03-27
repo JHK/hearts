@@ -42,6 +42,7 @@
     --line: #d4e1ec;
     --muted: #5b6f83;
     --accent: #116466;
+    --green: #1f6f5f;
     color: var(--ink);
     background: radial-gradient(circle at top, #ffffff, var(--bg));
   }
@@ -79,14 +80,6 @@
     height: 28px;
   }
 
-  .lobby-page .settings-name-input {
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 0.875rem;
-    width: 140px;
-    min-width: 0;
-  }
 
   .lobby-page button:not(.settings-toggle) {
     border: 0;
@@ -473,6 +466,15 @@
     font-size: 0.875rem;
     color: var(--ink);
     cursor: pointer;
+  }
+
+  .settings-name-input {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.875rem;
+    width: 140px;
+    min-width: 0;
   }
 
   .settings-switch {

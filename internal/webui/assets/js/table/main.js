@@ -89,6 +89,20 @@ function notifyTurn(body) {
   n.onclick = () => { window.focus(); n.close(); };
 }
 
+dom.nameInputEl.value = playerName();
+
+let renameTimer = null;
+dom.nameInputEl.addEventListener('input', () => {
+  const name = dom.nameInputEl.value.trim() || 'Player';
+  localStorage.setItem(nameKey, name);
+  clearTimeout(renameTimer);
+  renameTimer = setTimeout(() => {
+    if (state.myPlayerId) {
+      send({ type: 'rename', name });
+    }
+  }, 300);
+});
+
 dom.settingsToggleEl.onclick = () => {
   dom.settingsPanelEl.classList.toggle('hidden');
 };
@@ -441,6 +455,26 @@ function connect() {
           log(`claimed seat ${msg.data.seat} as ${state.myPlayerId}`);
         } else {
           log(`claim seat failed: ${msg.data && msg.data.reason ? msg.data.reason : 'rejected'}`);
+        }
+        scheduleStateRefresh(0);
+        break;
+      case 'rename_result':
+        if (msg.data && !msg.data.accepted) {
+          log(`rename failed: ${msg.data.reason || 'rejected'}`);
+          // Revert input and localStorage to the server-authoritative name.
+          const snap = state.lastSnapshot;
+          if (snap && snap.players) {
+            const me = snap.players.find(p => p.player_id === state.myPlayerId);
+            if (me) {
+              dom.nameInputEl.value = me.name;
+              localStorage.setItem(nameKey, me.name);
+            }
+          }
+        }
+        break;
+      case 'player_renamed':
+        if (msg.data && msg.data.player) {
+          log(`${msg.data.old_name} is now ${msg.data.player.name}`);
         }
         scheduleStateRefresh(0);
         break;

@@ -23,11 +23,12 @@ type templateData struct {
 // registerPageRoutes mounts HTML page handlers, static card/icon assets, and
 // dev-only routes onto the router.
 func registerPageRoutes(r chi.Router, cfg Config, manager *session.Manager) error {
-	indexTmpl, err := template.New("index").Parse(string(mustReadAsset("assets/index.html")))
+	settingsPartial := string(mustReadAsset("assets/_settings_panel.html"))
+	indexTmpl, err := template.New("index").Parse(settingsPartial + string(mustReadAsset("assets/index.html")))
 	if err != nil {
 		return fmt.Errorf("parse index template: %w", err)
 	}
-	tableTmpl, err := template.New("table").Parse(string(mustReadAsset("assets/table.html")))
+	tableTmpl, err := template.New("table").Parse(settingsPartial + string(mustReadAsset("assets/table.html")))
 	if err != nil {
 		return fmt.Errorf("parse table template: %w", err)
 	}

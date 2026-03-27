@@ -806,6 +806,33 @@ func (r *Table) handleClaimSeat(state *tableState, seat int, name, token string)
 	}
 }
 
+func (r *Table) handleRename(state *tableState, playerID protocol.PlayerID, name string) protocol.CommandResponse {
+	player := state.playersByID[playerID]
+	if player == nil || player.bot != nil {
+		return protocol.CommandResponse{Accepted: false, Reason: "only seated human players can rename"}
+	}
+
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return protocol.CommandResponse{Accepted: false, Reason: "name must not be empty"}
+	}
+
+	oldName := player.Name
+	if name == oldName {
+		return protocol.CommandResponse{Accepted: true}
+	}
+
+	player.Name = name
+	slog.Info("player renamed", "event", "player_renamed", "table_id", r.tableID, "player_id", playerID, "old_name", oldName, "new_name", name)
+
+	r.publishPublic(protocol.EventPlayerRenamed, protocol.PlayerRenamedData{
+		Player:  protocol.PlayerInfo{PlayerID: player.id, Name: player.Name, Seat: player.position},
+		OldName: oldName,
+	})
+
+	return protocol.CommandResponse{Accepted: true}
+}
+
 func (r *Table) handleResumeGame(state *tableState, playerID protocol.PlayerID) protocol.CommandResponse {
 	if !state.paused {
 		return protocol.CommandResponse{Accepted: false, Reason: "game is not paused"}

@@ -86,3 +86,8 @@ type SeatClaimedData struct {
 	Player  PlayerInfo `json:"player"`
 	OldName string     `json:"old_name"`
 }
+
+type PlayerRenamedData struct {
+	Player  PlayerInfo `json:"player"`
+	OldName string     `json:"old_name"`
+}

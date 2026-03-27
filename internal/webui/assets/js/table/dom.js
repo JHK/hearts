@@ -44,6 +44,7 @@ export function createTableDom({ tableId, eventsEnabled }) {
   const rematchButtonEl = document.getElementById('rematchButton');
   const settingsToggleEl = document.getElementById('settingsToggle');
   const settingsPanelEl = document.getElementById('settingsPanel');
+  const nameInputEl = document.getElementById('nameInput');
   const speedToggleEl = document.getElementById('speedToggle');
   const soundToggleEl = document.getElementById('soundToggle');
   const notifyToggleEl = document.getElementById('notifyToggle');
@@ -97,6 +98,7 @@ export function createTableDom({ tableId, eventsEnabled }) {
     rematchButtonEl,
     settingsToggleEl,
     settingsPanelEl,
+    nameInputEl,
     speedToggleEl,
     soundToggleEl,
     notifyToggleEl

@@ -21,4 +21,5 @@ const (
 	EventRematchVote       EventType = "rematch_vote"
 	EventRematchStarting   EventType = "rematch_starting"
 	EventSeatClaimed       EventType = "seat_claimed"
+	EventPlayerRenamed     EventType = "player_renamed"
 )

@@ -21,7 +21,7 @@ This document defines the architecture for the web-only Hearts application.
   - Add bots, start round, and play cards.
   - Render game events and per-player hand updates.
 - `/ws/table/<table_id>` is the real-time channel.
-  - Browser sends commands (join/start/play/add_bot).
+  - Browser sends commands (join/start/play/pass/rename/add_bot/claim_seat/rematch/resume_game).
   - Server pushes table events and private player updates.
 
 Each browser instance represents one player identity for a table.
@@ -100,7 +100,7 @@ All logs are emitted via `log/slog` with a JSON handler to stdout.
 
 | Level | Events |
 |-------|--------|
-| `info` | table created, table destroyed, table started (each round), player connected (WebSocket), player disconnected, player joined table, player left table |
+| `info` | table created, table destroyed, table started (each round), player connected (WebSocket), player disconnected, player joined table, player left table, player renamed |
 | `warn` | table orphaned (all human players disconnected, pending cleanup) |
 | `debug` | bot added to table |
 

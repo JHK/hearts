@@ -621,3 +621,69 @@ func TestBuildSnapshotCopiesRoundHistory(t *testing.T) {
 	state.roundHistory[0]["p3"] = 99
 	require.Equal(t, game.Points(3), snapshot.RoundHistory[0]["p3"], "expected snapshot round history to be copied")
 }
+
+func TestRenameSeatedHumanPlayer(t *testing.T) {
+	runtime := NewTable("rename-happy", nil)
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+
+	resp := runtime.Rename(alice.PlayerID, "Alicia")
+	require.True(t, resp.Accepted)
+
+	snapshot := runtime.Snapshot("")
+	require.Equal(t, "Alicia", snapshot.Players[0].Name)
+}
+
+func TestRenameEmptyNameRejected(t *testing.T) {
+	runtime := NewTable("rename-empty", nil)
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+
+	resp := runtime.Rename(alice.PlayerID, "   ")
+	require.False(t, resp.Accepted)
+	require.Equal(t, "name must not be empty", resp.Reason)
+
+	snapshot := runtime.Snapshot("")
+	require.Equal(t, "Alice", snapshot.Players[0].Name)
+}
+
+func TestRenameSameNameNoOp(t *testing.T) {
+	runtime := NewTable("rename-noop", nil)
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+
+	resp := runtime.Rename(alice.PlayerID, "Alice")
+	require.True(t, resp.Accepted)
+
+	snapshot := runtime.Snapshot("")
+	require.Equal(t, "Alice", snapshot.Players[0].Name)
+}
+
+func TestRenameBotRejected(t *testing.T) {
+	runtime := NewTable("rename-bot", nil)
+	defer runtime.Close()
+
+	_, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+	added, err := runtime.AddBot("")
+	require.NoError(t, err)
+
+	resp := runtime.Rename(added.JoinResponse.PlayerID, "NewBotName")
+	require.False(t, resp.Accepted)
+	require.Equal(t, "only seated human players can rename", resp.Reason)
+}
+
+func TestRenameUnknownPlayerRejected(t *testing.T) {
+	runtime := NewTable("rename-unknown", nil)
+	defer runtime.Close()
+
+	resp := runtime.Rename("nonexistent", "Ghost")
+	require.False(t, resp.Accepted)
+	require.Equal(t, "only seated human players can rename", resp.Reason)
+}

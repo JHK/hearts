@@ -196,6 +196,12 @@ type claimSeatCommand struct {
 	reply chan protocol.JoinResponse
 }
 
+type renameCommand struct {
+	playerID protocol.PlayerID
+	name     string
+	reply    chan protocol.CommandResponse
+}
+
 type debugBotCommand struct {
 	reply chan *DebugBotSnapshot
 }
@@ -387,6 +393,14 @@ func (r *Table) Rematch(playerID protocol.PlayerID) protocol.CommandResponse {
 	return <-reply
 }
 
+func (r *Table) Rename(playerID protocol.PlayerID, name string) protocol.CommandResponse {
+	reply := make(chan protocol.CommandResponse, 1)
+	if !r.submit(renameCommand{playerID: playerID, name: name, reply: reply}) {
+		return protocol.CommandResponse{Accepted: false, Reason: "table is stopping"}
+	}
+	return <-reply
+}
+
 // ClaimSeat lets an observer take over a bot-controlled seat.
 func (r *Table) ClaimSeat(seat int, name, token string) (protocol.JoinResponse, error) {
 	reply := make(chan protocol.JoinResponse, 1)
@@ -466,6 +480,8 @@ func (r *Table) run() {
 				r.handleBotTurn(state, cmd.playerID)
 			case botPassCommand:
 				r.handleBotPass(state, cmd.playerID)
+			case renameCommand:
+				cmd.reply <- r.handleRename(state, cmd.playerID, cmd.name)
 			case claimSeatCommand:
 				cmd.reply <- r.handleClaimSeat(state, cmd.seat, cmd.name, cmd.token)
 			case debugBotCommand:

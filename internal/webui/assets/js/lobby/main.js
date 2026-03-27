@@ -1,12 +1,18 @@
 (() => {
   const nameKey = 'hearts.player.name';
   const tokenKey = 'hearts.player.token';
+  const speedKey = 'hearts.animation.speed';
+  const soundKey = 'hearts.sound.enabled';
+  const notifyKey = 'hearts.notifications.enabled';
 
-  const nameEl = document.getElementById('name');
+  const nameEl = document.getElementById('nameInput');
   const tablesEl = document.getElementById('tables');
   const tablesAreaEl = document.getElementById('tablesArea');
   const settingsToggleEl = document.getElementById('settingsToggle');
   const settingsPanelEl = document.getElementById('settingsPanel');
+  const speedToggleEl = document.getElementById('speedToggle');
+  const soundToggleEl = document.getElementById('soundToggle');
+  const notifyToggleEl = document.getElementById('notifyToggle');
 
   function ensureToken() {
     let token = localStorage.getItem(tokenKey);
@@ -45,6 +51,33 @@
       settingsPanelEl.classList.add('hidden');
     }
   });
+
+  // --- Settings controls ---
+
+  speedToggleEl.checked = localStorage.getItem(speedKey) === 'fast';
+  speedToggleEl.onchange = () => {
+    localStorage.setItem(speedKey, speedToggleEl.checked ? 'fast' : 'normal');
+  };
+
+  const soundEnabled = localStorage.getItem(soundKey) !== 'false';
+  soundToggleEl.checked = soundEnabled;
+  soundToggleEl.onchange = () => {
+    localStorage.setItem(soundKey, soundToggleEl.checked ? 'true' : 'false');
+  };
+
+  notifyToggleEl.checked = localStorage.getItem(notifyKey) === 'true';
+  notifyToggleEl.onchange = async () => {
+    if (notifyToggleEl.checked) {
+      if ('Notification' in window && Notification.permission !== 'granted') {
+        const result = await Notification.requestPermission();
+        if (result !== 'granted') {
+          notifyToggleEl.checked = false;
+          return;
+        }
+      }
+    }
+    localStorage.setItem(notifyKey, notifyToggleEl.checked ? 'true' : 'false');
+  };
 
   // --- Table cards ---
 

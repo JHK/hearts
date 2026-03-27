@@ -308,6 +308,14 @@ func handleTableWebSocket(manager *session.Manager, presence *tracker.HumanPrese
 				continue
 			}
 			send(wsMessage{Type: "rematch_result", Data: runtime.Rematch(current)})
+		case "rename":
+			current := getPlayerID()
+			if current == "" {
+				send(wsMessage{Type: "error", Error: "join first"})
+				continue
+			}
+			name := truncateUTF8(cmd.Name, maxLobbyNameLen)
+			send(wsMessage{Type: "rename_result", Data: runtime.Rename(current, name)})
 		case "claim_seat":
 			if getPlayerID() != "" {
 				send(wsMessage{Type: "error", Error: "already seated"})
