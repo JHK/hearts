@@ -47,7 +47,7 @@ export function createTableDom({ tableId }) {
   const soundToggleEl = document.getElementById('soundToggle');
   const notifyToggleEl = document.getElementById('notifyToggle');
 
-  titleEl.textContent = `Hearts Table ${tableId}`;
+  titleEl.textContent = tableId;
 
   return {
     titleEl,

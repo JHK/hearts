@@ -68,7 +68,7 @@ func buildFingerprintedAssets(assets fs.FS) (*fingerprintedAssets, error) {
 	}
 
 	// Rewrite JS import paths and store content keyed by fingerprinted URL.
-	jsImportRe := regexp.MustCompile(`(from\s+['"])(\./[^'"]+\.js)(['"])`)
+	jsImportRe := regexp.MustCompile(`(from\s+['"])(\.\.?/[^'"]+\.js)(['"])`)
 
 	for _, p := range paths {
 		data := contents[p]
@@ -79,15 +79,20 @@ func buildFingerprintedAssets(assets fs.FS) (*fingerprintedAssets, error) {
 				parts := jsImportRe.FindSubmatch(match)
 				relPath := string(parts[2])
 				absURL := "/" + path.Join(dir, relPath)
-				if fpURL, ok := fa.urlMapping[absURL]; ok {
-					fpFilename := "./" + path.Base(fpURL)
-					var result []byte
-					result = append(result, parts[1]...)
-					result = append(result, fpFilename...)
-					result = append(result, parts[3]...)
-					return result
+				fpURL, ok := fa.urlMapping[absURL]
+				if !ok {
+					return match
 				}
-				return match
+				fpDir := path.Dir(fa.urlMapping["/"+p])
+				rel, err := relativeImportPath(fpDir, fpURL)
+				if err != nil {
+					return match
+				}
+				var result []byte
+				result = append(result, parts[1]...)
+				result = append(result, rel...)
+				result = append(result, parts[3]...)
+				return result
 			})
 		}
 
@@ -121,6 +126,37 @@ func registerFingerprintedAssetHandlers(router chi.Router, fa *fingerprintedAsse
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		_, _ = w.Write(cssContent)
 	})
+}
+
+// relativeImportPath computes the relative path from fromDir to toPath,
+// ensuring it starts with "./" or "../" for use in ES module imports.
+func relativeImportPath(fromDir, toPath string) (string, error) {
+	fromDir = path.Clean(fromDir)
+	toPath = path.Clean(toPath)
+	toDir := path.Dir(toPath)
+	toFile := path.Base(toPath)
+
+	// Build relative directory traversal.
+	fromParts := strings.Split(strings.TrimPrefix(fromDir, "/"), "/")
+	toParts := strings.Split(strings.TrimPrefix(toDir, "/"), "/")
+
+	// Find common prefix length.
+	common := 0
+	for common < len(fromParts) && common < len(toParts) && fromParts[common] == toParts[common] {
+		common++
+	}
+
+	ups := len(fromParts) - common
+	var rel string
+	if ups == 0 {
+		rel = "./"
+	} else {
+		rel = strings.Repeat("../", ups)
+	}
+	if remaining := toParts[common:]; len(remaining) > 0 && remaining[0] != "" {
+		rel += strings.Join(remaining, "/") + "/"
+	}
+	return rel + toFile, nil
 }
 
 func shortHash(data []byte) string {

@@ -252,6 +252,23 @@ func TestFingerprintedJSImportsRewritten(t *testing.T) {
 	domURL := fp.urlMapping["/assets/js/table/dom.js"]
 	require.Contains(t, mainContent, path.Base(domURL),
 		"main.js should import fingerprinted dom filename")
+
+	// Cross-directory import: table/main.js imports ../shared/settings.js
+	require.NotContains(t, mainContent, "'../shared/settings.js'",
+		"cross-directory import should be rewritten")
+	settingsURL := fp.urlMapping["/assets/js/shared/settings.js"]
+	require.Contains(t, mainContent, path.Base(settingsURL),
+		"main.js should import fingerprinted settings filename")
+	require.Contains(t, mainContent, "../shared/",
+		"cross-directory import should preserve relative path prefix")
+
+	// Lobby main.js also imports ../shared/settings.js
+	lobbyURL := fp.urlMapping["/assets/js/lobby/main.js"]
+	lobbyContent := string(fp.byFingerprintedURL[lobbyURL])
+	require.NotContains(t, lobbyContent, "'../shared/settings.js'",
+		"lobby cross-directory import should be rewritten")
+	require.Contains(t, lobbyContent, path.Base(settingsURL),
+		"lobby main.js should import fingerprinted settings filename")
 }
 
 func TestWebSocketJoinAndStateFlow(t *testing.T) {

@@ -1,10 +1,11 @@
 ---
 # hearts-qpu9
 title: Simplify table header and remove page padding
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-03-27T09:06:44Z
-updated_at: 2026-03-27T09:06:44Z
+updated_at: 2026-03-27T13:53:38Z
 parent: hearts-dfll
 blocked_by:
     - hearts-8ivt
@@ -22,15 +23,24 @@ Make the table page feel as modern and lean as the redesigned lobby.
 
 ## Acceptance Criteria
 
-- [ ] Table page outer padding removed or significantly reduced — the board fills more of the viewport
-- [ ] Header has no visible background, border, or shadow — title text sits directly on the page background
-- [ ] Settings gear and back-to-lobby link remain functional and accessible in the header
-- [ ] Styling follows the design system documented in hearts-8ivt
-- [ ] Responsive: still usable on mobile viewports
-- [ ] Visual regression check: no layout breakage on the board, seats, or scoreboard
+- [x] Table page outer padding removed or significantly reduced — the board fills more of the viewport
+- [x] Header has no visible background, border, or shadow — title text sits directly on the page background
+- [x] Settings gear and back-to-lobby link remain functional and accessible in the header
+- [x] Styling follows the design system documented in hearts-8ivt
+- [x] Responsive: still usable on mobile viewports
+- [x] Visual regression check: no layout breakage on the board, seats, or scoreboard
 
 ## Out of Scope
 
 - Moving buttons into the header (that's separate beans)
 - Trick center or control changes
 - Scoreboard styling
+
+
+## Summary of Changes
+
+- Removed `<section>` wrapper from table header so it no longer inherits panel background, border, or shadow
+- Reduced `.table-page main` padding from 16px to 6px so the board fills more of the viewport
+- Added light padding directly to `.page-header` for breathing room without a visible panel
+- Preserved 490px breakpoint behavior (zero main padding, header still has minimal padding)
+- Settings gear and back-to-lobby link unchanged and functional

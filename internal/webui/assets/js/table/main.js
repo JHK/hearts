@@ -1,12 +1,7 @@
 import { createTableDom } from './dom.js';
 import { createRenderer } from './render.js';
 import { playHeartsBreaking, playQueenOfSpades, setMuted } from './audio.js';
-
-const nameKey = 'hearts.player.name';
-const tokenKey = 'hearts.player.token';
-const speedKey = 'hearts.animation.speed';
-const soundKey = 'hearts.sound.enabled';
-const notifyKey = 'hearts.notifications.enabled';
+import { nameKey, tokenKey, speedKey, soundKey, notifyKey, ensureToken, initSettingsPopover } from '../shared/settings.js';
 const trickCardInBufferMs = 80;
 
 const tableId = decodeURIComponent(location.pathname.replace('/table/', ''));
@@ -102,23 +97,13 @@ dom.nameInputEl.addEventListener('input', () => {
   }, 300);
 });
 
-dom.settingsToggleEl.onclick = () => {
-  dom.settingsPanelEl.classList.toggle('hidden');
-};
+initSettingsPopover(dom.settingsToggleEl, dom.settingsPanelEl);
 
 dom.speedToggleEl.onchange = () => {
   const fast = dom.speedToggleEl.checked;
   applySpeed(fast);
   localStorage.setItem(speedKey, fast ? 'fast' : 'normal');
 };
-
-document.addEventListener('click', (e) => {
-  if (!dom.settingsPanelEl.classList.contains('hidden') &&
-      !dom.settingsPanelEl.contains(e.target) &&
-      !dom.settingsToggleEl.contains(e.target)) {
-    dom.settingsPanelEl.classList.add('hidden');
-  }
-});
 
 dom.addBotDefaultEl.onclick = () => {
   send({ type: 'add_bot', strategy: dom.botStrategySelectEl.value || '' });
@@ -153,17 +138,6 @@ connect();
 function playerName() {
   const stored = (localStorage.getItem(nameKey) || '').trim();
   return stored || 'Player';
-}
-
-function ensureToken() {
-  let storedToken = localStorage.getItem(tokenKey);
-  if (!storedToken) {
-    storedToken = (self.crypto && self.crypto.randomUUID)
-      ? self.crypto.randomUUID()
-      : String(Date.now()) + Math.random().toString(16).slice(2);
-    localStorage.setItem(tokenKey, storedToken);
-  }
-  return storedToken;
 }
 
 function waitMs(durationMs) {
