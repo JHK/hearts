@@ -3,9 +3,9 @@ export function createTableDom({ tableId }) {
   const statusEl = document.getElementById('status');
   const observerBadgeEl = document.getElementById('observerBadge');
   const turnIndicatorEl = document.getElementById('turnIndicator');
-  const botControlEl = document.getElementById('botControl');
-  const addBotDefaultEl = document.getElementById('addBotDefault');
-  const botStrategySelectEl = document.getElementById('botStrategySelect');
+  const addBotContainerEl = document.getElementById('addBotContainer');
+  const addBotToggleEl = document.getElementById('addBotToggle');
+  const addBotPanelEl = document.getElementById('addBotPanel');
   const startButtonEl = document.getElementById('start');
   const centerControlsEl = document.getElementById('centerControls');
   const passSummaryEl = document.getElementById('passSummary');
@@ -54,9 +54,9 @@ export function createTableDom({ tableId }) {
     statusEl,
     observerBadgeEl,
     turnIndicatorEl,
-    botControlEl,
-    addBotDefaultEl,
-    botStrategySelectEl,
+    addBotContainerEl,
+    addBotToggleEl,
+    addBotPanelEl,
     startButtonEl,
     centerControlsEl,
     passSummaryEl,

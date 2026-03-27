@@ -293,7 +293,6 @@
     --line: #d5d1c8;
     --accent: #116466;
     --green: #1f6f5f;
-    --orange: #b44f26;
     --felt: #1f5f51;
     --card-front: #fff;
     --card-edge: #e5ebf2;
@@ -546,66 +545,38 @@
     gap: 10px;
   }
 
-  .bot-control {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 8;
+  .bot-strength-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
   }
 
-  .bot-control-group {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 10px;
-    overflow: hidden;
-    background: linear-gradient(130deg, var(--green), #2f9480);
-    box-shadow: 0 6px 14px rgba(8, 24, 39, 0.24);
-  }
-
-  .table-page .bot-control-group > button.secondary {
+  .bot-strength-option {
+    display: block;
+    width: 100%;
+    padding: 4px 0;
     border: 0;
-    border-radius: 0;
-    margin: 0;
-    padding: 9px 12px;
-    min-height: 40px;
-    width: auto;
+    border-radius: 6px;
     background: transparent;
-    box-shadow: none;
-    display: inline-flex;
-    align-items: center;
-    font-size: 1rem;
-    line-height: 1;
-  }
-
-  .table-page .bot-strategy-select {
-    border: 0;
-    border-radius: 0;
-    min-width: 124px;
-    width: 124px;
-    height: 40px;
-    margin: 0;
-    padding: 0 28px 0 8px;
-    color: #fff;
-    font-weight: 700;
-    font-size: 1rem;
-    line-height: 1;
-    box-shadow: none;
-    appearance: none;
-    -webkit-appearance: none;
-    background-image:
-      linear-gradient(45deg, transparent 50%, #fff 50%),
-      linear-gradient(135deg, #fff 50%, transparent 50%);
-    background-position:
-      calc(100% - 14px) 17px,
-      calc(100% - 9px) 17px;
-    background-size: 5px 5px, 5px 5px;
-    background-repeat: no-repeat;
-    background-color: transparent;
+    color: var(--ink);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: left;
     cursor: pointer;
+    transition: background-color 120ms ease;
   }
 
-  .table-page .bot-strategy-select option {
-    color: #17292f;
+  .bot-strength-option:hover {
+    background: rgba(17, 100, 102, 0.1);
+  }
+
+  .bot-strength-option:focus-visible {
+    outline: 2px solid rgba(26, 76, 104, 0.55);
+    outline-offset: 2px;
+  }
+
+  .bot-strength-option:active {
+    background: rgba(17, 100, 102, 0.18);
   }
 
   .seat {
@@ -990,7 +961,7 @@
     color: #fff;
     font-weight: 700;
     cursor: pointer;
-    background: linear-gradient(130deg, var(--orange), #d06d53);
+    background: linear-gradient(130deg, var(--accent), #1a8587);
   }
 
   .table-page button.secondary:not(.hand-card) {

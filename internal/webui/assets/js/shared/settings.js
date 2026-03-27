@@ -16,15 +16,29 @@ export function ensureToken() {
 }
 
 export function initSettingsPopover(toggleEl, panelEl) {
+  function setOpen(open) {
+    panelEl.classList.toggle('hidden', !open);
+    toggleEl.setAttribute('aria-expanded', String(open));
+  }
+
+  toggleEl.setAttribute('aria-expanded', 'false');
+
   toggleEl.onclick = () => {
-    panelEl.classList.toggle('hidden');
+    setOpen(panelEl.classList.contains('hidden'));
   };
 
   document.addEventListener('pointerdown', (e) => {
     if (!panelEl.classList.contains('hidden') &&
         !panelEl.contains(e.target) &&
         !toggleEl.contains(e.target)) {
-      panelEl.classList.add('hidden');
+      setOpen(false);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panelEl.classList.contains('hidden')) {
+      setOpen(false);
+      toggleEl.focus();
     }
   });
 }

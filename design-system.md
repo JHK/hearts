@@ -51,9 +51,9 @@ Translucent overlays on existing surfaces -- not new colors:
 
 Semantic traffic-light colors: green (waiting), amber (active), red (paused). Tinted backgrounds with matching dark text.
 
-### Chart Player Colors
+### Chart Player Colors (game-over chart only)
 
-Cyclic: teal, burnt orange, slate, purple. Chosen for distinguishability at small sizes.
+Cyclic: teal (`#116466`), burnt orange (`#b44f26`), slate (`#5b6f83`), purple (`#8b5cf6`). Chosen for distinguishability at small sizes. These colors are scoped to the game-over score chart and should not appear elsewhere in the UI.
 
 ## Typography
 

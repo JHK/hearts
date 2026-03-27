@@ -98,6 +98,7 @@ dom.nameInputEl.addEventListener('input', () => {
 });
 
 initSettingsPopover(dom.settingsToggleEl, dom.settingsPanelEl);
+initSettingsPopover(dom.addBotToggleEl, dom.addBotPanelEl);
 
 dom.speedToggleEl.onchange = () => {
   const fast = dom.speedToggleEl.checked;
@@ -105,9 +106,11 @@ dom.speedToggleEl.onchange = () => {
   localStorage.setItem(speedKey, fast ? 'fast' : 'normal');
 };
 
-dom.addBotDefaultEl.onclick = () => {
-  send({ type: 'add_bot', strategy: dom.botStrategySelectEl.value || '' });
-  dom.botStrategySelectEl.value = 'hard';
+dom.addBotPanelEl.onclick = (e) => {
+  const btn = e.target.closest('.bot-strength-option');
+  if (!btn) return;
+  send({ type: 'add_bot', strategy: btn.dataset.strategy });
+  dom.addBotPanelEl.classList.add('hidden');
 };
 
 dom.startButtonEl.onclick = () => {
