@@ -74,7 +74,6 @@ type Table struct {
 	stopOnce  sync.Once
 	stoppedCh chan struct{}
 
-	subsMu    sync.RWMutex
 	subs      map[int]chan StreamEvent
 	nextSubID int
 }
@@ -201,6 +200,19 @@ type debugBotCommand struct {
 	reply chan *DebugBotSnapshot
 }
 
+type subscribeCommand struct {
+	reply chan subscribeResult
+}
+
+type subscribeResult struct {
+	ch <-chan StreamEvent
+	id int
+}
+
+type unsubscribeCommand struct {
+	id int
+}
+
 // DebugBotSnapshot holds the full decision context for all bots at the table.
 type DebugBotSnapshot struct {
 	TableID       string                 `json:"table_id"`
@@ -253,34 +265,33 @@ func (r *Table) Close() {
 		close(r.stop)
 		<-r.stoppedCh
 
-		r.subsMu.Lock()
+		// Safe without lock: the actor goroutine has exited.
 		for id, ch := range r.subs {
 			close(ch)
 			delete(r.subs, id)
 		}
-		r.subsMu.Unlock()
 	})
 }
 
+// Subscribe returns a channel of events and an unsubscribe function.
+// It must not be called from the actor goroutine (it would deadlock).
 func (r *Table) Subscribe() (<-chan StreamEvent, func()) {
-	r.subsMu.Lock()
-	r.nextSubID++
-	id := r.nextSubID
-	ch := make(chan StreamEvent, 128)
-	r.subs[id] = ch
-	r.subsMu.Unlock()
+	reply := make(chan subscribeResult, 1)
+	if !r.submit(subscribeCommand{reply: reply}) {
+		// Table is stopping; return a closed channel so the caller sees EOF.
+		ch := make(chan StreamEvent)
+		close(ch)
+		return ch, func() {}
+	}
+	res := <-reply
 
 	unsubscribe := func() {
-		r.subsMu.Lock()
-		sub, ok := r.subs[id]
-		if ok {
-			delete(r.subs, id)
-			close(sub)
-		}
-		r.subsMu.Unlock()
+		// Fire-and-forget; if the table is already stopping the actor
+		// will never process this, but Close drains subs anyway.
+		r.submit(unsubscribeCommand{id: res.id})
 	}
 
-	return ch, unsubscribe
+	return res.ch, unsubscribe
 }
 
 func (r *Table) Join(name, token string) (protocol.JoinResponse, error) {
@@ -459,6 +470,17 @@ func (r *Table) run() {
 				cmd.reply <- r.handleClaimSeat(state, cmd.seat, cmd.name, cmd.token)
 			case debugBotCommand:
 				cmd.reply <- r.buildDebugBotContext(state)
+			case subscribeCommand:
+				r.nextSubID++
+				id := r.nextSubID
+				ch := make(chan StreamEvent, 128)
+				r.subs[id] = ch
+				cmd.reply <- subscribeResult{ch: ch, id: id}
+			case unsubscribeCommand:
+				if sub, ok := r.subs[cmd.id]; ok {
+					close(sub)
+					delete(r.subs, cmd.id)
+				}
 			}
 		}
 	}
@@ -486,9 +508,6 @@ func (r *Table) publishPrivate(playerID protocol.PlayerID, eventType protocol.Ev
 }
 
 func (r *Table) emit(event StreamEvent) {
-	r.subsMu.RLock()
-	defer r.subsMu.RUnlock()
-
 	for _, sub := range r.subs {
 		select {
 		case sub <- event:
