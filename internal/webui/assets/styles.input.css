@@ -347,6 +347,8 @@
 
   .scoreboard-section {
     align-self: start;
+    container-type: inline-size;
+    container-name: scoreboard;
   }
 
   .scoreboard-wrap {
@@ -577,7 +579,7 @@
     min-height: 320px;
     position: relative;
     display: grid;
-    grid-template-columns: minmax(200px, 1fr) minmax(260px, 1fr) minmax(200px, 1fr);
+    grid-template-columns: auto 320px auto;
     grid-template-rows: auto 1fr auto;
     gap: 10px;
   }
@@ -704,8 +706,6 @@
   .trick-center {
     grid-column: 2;
     grid-row: 2;
-    border: 1px dashed rgba(224, 255, 245, 0.4);
-    border-radius: 12px;
     position: relative;
     padding: 8px;
     min-width: 260px;
@@ -739,8 +739,10 @@
     padding: 10px 12px;
     color: #e7fff8;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-    background: var(--felt);
-    border-radius: 11px;
+  }
+
+  .trick-center-controls:has(#gamePausedControls:not(.hidden)) {
+    backdrop-filter: blur(4px);
   }
 
   .trick-center-controls .muted {
@@ -1154,14 +1156,17 @@
 
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 900px) {
   .table-game-layout {
-    grid-template-columns: minmax(780px, 1fr) minmax(300px, 360px);
+    grid-template-columns: minmax(0, 800px) minmax(200px, 1fr);
     align-items: start;
   }
 
+}
+
+@container scoreboard (max-width: 300px) {
   .scoreboard-table thead th:not(:first-child) {
-    padding: 4px 4px;
+    padding: 4px;
     vertical-align: bottom;
   }
 
@@ -1173,10 +1178,35 @@
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 765px) {
+  .table-page main {
+    padding: 0;
+  }
+
+  .table-page .page-header {
+    padding: 12px 20px 0;
+  }
+
+  .table-page section {
+    border-radius: 0;
+  }
+
+  .table-board {
+    padding: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .lobby-page ul {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
+@media (max-width: 500px) {
   .table-board {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto auto auto;
+    padding: 0;
   }
 
   .seat.top,
@@ -1187,6 +1217,13 @@
     grid-column: 1;
   }
 
+  .seat.top,
+  .seat.left,
+  .seat.right,
+  .seat.bottom {
+    align-items: flex-start;
+  }
+
   .seat.top {
     grid-row: 1;
   }
@@ -1194,31 +1231,22 @@
   .trick-center {
     grid-row: 2;
     min-height: 300px;
+    padding: 0;
   }
 
   .seat.left {
     grid-row: 3;
     text-align: left;
-    align-items: flex-start;
   }
 
   .seat.right {
     grid-row: 4;
     text-align: left;
-    align-items: flex-start;
   }
 
   .seat.bottom {
     grid-row: 5;
     text-align: left;
-    align-items: flex-start;
-  }
-
-  .seat.top,
-  .seat.left,
-  .seat.right,
-  .seat.bottom {
-    align-items: flex-start;
   }
 
   .seat.top .seat-hand,
@@ -1260,34 +1288,12 @@
 }
 
 @media (max-width: 490px) {
-  .table-page main {
-    padding: 0;
-  }
-
-  .table-page section {
-    border-radius: 0;
-  }
-
-  .table-board {
-    padding: 8px 0;
-  }
-
   .seat.bottom .hand-card {
     width: clamp(65px, 49.15px + 4vw, 68px);
   }
 
   .seat.bottom .seat-hand .hand-card + .hand-card {
     margin-left: -38px;
-  }
-
-  .seat.bottom .seat-hand {
-    min-height: 90px;
-  }
-}
-
-@media (max-width: 640px) {
-  .lobby-page ul {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   }
 }
 
