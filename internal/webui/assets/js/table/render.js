@@ -673,12 +673,6 @@ export function createRenderer({ dom, state, send, claimSeat }) {
       renderPausedPanel(snapshot);
     }
 
-    const waitingForPlayers = !snapshot.started && players.length < 4;
-    dom.statusEl.hidden = !waitingForPlayers;
-    if (waitingForPlayers) {
-      dom.statusEl.textContent = '⌛';
-    }
-
     dom.trickSectionEl.hidden = false;
 
     const canAddBot = !state.isObserver && !snapshot.started && players.length < 4 && !isGameOver;
@@ -709,25 +703,7 @@ export function createRenderer({ dom, state, send, claimSeat }) {
 
     state.lastPlayers = players;
     const relativePlayers = relativeSeatPlayers(players);
-    const turnPlayer = players.find((player) => player.player_id === state.liveTurnPlayerId);
     const isYourTurn = !!isPlaying && !!state.myPlayerId && state.liveTurnPlayerId === state.myPlayerId;
-    if (isGameOver) {
-      dom.turnIndicatorEl.textContent = '';
-    } else if (isPlaying) {
-      if (!state.liveTurnPlayerId) {
-        dom.turnIndicatorEl.textContent = 'collecting trick';
-      } else {
-        dom.turnIndicatorEl.textContent = isYourTurn
-          ? 'waiting for you'
-          : `waiting for ${turnPlayer ? turnPlayer.name : state.liveTurnPlayerId}`;
-      }
-    } else if (isPassing) {
-      dom.turnIndicatorEl.textContent = `pass 3 cards ${snapshot.pass_direction ? `(${snapshot.pass_direction})` : ''}`.trim();
-    } else if (isPassReview) {
-      dom.turnIndicatorEl.textContent = 'waiting for players to continue';
-    } else {
-      dom.turnIndicatorEl.textContent = '';
-    }
 
     setSeatLabels(relativePlayers, state.liveTurnPlayerId);
     renderTrick(players, state.liveTrickPlays);

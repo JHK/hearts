@@ -11,41 +11,28 @@
 </head>
 <body class="table-page">
   <main>
-    <div class="page-header">
-      <div class="page-header-title">
-        <h1><img src="/icon.svg" alt="" class="title-logo" /> Hearts <span id="title" class="muted"></span> <span id="status" class="muted" title="waiting for players" aria-label="waiting for players">⌛</span> <span id="observerBadge" class="muted" hidden>· observing</span></h1>
-        <span id="turnIndicator" class="muted"></span>
-      </div>
-      <div class="page-header-actions">
-        <div id="addBotContainer" class="settings-container hidden">
-          <button id="addBotToggle" type="button" class="icon-btn" aria-label="Add bot" title="Add bot">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M17.753 14a2.25 2.25 0 0 1 2.25 2.25v.904A3.75 3.75 0 0 1 18.696 20c-1.565 1.344-3.75 2-6.696 2s-5.128-.656-6.69-2a3.75 3.75 0 0 1-1.307-2.846v-.904A2.25 2.25 0 0 1 6.253 14h11.5ZM11.9 2.006 12 2a.75.75 0 0 1 .743.648l.007.102v.5h3.5a2.25 2.25 0 0 1 2.25 2.25v4a2.25 2.25 0 0 1-2.25 2.25h-8.5A2.25 2.25 0 0 1 5.5 9.5v-4a2.25 2.25 0 0 1 2.25-2.25h3.5v-.5a.75.75 0 0 1 .65-.744ZM9.75 6.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Zm4.5 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z" />
-            </svg>
-          </button>
-          <div id="addBotPanel" class="settings-panel bot-strength-panel hidden">
-            <button type="button" class="bot-strength-option" data-strategy="hard">Hard</button>
-            <button type="button" class="bot-strength-option" data-strategy="medium">Medium</button>
-            <button type="button" class="bot-strength-option" data-strategy="easy">Easy</button>
-          </div>
-        </div>
-        <div class="settings-container">
-          <button id="settingsToggle" type="button" class="icon-btn" aria-label="Settings" title="Settings">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M19.14 12.94a7.07 7.07 0 0 0 .06-.94c0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.04 7.04 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.48.48 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.37 1.03.7 1.62.94l.36 2.54c.05.24.26.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.03-1.58ZM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2Z" />
-            </svg>
-          </button>
-          <div id="settingsPanel" class="settings-panel hidden">
-            {{template "settings_panel"}}
-          </div>
-        </div>
-        <a href="/" class="icon-btn page-header-back" aria-label="Back to lobby" title="Back to lobby">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M14.78 18.72a.75.75 0 0 1-1.06 0l-6.19-6.19a.75.75 0 0 1 0-1.06l6.19-6.19a.75.75 0 1 1 1.06 1.06L9.12 12l5.66 5.66a.75.75 0 0 1 0 1.06Z" />
-          </svg>
-        </a>
+    {{define "page_header_back"}}
+    <a href="/" class="page-header-back" aria-label="Back to lobby" title="Back to lobby">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M14.78 18.72a.75.75 0 0 1-1.06 0l-6.19-6.19a.75.75 0 0 1 0-1.06l6.19-6.19a.75.75 0 1 1 1.06 1.06L9.12 12l5.66 5.66a.75.75 0 0 1 0 1.06Z" />
+      </svg>
+    </a>
+    {{end}}
+    {{define "page_header_extra_actions"}}
+    <div id="addBotContainer" class="settings-container hidden">
+      <button id="addBotToggle" type="button" class="icon-btn" aria-label="Add bot" title="Add bot">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M17.753 14a2.25 2.25 0 0 1 2.25 2.25v.904A3.75 3.75 0 0 1 18.696 20c-1.565 1.344-3.75 2-6.696 2s-5.128-.656-6.69-2a3.75 3.75 0 0 1-1.307-2.846v-.904A2.25 2.25 0 0 1 6.253 14h11.5ZM11.9 2.006 12 2a.75.75 0 0 1 .743.648l.007.102v.5h3.5a2.25 2.25 0 0 1 2.25 2.25v4a2.25 2.25 0 0 1-2.25 2.25h-8.5A2.25 2.25 0 0 1 5.5 9.5v-4a2.25 2.25 0 0 1 2.25-2.25h3.5v-.5a.75.75 0 0 1 .65-.744ZM9.75 6.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Zm4.5 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z" />
+        </svg>
+      </button>
+      <div id="addBotPanel" class="settings-panel bot-strength-panel hidden">
+        <button type="button" class="bot-strength-option" data-strategy="hard">Hard</button>
+        <button type="button" class="bot-strength-option" data-strategy="medium">Medium</button>
+        <button type="button" class="bot-strength-option" data-strategy="easy">Easy</button>
       </div>
     </div>
+    {{end}}
+    {{template "page_header"}}
 
     <div class="table-game-layout">
       <section id="trickSection">

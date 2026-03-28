@@ -1,13 +1,13 @@
 ---
 # hearts-chos
 title: 'Header UI polish: layout, spacing, and button consistency'
-status: todo
+status: completed
 type: bug
 priority: normal
 tags:
     - frontend
 created_at: 2026-03-27T15:37:01Z
-updated_at: 2026-03-27T15:37:11Z
+updated_at: 2026-03-28T13:06:23Z
 ---
 
 ## Context
@@ -28,13 +28,28 @@ Several small visual issues in the table page header (`page-header` in `table.ht
 5. Back button is visually distinct from menu-opening icon buttons (different style or treatment), and hover/animation behavior is consistent across all header buttons
 
 ## Acceptance Criteria
-- [ ] Lobby headline is responsive on mobile
-- [ ] Pass phase turn indicator omits direction label
-- [ ] Header icon buttons have adequate margin/gap
-- [ ] Back to Lobby button is on the left side of the header
-- [ ] Back button is visually distinguishable from menu buttons
-- [ ] Hover/animation behavior is consistent across header buttons
+- [x] Lobby headline is responsive on mobile
+- [x] Pass phase turn indicator omits direction label
+- [x] Header icon buttons have adequate margin/gap
+- [x] Back to Lobby button is on the left side of the header
+- [x] Back button is visually distinguishable from menu buttons
+- [x] Hover/animation behavior is consistent across header buttons
 
 ## Out of Scope
 - Redesigning the entire header layout
 - Changing header button functionality
+
+## Summary of Changes
+
+- Moved back button to the left side of the header so icon buttons stay in place
+- Restyled back button as a subtle ghost link (no border/background) distinct from icon-btn menu buttons
+- Added responsive font sizing for headline on mobile (<480px)
+- Removed redundant pass direction parenthetical from turn indicator
+- Increased icon button gap from 6px to 10px
+- Unified hover behavior: icon-btns get shadow, back button gets subtle background tint
+
+## Follow-up Changes
+
+- Removed table ID, status emoji, and observer badge from table header h1 to match lobby header
+- Added Page Header section to design-system.md documenting shared structure and the rule that page-specific state doesn't belong in the header
+- Documented back (navigation) vs icon (action) button distinction in design system

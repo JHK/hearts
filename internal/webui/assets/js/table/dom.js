@@ -1,8 +1,4 @@
-export function createTableDom({ tableId }) {
-  const titleEl = document.getElementById('title');
-  const statusEl = document.getElementById('status');
-  const observerBadgeEl = document.getElementById('observerBadge');
-  const turnIndicatorEl = document.getElementById('turnIndicator');
+export function createTableDom() {
   const addBotContainerEl = document.getElementById('addBotContainer');
   const addBotToggleEl = document.getElementById('addBotToggle');
   const addBotPanelEl = document.getElementById('addBotPanel');
@@ -47,13 +43,7 @@ export function createTableDom({ tableId }) {
   const soundToggleEl = document.getElementById('soundToggle');
   const notifyToggleEl = document.getElementById('notifyToggle');
 
-  titleEl.textContent = tableId;
-
   return {
-    titleEl,
-    statusEl,
-    observerBadgeEl,
-    turnIndicatorEl,
     addBotContainerEl,
     addBotToggleEl,
     addBotPanelEl,

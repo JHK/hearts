@@ -6,7 +6,7 @@ const trickCardInBufferMs = 80;
 
 const tableId = decodeURIComponent(location.pathname.replace('/table/', ''));
 
-const dom = createTableDom({ tableId });
+const dom = createTableDom();
 
 const state = {
   ws: undefined,
@@ -342,14 +342,12 @@ function connect() {
         if (msg.data && msg.data.accepted) {
           state.myPlayerId = msg.data.player_id;
           state.isObserver = false;
-          dom.observerBadgeEl.hidden = true;
           log(`joined as ${state.myPlayerId} seat ${msg.data.seat}`);
         } else {
           const reason = msg.data && msg.data.reason ? msg.data.reason : 'join rejected';
           log(`join rejected: ${reason}`);
           if (reason === 'table is full' || reason === 'round already in progress') {
             state.isObserver = true;
-            dom.observerBadgeEl.hidden = false;
           }
         }
         requestState();
@@ -426,7 +424,6 @@ function connect() {
         if (msg.data && msg.data.accepted) {
           state.myPlayerId = msg.data.player_id;
           state.isObserver = false;
-          dom.observerBadgeEl.hidden = true;
           log(`claimed seat ${msg.data.seat} as ${state.myPlayerId}`);
         } else {
           log(`claim seat failed: ${msg.data && msg.data.reason ? msg.data.reason : 'rejected'}`);
