@@ -49,16 +49,8 @@ export function createRenderer({ dom, state, send, claimSeat }) {
   }
 
   function setSeatLabels(relativePlayers, turnPlayerId) {
-    function displayName(player) {
-      if (!player) {
-        return '-';
-      }
-
-      return player.is_bot ? `${player.name} [bot]` : player.name;
-    }
-
     function setSeatContent(nameEl, player) {
-      nameEl.textContent = displayName(player);
+      nameEl.textContent = player ? player.name : '-';
       if (state.isObserver && player && player.is_bot && claimSeat) {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -360,7 +352,7 @@ export function createRenderer({ dom, state, send, claimSeat }) {
       playerHeaderCell.dataset.playerId = player.player_id;
       const nameSpan = document.createElement('span');
       nameSpan.className = 'scoreboard-player-name';
-      nameSpan.textContent = player.is_bot ? `${player.name} [bot]` : player.name;
+      nameSpan.textContent = player.name;
       playerHeaderCell.appendChild(nameSpan);
       headerRow.appendChild(playerHeaderCell);
     }
@@ -451,7 +443,7 @@ export function createRenderer({ dom, state, send, claimSeat }) {
       swatch.className = 'game-over-swatch';
       swatch.style.backgroundColor = CHART_COLORS[i % CHART_COLORS.length];
       nameTd.appendChild(swatch);
-      nameTd.appendChild(document.createTextNode(p.is_bot ? `${p.name} [bot]` : p.name));
+      nameTd.appendChild(document.createTextNode(p.name));
       const scoreTd = document.createElement('td');
       scoreTd.textContent = String(score);
       tr.appendChild(medalTd);
@@ -497,7 +489,7 @@ export function createRenderer({ dom, state, send, claimSeat }) {
         return cumulative;
       });
       const p = players.find(pl => pl.player_id === pid);
-      const label = p ? (p.is_bot ? `${p.name} [bot]` : p.name) : pid;
+      const label = p ? p.name : pid;
       const isWinner = winners.includes(pid);
       return {
         label,
