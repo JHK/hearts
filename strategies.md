@@ -43,7 +43,9 @@ Used when neither moon-shot nor void-creation is selected.
 
 ### Defensive Pass — Hard: `hardChooseDefensivePass`
 
-Same base `passRisk` scoring as Easy/Medium, plus direction-aware adjustments:
+Same base `passRisk` scoring as Easy/Medium, plus:
+
+**Low-heart retention**: hearts ≤ 6 get -30 risk, making them unlikely to be passed. Keeping low hearts ensures we can follow heart leads and take a penalty trick to break opponent moon shots.
 
 **Passing left** (recipient plays after you — most dangerous):
 - High spades (J♠+): +25 (recipient can lead them right back at you)
@@ -241,9 +243,7 @@ If pursuing and no safe-high-cards exist anywhere in hand, abort.
 
 ### Hard-Only: Opponent Moon-Shot Detection (`detectMoonShooter`)
 
-Two detection paths, both confirmed against `roundPoints`:
-- **Strong**: 4+ tricks, 14+ penalty points, one opponent holds all penalties.
-- **Early**: 3+ tricks, 3+ penalty points, one opponent won every penalty trick (`trickWinnerSeat` on `PlayedCards`).
+Single detection path: 3+ completed tricks, 3+ total penalty points scored, and one opponent holds all of them (confirmed via `roundPoints`).
 
 Score-aware gating (`shouldBlockShooter`): skip blocking if the shooter has the sole highest `GameScores` entry (clearly in last place — their moon shot hurts all opponents equally).
 
@@ -303,10 +303,6 @@ Estimates cards opponents still hold in a suit: `13 - inHand - played`. Used to 
 - `guaranteedHeartTricks`: consecutive top-card run in hearts (A♥, K♥, Q♥...).
 - `guaranteedNonHeartTricks`: sum of consecutive top-card runs across clubs, diamonds, spades.
 - `guaranteedTricks`: heart + non-heart total.
-
-### Trick Winner Seat (`trickWinnerSeat`)
-
-Given a completed trick (`[]Play`), returns the seat with the highest rank in the lead suit.
 
 ### Near-Safe Cards (Hard only)
 

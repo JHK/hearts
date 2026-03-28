@@ -574,31 +574,31 @@ func TestDetectMoonShooterRequiresMinPenalty(t *testing.T) {
 	require.Equal(t, -1, target, "should not detect shooter with < 3 penalty points")
 }
 
-func TestDetectMoonShooterEarlyDetectionBeforeQueenSpades(t *testing.T) {
-	// 3 completed tricks, seat 1 won all penalty tricks (5 heart points).
-	// Q♠ not yet taken, but the pattern is consistent — detect early.
+func TestDetectMoonShooterDetectsBeforeQueenSpades(t *testing.T) {
+	// 3 completed tricks, seat 1 holds all 5 penalty points.
+	// Q♠ not yet taken — detect based on point accumulation.
 	played := []game.Play{
-		{Seat: 0, Card: c("2H")}, {Seat: 1, Card: c("AH")}, {Seat: 2, Card: c("5C")}, {Seat: 3, Card: c("6C")}, // seat 1 wins (AH)
-		{Seat: 1, Card: c("KH")}, {Seat: 2, Card: c("3H")}, {Seat: 3, Card: c("4H")}, {Seat: 0, Card: c("7C")}, // seat 1 wins (KH)
-		{Seat: 1, Card: c("AC")}, {Seat: 2, Card: c("3C")}, {Seat: 3, Card: c("4C")}, {Seat: 0, Card: c("5D")}, // no penalty
+		{Seat: 0, Card: c("2H")}, {Seat: 1, Card: c("AH")}, {Seat: 2, Card: c("5C")}, {Seat: 3, Card: c("6C")},
+		{Seat: 1, Card: c("KH")}, {Seat: 2, Card: c("3H")}, {Seat: 3, Card: c("4H")}, {Seat: 0, Card: c("7C")},
+		{Seat: 1, Card: c("AC")}, {Seat: 2, Card: c("3C")}, {Seat: 3, Card: c("4C")}, {Seat: 0, Card: c("5D")},
 	}
 	roundPoints := [game.PlayersPerTable]game.Points{0, 5, 0, 0}
 
 	target := detectMoonShooter(roundPoints, played, 0)
-	require.Equal(t, 1, target, "should detect seat 1 as early shooter via trick-winner pattern")
+	require.Equal(t, 1, target, "should detect seat 1 with all penalties before Q♠ taken")
 }
 
-func TestDetectMoonShooterEarlyRequiresConsistentWinner(t *testing.T) {
-	// 3 completed tricks with hearts, but penalty tricks won by different players.
+func TestDetectMoonShooterNoDetectionWhenPenaltiesSplit(t *testing.T) {
+	// 3 completed tricks with hearts, penalties split between two players.
 	played := []game.Play{
-		{Seat: 0, Card: c("2H")}, {Seat: 1, Card: c("AH")}, {Seat: 2, Card: c("5C")}, {Seat: 3, Card: c("6C")}, // seat 1 wins
-		{Seat: 2, Card: c("3H")}, {Seat: 3, Card: c("KH")}, {Seat: 0, Card: c("7C")}, {Seat: 1, Card: c("8C")}, // seat 3 wins
+		{Seat: 0, Card: c("2H")}, {Seat: 1, Card: c("AH")}, {Seat: 2, Card: c("5C")}, {Seat: 3, Card: c("6C")},
+		{Seat: 2, Card: c("3H")}, {Seat: 3, Card: c("KH")}, {Seat: 0, Card: c("7C")}, {Seat: 1, Card: c("8C")},
 		{Seat: 0, Card: c("2C")}, {Seat: 1, Card: c("3C")}, {Seat: 2, Card: c("4C")}, {Seat: 3, Card: c("5D")},
 	}
 	roundPoints := [game.PlayersPerTable]game.Points{0, 1, 0, 2} // split
 
 	target := detectMoonShooter(roundPoints, played, 0)
-	require.Equal(t, -1, target, "should not detect shooter when penalty tricks are split")
+	require.Equal(t, -1, target, "should not detect shooter when penalties are split")
 }
 
 func TestHardBlockMoonLeadPrefersSafeHeart(t *testing.T) {

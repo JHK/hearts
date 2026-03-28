@@ -358,6 +358,14 @@ func hardChooseDefensivePass(hand []game.Card, dir game.PassDirection) []game.Ca
 		candidates[i] = scored{card, risk}
 	}
 
+	// Keep low hearts (≤6) — they let us follow heart leads and take
+	// a penalty trick to break opponent moon shots.
+	for i, sc := range candidates {
+		if sc.card.Suit == game.SuitHearts && sc.card.Rank <= 6 {
+			candidates[i].risk -= 30
+		}
+	}
+
 	// Direction adjustments: boost/penalise risk to shift pass priorities.
 	switch dir {
 	case game.PassDirectionLeft:
@@ -469,15 +477,9 @@ func shouldBlockShooter(shooterSeat int, gameScores [game.PlayersPerTable]game.P
 }
 
 // detectMoonShooter returns the seat of an opponent who appears to be
-// shooting the moon, or -1 if no shooter is detected. Uses two detection
-// paths:
-//
-// Strong signal (high confidence): 4+ completed tricks, 14+ penalty points
-// (Q♠ taken), and one opponent holds all penalties via roundPoints.
-//
-// Early signal (pattern-based): 3+ completed tricks, 3+ penalty points,
-// and one opponent has won EVERY trick that contained a penalty card.
-// Confirmed against roundPoints to prevent false positives.
+// shooting the moon, or -1 if no shooter is detected. Triggers when 3+
+// tricks are complete, 3+ penalty points have been scored, and one opponent
+// holds all of them.
 func detectMoonShooter(roundPoints [game.PlayersPerTable]game.Points, plays []game.Play, mySeat int) int {
 	completedTricks := len(plays) / 4
 	if completedTricks < 3 {
@@ -486,45 +488,12 @@ func detectMoonShooter(roundPoints [game.PlayersPerTable]game.Points, plays []ga
 	playedCards := game.CardsFrom(plays)
 	totalPenalty := penaltyPointsInCards(playedCards)
 
-	// Strong signal: Q♠ taken + all penalties held by one opponent.
-	if totalPenalty >= 14 && completedTricks >= 4 {
+	// Detect shooter: one opponent holds all scored penalties (3+ points).
+	if totalPenalty >= 3 {
 		for seat := range game.PlayersPerTable {
 			if seat != mySeat && roundPoints[seat] >= totalPenalty {
 				return seat
 			}
-		}
-	}
-
-	// Early signal: one opponent winning all penalty tricks consistently.
-	if totalPenalty >= 3 {
-		penaltyWinner := -1
-		consistent := true
-		for i := 0; i+3 < len(plays); i += 4 {
-			trick := plays[i : i+4]
-			hasPenalty := false
-			for _, p := range trick {
-				if game.IsPenaltyCard(p.Card) {
-					hasPenalty = true
-					break
-				}
-			}
-			if !hasPenalty {
-				continue
-			}
-			winner := trickWinnerSeat(trick)
-			if winner == mySeat {
-				consistent = false
-				break
-			}
-			if penaltyWinner == -1 {
-				penaltyWinner = winner
-			} else if winner != penaltyWinner {
-				consistent = false
-				break
-			}
-		}
-		if consistent && penaltyWinner >= 0 && roundPoints[penaltyWinner] >= totalPenalty {
-			return penaltyWinner
 		}
 	}
 

@@ -214,19 +214,6 @@ func compareLeadCard(a, b game.Card, suitCounts map[game.Suit]int, hasQueenSpade
 	return smartSuitPriority(a.Suit) - smartSuitPriority(b.Suit)
 }
 
-// trickWinnerSeat returns the seat that won a completed trick.
-// The winner is the player who played the highest card in the lead suit.
-func trickWinnerSeat(trick []game.Play) int {
-	leadSuit := trick[0].Card.Suit
-	winner := trick[0]
-	for _, p := range trick[1:] {
-		if p.Card.Suit == leadSuit && p.Card.Rank > winner.Card.Rank {
-			winner = p
-		}
-	}
-	return winner.Seat
-}
-
 func leadDangerPenalty(card game.Card, suitCounts map[game.Suit]int, hasQueenSpades bool) int {
 	if card.Suit != game.SuitSpades || !hasQueenSpades {
 		return 0
