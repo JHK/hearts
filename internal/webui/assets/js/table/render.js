@@ -188,12 +188,14 @@ export function createRenderer({ dom, state, send, claimSeat }) {
     }
   }
 
-  function renderYourHand(cards, phase, isYourTurn, passSubmitted, passReceived, passReady) {
+  function renderYourHand(cards, phase, isYourTurn, passSubmitted, passReceived, passReady, passSent) {
     const safeCards = Array.isArray(cards) ? cards : [];
     const safePassReceived = Array.isArray(passReceived) ? passReceived : [];
+    const safePassSent = Array.isArray(passSent) ? passSent : [];
     const receivedSet = new Set(safePassReceived);
+    const sentSet = new Set(safePassSent);
     state.selectedPassCards = state.selectedPassCards.filter((card) => safeCards.includes(card));
-    const handRenderKey = `${phase}|${isYourTurn ? '1' : '0'}|${passSubmitted ? '1' : '0'}|${passReady ? '1' : '0'}|${safePassReceived.join(',')}|${state.selectedPassCards.join(',')}|${safeCards.join(',')}`;
+    const handRenderKey = `${phase}|${isYourTurn ? '1' : '0'}|${passSubmitted ? '1' : '0'}|${passReady ? '1' : '0'}|${safePassReceived.join(',')}|${safePassSent.join(',')}|${state.selectedPassCards.join(',')}|${safeCards.join(',')}`;
     if (handRenderKey === state.lastHandRenderKey) {
       return;
     }
@@ -221,6 +223,9 @@ export function createRenderer({ dom, state, send, claimSeat }) {
       if (phase === 'pass_review' && !passReady && receivedSet.has(cardValue)) {
         card.className += ' selected';
       }
+      if (phase === 'passing' && passSubmitted && sentSet.has(cardValue)) {
+        card.className += ' selected';
+      }
 
       const imageURL = cardImageURL(cardValue);
       if (imageURL) {
@@ -243,7 +248,7 @@ export function createRenderer({ dom, state, send, claimSeat }) {
           } else if (state.selectedPassCards.length < 3) {
             state.selectedPassCards = [...state.selectedPassCards, cardValue];
           }
-          renderYourHand(safeCards, phase, isYourTurn, passSubmitted);
+          renderYourHand(safeCards, phase, isYourTurn, passSubmitted, passReceived, passReady, passSent);
           renderPassPanel(state.lastSnapshot);
           return;
         }
@@ -580,12 +585,19 @@ export function createRenderer({ dom, state, send, claimSeat }) {
     dom.passSelectionEl.hidden = true;
 
     if (phase === 'passing') {
-      const dir = snapshot.pass_direction;
-      const label = dir ? `Pass ${dir.charAt(0).toUpperCase() + dir.slice(1)}` : 'Pass 3 Cards';
-      dom.submitPassEl.textContent = label;
-      dom.submitPassEl.hidden = false;
-      dom.submitPassEl.disabled = passSubmitted || state.selectedPassCards.length !== 3;
-      dom.readyAfterPassEl.hidden = true;
+      if (passSubmitted) {
+        dom.passDetailsEl.textContent = 'Waiting for other players…';
+        dom.passDetailsEl.hidden = false;
+        dom.submitPassEl.hidden = true;
+        dom.readyAfterPassEl.hidden = true;
+      } else {
+        const dir = snapshot.pass_direction;
+        const label = dir ? `Pass ${dir.charAt(0).toUpperCase() + dir.slice(1)}` : 'Pass 3 Cards';
+        dom.submitPassEl.textContent = label;
+        dom.submitPassEl.hidden = false;
+        dom.submitPassEl.disabled = state.selectedPassCards.length !== 3;
+        dom.readyAfterPassEl.hidden = true;
+      }
       return;
     }
 
@@ -718,7 +730,8 @@ export function createRenderer({ dom, state, send, claimSeat }) {
         isYourTurn,
         !!snapshot.pass_submitted,
         snapshot.pass_received || [],
-        !!snapshot.pass_ready
+        !!snapshot.pass_ready,
+        snapshot.pass_sent || []
       );
     }
     renderOtherHands(relativePlayers, snapshot.hand_sizes || {});

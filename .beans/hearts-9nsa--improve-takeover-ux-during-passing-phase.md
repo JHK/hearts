@@ -1,10 +1,11 @@
 ---
 # hearts-9nsa
 title: Improve takeover UX during passing phase
-status: todo
+status: completed
 type: feature
+priority: normal
 created_at: 2026-03-28T14:30:00Z
-updated_at: 2026-03-28T14:30:00Z
+updated_at: 2026-03-28T14:45:38Z
 ---
 
 When a human takes over a bot seat during the passing phase **after the bot has already submitted passes**, the UX is confusing:
@@ -34,6 +35,13 @@ When a human takes over a bot seat during the passing phase **after the bot has 
 
 ## Tasks
 
-- [ ] Ensure `PassSent` is populated in snapshot during passing phase when pass is already submitted
-- [ ] Update `render.js` to show passed cards and waiting state when `passSubmitted` is true
-- [ ] Test: take over bot seat after bot has passed, verify new UX
+- [x] Ensure `PassSent` is populated in snapshot during passing phase when pass is already submitted (already works)
+- [x] Update `render.js` to show passed cards and waiting state when `passSubmitted` is true
+- [x] Test: take over bot seat after bot has passed, verify new UX
+
+## Summary of Changes
+
+Updated render.js to improve the takeover UX when a human takes over a bot seat during the passing phase after the bot has already submitted passes:
+- Show "Waiting for other players…" message instead of a stale disabled "Pass Left" button
+- Highlight the cards that were passed on the player's behalf
+- Pass all arguments in the recursive renderYourHand call for robustness
