@@ -1,4 +1,7 @@
 export function createTableDom() {
+  const claimSeatContainerEl = document.getElementById('claimSeatContainer');
+  const claimSeatToggleEl = document.getElementById('claimSeatToggle');
+  const claimSeatPanelEl = document.getElementById('claimSeatPanel');
   const addBotContainerEl = document.getElementById('addBotContainer');
   const addBotToggleEl = document.getElementById('addBotToggle');
   const addBotPanelEl = document.getElementById('addBotPanel');
@@ -44,6 +47,9 @@ export function createTableDom() {
   const notifyToggleEl = document.getElementById('notifyToggle');
 
   return {
+    claimSeatContainerEl,
+    claimSeatToggleEl,
+    claimSeatPanelEl,
     addBotContainerEl,
     addBotToggleEl,
     addBotPanelEl,

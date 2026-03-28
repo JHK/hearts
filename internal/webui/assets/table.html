@@ -19,16 +19,24 @@
     </a>
     {{end}}
     {{define "page_header_extra_actions"}}
+    <div id="claimSeatContainer" class="settings-container hidden">
+      <button id="claimSeatToggle" type="button" class="icon-btn" aria-label="Take seat" title="Take seat">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M4 9.5a.75.75 0 0 1 .75-.75h11.69l-2.22-2.22a.75.75 0 1 1 1.06-1.06l3.5 3.5a.75.75 0 0 1 0 1.06l-3.5 3.5a.75.75 0 1 1-1.06-1.06l2.22-2.22H4.75A.75.75 0 0 1 4 9.5Zm16 5a.75.75 0 0 0-.75-.75H7.56l2.22-2.22a.75.75 0 1 0-1.06-1.06l-3.5 3.5a.75.75 0 0 0 0 1.06l3.5 3.5a.75.75 0 1 0 1.06-1.06L7.56 15.2h11.69a.75.75 0 0 0 .75-.75Z" />
+        </svg>
+      </button>
+      <div id="claimSeatPanel" class="settings-panel popover-menu hidden"></div>
+    </div>
     <div id="addBotContainer" class="settings-container hidden">
       <button id="addBotToggle" type="button" class="icon-btn" aria-label="Add bot" title="Add bot">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M17.753 14a2.25 2.25 0 0 1 2.25 2.25v.904A3.75 3.75 0 0 1 18.696 20c-1.565 1.344-3.75 2-6.696 2s-5.128-.656-6.69-2a3.75 3.75 0 0 1-1.307-2.846v-.904A2.25 2.25 0 0 1 6.253 14h11.5ZM11.9 2.006 12 2a.75.75 0 0 1 .743.648l.007.102v.5h3.5a2.25 2.25 0 0 1 2.25 2.25v4a2.25 2.25 0 0 1-2.25 2.25h-8.5A2.25 2.25 0 0 1 5.5 9.5v-4a2.25 2.25 0 0 1 2.25-2.25h3.5v-.5a.75.75 0 0 1 .65-.744ZM9.75 6.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Zm4.5 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z" />
         </svg>
       </button>
-      <div id="addBotPanel" class="settings-panel bot-strength-panel hidden">
-        <button type="button" class="bot-strength-option" data-strategy="hard">Hard</button>
-        <button type="button" class="bot-strength-option" data-strategy="medium">Medium</button>
-        <button type="button" class="bot-strength-option" data-strategy="easy">Easy</button>
+      <div id="addBotPanel" class="settings-panel popover-menu hidden">
+        <button type="button" class="popover-menu-option" data-strategy="hard">Hard</button>
+        <button type="button" class="popover-menu-option" data-strategy="medium">Medium</button>
+        <button type="button" class="popover-menu-option" data-strategy="easy">Easy</button>
       </div>
     </div>
     {{end}}

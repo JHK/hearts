@@ -584,13 +584,13 @@
     gap: 10px;
   }
 
-  .bot-strength-panel {
+  .popover-menu {
     display: flex;
     flex-direction: column;
     gap: 2px;
   }
 
-  .bot-strength-option {
+  .popover-menu-option {
     display: block;
     width: 100%;
     padding: 4px 0;
@@ -605,16 +605,16 @@
     transition: background-color 120ms ease;
   }
 
-  .bot-strength-option:hover {
+  .popover-menu-option:hover {
     background: rgba(17, 100, 102, 0.1);
   }
 
-  .bot-strength-option:focus-visible {
+  .popover-menu-option:focus-visible {
     outline: 2px solid rgba(26, 76, 104, 0.55);
     outline-offset: 2px;
   }
 
-  .bot-strength-option:active {
+  .popover-menu-option:active {
     background: rgba(17, 100, 102, 0.18);
   }
 
@@ -632,24 +632,6 @@
   .seat-name {
     font-weight: 600;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  }
-
-  .claim-seat-btn {
-    font-size: 0.7em;
-    font-weight: 500;
-    padding: 1px 6px;
-    border-radius: 4px;
-    border: 1px solid var(--muted);
-    background: var(--bg);
-    color: var(--fg);
-    cursor: pointer;
-    text-shadow: none;
-    vertical-align: middle;
-    opacity: 0.85;
-  }
-  .claim-seat-btn:hover {
-    opacity: 1;
-    background: var(--line);
   }
 
   .seat-hand {

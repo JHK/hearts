@@ -29,7 +29,7 @@ const state = {
   loggedPassReviewKey: ''
 };
 
-const renderer = createRenderer({ dom, state, send, claimSeat });
+const renderer = createRenderer({ dom, state, send });
 
 const token = ensureToken();
 
@@ -99,6 +99,7 @@ dom.nameInputEl.addEventListener('input', () => {
 });
 
 initSettingsPopover(dom.settingsToggleEl, dom.settingsPanelEl);
+initSettingsPopover(dom.claimSeatToggleEl, dom.claimSeatPanelEl);
 initSettingsPopover(dom.addBotToggleEl, dom.addBotPanelEl);
 
 dom.speedToggleEl.onchange = () => {
@@ -107,8 +108,15 @@ dom.speedToggleEl.onchange = () => {
   localStorage.setItem(speedKey, fast ? 'fast' : 'normal');
 };
 
+dom.claimSeatPanelEl.onclick = (e) => {
+  const btn = e.target.closest('.popover-menu-option');
+  if (!btn) return;
+  claimSeat(Number(btn.dataset.seat));
+  dom.claimSeatPanelEl.classList.add('hidden');
+};
+
 dom.addBotPanelEl.onclick = (e) => {
-  const btn = e.target.closest('.bot-strength-option');
+  const btn = e.target.closest('.popover-menu-option');
   if (!btn) return;
   send({ type: 'add_bot', strategy: btn.dataset.strategy });
   dom.addBotPanelEl.classList.add('hidden');

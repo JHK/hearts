@@ -3,7 +3,7 @@ import { cardAltText, cardImageURL } from './cards.js';
 const CHART_COLORS = ['#116466', '#b44f26', '#5b6f83', '#8b5cf6'];
 const MEDALS = ['🏆', '🥈', '🥉'];
 
-export function createRenderer({ dom, state, send, claimSeat }) {
+export function createRenderer({ dom, state, send }) {
   let scoreChart = null;
   let gameOverRendered = false;
   function effectiveMe(players) {
@@ -51,18 +51,6 @@ export function createRenderer({ dom, state, send, claimSeat }) {
   function setSeatLabels(relativePlayers, turnPlayerId) {
     function setSeatContent(nameEl, player) {
       nameEl.textContent = player ? player.name : '-';
-      if (state.isObserver && player && player.is_bot && claimSeat) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'claim-seat-btn';
-        btn.textContent = 'Take seat';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          claimSeat(player.seat);
-        };
-        nameEl.appendChild(document.createTextNode(' '));
-        nameEl.appendChild(btn);
-      }
     }
 
     if (!relativePlayers.me) {
@@ -679,10 +667,29 @@ export function createRenderer({ dom, state, send, claimSeat }) {
 
     dom.trickSectionEl.hidden = false;
 
+    const botSeats = state.isObserver ? players.filter((p) => p.is_bot) : [];
+    const canClaimSeat = botSeats.length > 0 && !isGameOver;
+    dom.claimSeatContainerEl.classList.toggle('hidden', !canClaimSeat);
+    if (canClaimSeat) {
+      dom.claimSeatPanelEl.replaceChildren();
+      for (const bot of botSeats) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'popover-menu-option';
+        btn.dataset.seat = bot.seat;
+        btn.textContent = bot.name;
+        dom.claimSeatPanelEl.appendChild(btn);
+      }
+    } else {
+      dom.claimSeatPanelEl.classList.add('hidden');
+      dom.claimSeatToggleEl.setAttribute('aria-expanded', 'false');
+    }
+
     const canAddBot = !state.isObserver && !snapshot.started && players.length < 4 && !isGameOver;
     dom.addBotContainerEl.classList.toggle('hidden', !canAddBot);
     if (!canAddBot) {
       dom.addBotPanelEl.classList.add('hidden');
+      dom.addBotToggleEl.setAttribute('aria-expanded', 'false');
     }
 
     const queueIdle = !state.processingTrickEventQueue && state.trickEventQueue.length === 0;
