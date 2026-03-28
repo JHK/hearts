@@ -1,14 +1,14 @@
 ---
 # hearts-354i
 title: Display left/right player cards vertically
-status: todo
+status: completed
 type: feature
 priority: normal
 tags:
     - frontend
     - ux
 created_at: 2026-03-28T15:45:38Z
-updated_at: 2026-03-28T15:45:49Z
+updated_at: 2026-03-28T16:04:19Z
 parent: hearts-dfll
 ---
 
@@ -24,15 +24,24 @@ Strengthen the "sitting at a real table" illusion. Positional cues make it easie
 
 ## Acceptance Criteria
 
-- [ ] Left seat card backs are fanned vertically (stacked top-to-bottom with overlap, cards rotated 90°)
-- [ ] Right seat card backs are mirrored — also vertical, fanned in the opposite direction
-- [ ] Top seat remains horizontal (unchanged)
-- [ ] Bottom seat (your hand) remains horizontal (unchanged)
-- [ ] Layout works on mobile (single-column reflow) without breaking
-- [ ] Trick-center played cards maintain their current orientation (no rotation)
+- [x] Left seat card backs are fanned vertically (stacked top-to-bottom with overlap, cards rotated 90°)
+- [x] Right seat card backs are mirrored — also vertical, fanned in the opposite direction
+- [x] Top seat remains horizontal (unchanged)
+- [x] Bottom seat (your hand) remains horizontal (unchanged)
+- [x] Layout works on mobile (single-column reflow) without breaking
+- [x] Trick-center played cards maintain their current orientation (no rotation)
 
 ## Out of Scope
 
 - Showing actual card faces for opponents
 - Animating the rotation or fanning
 - Changing the bottom player's hand layout
+
+## Summary of Changes
+
+Modified `styles.input.css` to display left/right seat card backs vertically:
+- Left and right `.seat-hand` containers use `flex-direction: column` with centered alignment
+- Card backs inside left/right seats are rotated 90° via `transform: rotate(90deg)`
+- Overlap changed from horizontal (`margin-left: -8px`) to vertical (`margin-top: -20px`)
+- Mobile breakpoint (≤700px) reverts to horizontal layout: removes rotation, restores row direction and horizontal overlap
+- Top seat, bottom seat, and trick-center cards are completely unchanged

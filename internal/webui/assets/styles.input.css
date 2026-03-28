@@ -711,10 +711,14 @@
 
   .seat.left .seat-hand {
     justify-content: flex-start;
+    flex-direction: column;
+    align-items: center;
   }
 
   .seat.right .seat-hand {
     justify-content: flex-end;
+    flex-direction: column;
+    align-items: center;
   }
 
   .trick-center {
@@ -945,7 +949,12 @@
 
   .seat.left .seat-hand .back-card + .back-card,
   .seat.right .seat-hand .back-card + .back-card {
-    margin-left: -8px;
+    margin-top: -20px;
+  }
+
+  .seat.left .seat-hand .back-card,
+  .seat.right .seat-hand .back-card {
+    transform: rotate(90deg);
   }
 
   .hand-card-image {
@@ -1237,6 +1246,18 @@
   .seat.right .seat-hand,
   .seat.bottom .seat-hand {
     justify-content: flex-start;
+    flex-direction: row;
+  }
+
+  .seat.left .seat-hand .back-card,
+  .seat.right .seat-hand .back-card {
+    transform: none;
+  }
+
+  .seat.left .seat-hand .back-card + .back-card,
+  .seat.right .seat-hand .back-card + .back-card {
+    margin-top: 0;
+    margin-left: -10px;
   }
 
   .seat.bottom .seat-hand {
