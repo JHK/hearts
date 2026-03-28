@@ -38,15 +38,11 @@ func (r *Table) handleLeave(state *tableState, playerID protocol.PlayerID) {
 
 		// Immediately resolve any pending action for the departing player's
 		// new bot so the game state is consistent when it resumes.
+		// NOTE: PhasePassing is intentionally excluded — the bot should not
+		// auto-submit a pass on disconnect. If the human reconnects they can
+		// still choose their own cards. If the game resumes with the bot,
+		// resumeAfterPause → schedulePassingBots handles it.
 		switch state.round.Phase() {
-		case game.PhasePassing:
-			if !state.round.HasSubmittedPass(player.position) {
-				input := state.round.PassInput(player.position, state.game.Scores())
-				cards, err := player.bot.ChoosePass(input)
-				if err == nil {
-					_ = state.round.SubmitPass(player.position, cards)
-				}
-			}
 		case game.PhasePassReview:
 			if !state.round.IsPassReady(player.position) {
 				_ = state.round.MarkReady(player.position)

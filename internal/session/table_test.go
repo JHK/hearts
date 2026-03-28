@@ -687,3 +687,96 @@ func TestRenameUnknownPlayerRejected(t *testing.T) {
 	require.False(t, resp.Accepted)
 	require.Equal(t, "only seated human players can rename", resp.Reason)
 }
+
+func TestDisconnectDuringPassingDoesNotAutoSubmit(t *testing.T) {
+	runtime := NewTable("pass-disconnect", nil)
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+	bob, err := runtime.Join("Bob", "bob-token")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+
+	start := runtime.Start(alice.PlayerID)
+	require.True(t, start.Accepted, "start: %s", start.Reason)
+
+	snap := runtime.Snapshot(bob.PlayerID)
+	require.Equal(t, "passing", snap.Phase, "should be in passing phase")
+	require.False(t, snap.PassSubmitted, "bob hasn't submitted yet")
+
+	// Bob disconnects during passing — his pass should NOT be auto-submitted.
+	runtime.Leave(bob.PlayerID)
+
+	snap = runtime.Snapshot(alice.PlayerID)
+	require.True(t, snap.Paused, "game should be paused")
+
+	// Bob's pass specifically must not have been submitted.
+	bobSnap := runtime.Snapshot(bob.PlayerID)
+	require.False(t, bobSnap.PassSubmitted, "bob's pass should not be auto-submitted on disconnect")
+
+	// Bob reconnects — should still be able to submit their own pass.
+	bob2, err := runtime.Join("Bob", "bob-token")
+	require.NoError(t, err)
+	require.Equal(t, bob.PlayerID, bob2.PlayerID, "same player ID on reconnect")
+
+	snap = runtime.Snapshot(bob2.PlayerID)
+	require.False(t, snap.Paused, "game should be unpaused after reconnect")
+	require.Equal(t, "passing", snap.Phase, "still in passing phase")
+	require.False(t, snap.PassSubmitted, "bob's pass should still be unsubmitted")
+
+	// Bob can submit their own pass.
+	passResp := runtime.Pass(bob2.PlayerID, snap.Hand[:3])
+	require.True(t, passResp.Accepted, "pass: %s", passResp.Reason)
+
+	snap = runtime.Snapshot(bob2.PlayerID)
+	require.True(t, snap.PassSubmitted, "bob's pass should now be submitted")
+}
+
+func TestDisconnectDuringPassingBotSubmitsOnResume(t *testing.T) {
+	runtime := NewTable("pass-resume-bot", nil)
+	defer runtime.Close()
+
+	alice, err := runtime.Join("Alice", "alice-token")
+	require.NoError(t, err)
+	bob, err := runtime.Join("Bob", "bob-token")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+	_, err = runtime.AddBot("")
+	require.NoError(t, err)
+
+	start := runtime.Start(alice.PlayerID)
+	require.True(t, start.Accepted, "start: %s", start.Reason)
+
+	snap := runtime.Snapshot(bob.PlayerID)
+	require.Equal(t, "passing", snap.Phase)
+
+	// Bob disconnects — pass not auto-submitted.
+	runtime.Leave(bob.PlayerID)
+
+	snap = runtime.Snapshot(alice.PlayerID)
+	require.True(t, snap.Paused)
+
+	// Bob's pass must not have been auto-submitted.
+	bobSnap := runtime.Snapshot(bob.PlayerID)
+	require.False(t, bobSnap.PassSubmitted, "bob's pass should not be auto-submitted")
+
+	// Alice resumes without Bob reconnecting — bot should submit on resume.
+	resumeResp := runtime.ResumeGame(alice.PlayerID)
+	require.True(t, resumeResp.Accepted, "resume: %s", resumeResp.Reason)
+
+	// Submit Alice's pass so we can check all passes complete.
+	aliceSnap := runtime.Snapshot(alice.PlayerID)
+	passResp := runtime.Pass(alice.PlayerID, aliceSnap.Hand[:3])
+	require.True(t, passResp.Accepted, "alice pass: %s", passResp.Reason)
+
+	// After resume, bot passes are scheduled asynchronously. Give the table
+	// goroutine a moment to process them, then check all passes are in.
+	runtime.Drain()
+	snap = runtime.Snapshot(alice.PlayerID)
+	require.Equal(t, 4, snap.PassSubmittedCount, "all 4 passes should be submitted after resume")
+}

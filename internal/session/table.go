@@ -420,6 +420,17 @@ func (r *Table) DebugBotContext() *DebugBotSnapshot {
 	return <-reply
 }
 
+// Drain is a test helper that gives pending fire-and-forget commands
+// (e.g. scheduled bot actions) a chance to be processed. It performs 10
+// synchronous round-trips through the actor's unbuffered channel. This is
+// a best-effort heuristic, not a formal guarantee — cascading actions that
+// spawn more than 10 async commands may not fully settle.
+func (r *Table) Drain() {
+	for range 10 {
+		r.Snapshot("")
+	}
+}
+
 func (r *Table) submit(command any) bool {
 	select {
 	case <-r.stop:

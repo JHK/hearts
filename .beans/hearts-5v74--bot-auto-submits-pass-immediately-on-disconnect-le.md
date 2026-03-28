@@ -1,13 +1,13 @@
 ---
 # hearts-5v74
 title: Bot auto-submits pass immediately on disconnect, leaving no window to reconnect
-status: todo
+status: completed
 type: bug
 priority: normal
 tags:
     - backend
 created_at: 2026-03-28T14:50:04Z
-updated_at: 2026-03-28T14:50:18Z
+updated_at: 2026-03-28T14:56:57Z
 ---
 
 ## Context
@@ -37,12 +37,21 @@ instantly.
 
 ## Acceptance Criteria
 
-- [ ] Disconnecting during PhasePassing does not auto-submit a pass for the departing player
-- [ ] Reconnecting player can still submit their own pass
-- [ ] When game resumes with bot still in seat, bot submits its pass normally
-- [ ] Existing tests pass; new test covers disconnect-reconnect during passing
+- [x] Disconnecting during PhasePassing does not auto-submit a pass for the departing player
+- [x] Reconnecting player can still submit their own pass
+- [x] When game resumes with bot still in seat, bot submits its pass normally
+- [x] Existing tests pass; new test covers disconnect-reconnect during passing
 
 ## Out of Scope
 
 - UX improvements for showing bot-passed cards (hearts-9nsa)
 - Changing pass finality — once submitted, a pass cannot be undone
+
+## Summary of Changes
+
+Removed the immediate `ChoosePass`/`SubmitPass` call from `handleLeave` during `PhasePassing`. The bot conversion and game pause still happen on disconnect, but the bot no longer auto-submits a pass. When the game resumes (either via reconnection or manual resume), `resumeAfterPause` → `schedulePassingBots` handles bot pass submission through the normal async path.
+
+Files changed:
+- `internal/session/table_handlers.go`: Removed `PhasePassing` case from the switch in `handleLeave`
+- `internal/session/table.go`: Added `Drain()` helper for test synchronization
+- `internal/session/table_test.go`: Added two tests covering disconnect-reconnect and disconnect-resume-with-bot during passing
