@@ -60,9 +60,9 @@ Cyclic: teal (`#116466`), burnt orange (`#b44f26`), slate (`#5b6f83`), purple (`
 
 **`"Noto Sans", "Segoe UI", sans-serif`** everywhere. Single font family.
 
-Three size tiers: small (`0.78-0.88rem`) for metadata and body, medium (`0.9-1rem`) for section headings and scores, large (`1.28-1.6rem`) for page headings and overlay titles.
+Three size tiers: small (`0.75-0.88rem`) for metadata and body, medium (`0.9-1rem`) for section headings and scores, large (`1.28-1.6rem`) for page headings and overlay titles.
 
-Three weights: `400` (body), `600` (labels, badges), `700` (buttons, headings).
+Four weights: `300` (create icon), `400` (body), `600` (labels, badges), `700` (buttons, headings).
 
 Text on the felt gets a subtle shadow for legibility.
 
@@ -86,7 +86,7 @@ All buttons share: white text, `border-radius: 10px`, `font-weight: 700`.
 
 **Disabled** — Gray gradient with reduced text opacity. No shadow.
 
-**Icon** — `34px` circles with `--line` border and translucent white background. Hover lifts with box-shadow. Focus ring: `2px solid rgba(26, 76, 104, 0.55)`.
+**Icon** — `34px` circles with `--line` border and translucent white background. Hover gains box-shadow. Focus ring: `2px solid rgba(26, 76, 104, 0.55)`.
 
 **Back (navigation)** — `28px` borderless ghost circle, `--muted` color. Hover tints background and darkens to `--ink`.
 
@@ -125,6 +125,4 @@ CSS custom properties with a fast-mode variant at 50% duration:
 | `--anim-card-in` | `520ms` | `260ms` |
 | `--anim-trick-capture` | `1400ms` | `700ms` |
 | `--anim-winner-pulse` | `1200ms` | `600ms` |
-| `--anim-scoreboard-flip` | `400ms` | `200ms` |
-
 `prefers-reduced-motion` disables all animations.

@@ -314,7 +314,6 @@
     --anim-card-in: 520ms;
     --anim-trick-capture: 1400ms;
     --anim-winner-pulse: 1200ms;
-    --anim-scoreboard-flip: 400ms;
     --bg: #eae7df;
     color: var(--ink);
     background: var(--bg);
@@ -324,7 +323,6 @@
     --anim-card-in: 260ms;
     --anim-trick-capture: 700ms;
     --anim-winner-pulse: 600ms;
-    --anim-scoreboard-flip: 200ms;
   }
 
   .table-page main {
@@ -996,7 +994,7 @@
     color: #fff;
     font-weight: 700;
     cursor: pointer;
-    background: linear-gradient(130deg, var(--accent), #1a8587);
+    background: linear-gradient(130deg, var(--accent), #1b8d8f);
   }
 
   .felt-btn {
