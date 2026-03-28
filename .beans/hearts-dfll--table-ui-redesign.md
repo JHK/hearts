@@ -1,10 +1,11 @@
 ---
 # hearts-dfll
 title: Table UI redesign
-status: todo
+status: completed
 type: epic
+priority: normal
 created_at: 2026-03-27T08:52:48Z
-updated_at: 2026-03-27T08:52:48Z
+updated_at: 2026-03-28T19:22:34Z
 ---
 
 Visual overhaul of the game table page to match the modern, lean aesthetic established by the lobby redesign (hearts-c65d). The table should feel lighter: less padding, simplified header, integrated controls, and consistent use of icon buttons with dropdowns.
