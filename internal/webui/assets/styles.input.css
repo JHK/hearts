@@ -72,14 +72,14 @@
   .card-bg-card .card-bg-backing {
     position: absolute;
     inset: 0;
-    background: var(--bg);
+    background: white;
     border-radius: 5px;
   }
 
   .card-bg-card img {
     position: relative;
     width: 100%;
-    opacity: 0.13;
+    opacity: 0.25;
     filter: grayscale(30%);
     border-radius: 5px;
   }
