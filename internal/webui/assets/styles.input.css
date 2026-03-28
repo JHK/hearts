@@ -333,7 +333,7 @@
     gap: 14px;
   }
 
-  .table-page section {
+  .table-page section:not(.table-board) {
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 14px;
@@ -574,13 +574,12 @@
 
   .table-board {
     background: radial-gradient(circle at center, #2a7d6a 0%, var(--felt) 65%, #17493f 100%);
-    border: 1px solid #2d7e6f;
-    border-radius: 16px;
+    border-radius: 14px;
     padding: 14px;
     min-height: 320px;
     position: relative;
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) minmax(300px, 1fr) minmax(220px, 1fr);
+    grid-template-columns: minmax(200px, 1fr) minmax(260px, 1fr) minmax(200px, 1fr);
     grid-template-rows: auto 1fr auto;
     gap: 10px;
   }
@@ -725,7 +724,7 @@
     border-radius: 12px;
     position: relative;
     padding: 8px;
-    min-width: 300px;
+    min-width: 260px;
     min-height: 340px;
   }
 
@@ -1168,7 +1167,7 @@
 
 @media (min-width: 1280px) {
   .table-game-layout {
-    grid-template-columns: minmax(860px, 1fr) minmax(300px, 360px);
+    grid-template-columns: minmax(780px, 1fr) minmax(300px, 360px);
     align-items: start;
   }
 
@@ -1268,18 +1267,8 @@
     border-radius: 0;
   }
 
-  #trickSection {
-    padding: 0;
-    border: none;
-    background: none;
-    box-shadow: none;
-  }
-
   .table-board {
     padding: 8px 0;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
   }
 
   .seat.bottom .hand-card {
