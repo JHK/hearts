@@ -3,6 +3,7 @@ import { createRenderer } from './render.js';
 import { playHeartsBreaking, playQueenOfSpades, setMuted } from './audio.js';
 import { nameKey, tokenKey, speedKey, soundKey, notifyKey, ensureToken, initSettingsPopover } from '../shared/settings.js';
 const trickCardInBufferMs = 80;
+let reconnectTimer = null;
 
 const tableId = decodeURIComponent(location.pathname.replace('/table/', ''));
 
@@ -137,6 +138,18 @@ function claimSeat(seat) {
 }
 
 connect();
+
+// When the browser restores this page from bfcache, the JS state is
+// preserved but the WebSocket is dead. Force a fresh reconnection so
+// the hand re-renders with working click handlers.
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted && (!state.ws || state.ws.readyState !== WebSocket.OPEN)) {
+    state.lastHandRenderKey = '';
+    state.lastTrickSignature = '';
+    clearTimeout(reconnectTimer);
+    connect();
+  }
+});
 
 function playerName() {
   const stored = (localStorage.getItem(nameKey) || '').trim();
@@ -284,7 +297,13 @@ function reconnectDelayMs() {
   return delay + Math.random() * 500;
 }
 
+function scheduleReconnect(delayMs) {
+  clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(connect, delayMs);
+}
+
 function connect() {
+  reconnectTimer = null;
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   state.ws = new WebSocket(`${protocol}://${location.host}/ws/table/${encodeURIComponent(tableId)}`);
 
@@ -294,6 +313,8 @@ function connect() {
     opened = true;
     initialConnectFailures = 0;
     reconnectAttempts = 0;
+    state.lastHandRenderKey = '';
+    state.lastTrickSignature = '';
     log('connected');
     send({ type: 'join', name: playerName(), token });
     requestState();
@@ -304,7 +325,7 @@ function connect() {
       initialConnectFailures++;
       if (initialConnectFailures <= maxInitialConnectRetries) {
         log(`connect failed, retrying (${initialConnectFailures}/${maxInitialConnectRetries})...`);
-        setTimeout(connect, 1000);
+        scheduleReconnect(1000);
         return;
       }
       window.location.href = '/';
@@ -313,7 +334,7 @@ function connect() {
     const delay = reconnectDelayMs();
     reconnectAttempts++;
     log(`disconnected, reconnecting in ${Math.round(delay / 1000)}s...`);
-    setTimeout(connect, delay);
+    scheduleReconnect(delay);
   };
 
   state.ws.onerror = () => {
