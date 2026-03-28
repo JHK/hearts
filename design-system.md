@@ -28,7 +28,8 @@ Six semantic roles, set via CSS custom properties on `.lobby-page` and `.table-p
 | Ink | `--ink` | `#1c2b3a` | Primary text, icon buttons |
 | Muted | `--muted` | `#5b6f83` | Secondary text, metadata, labels |
 | Border | `--line` | `#d5d1c8` | Dividers, input borders, inactive toggles |
-| Accent | `--accent` / `--green` | `#116466` / `#1f6f5f` | Primary actions, active states |
+| Accent | `--accent` / `--green` | `#116466` / `#1f6f5f` | Buttons, card surfaces, active states |
+| Gold | — | `#8b6914` / `#b8860b` / `#9a7209` | Felt buttons only (gradient triple) |
 
 All text and icon colors should use `--ink` or `--muted`. Avoid hardcoding one-off hex values for text.
 
@@ -77,9 +78,15 @@ Five tiers: `4-5px` (inputs, small cards) / `8-10px` (buttons, panels) / `12px` 
 
 ### Buttons
 
-All buttons use `130deg` linear gradients, white text, `border-radius: 10px`, `font-weight: 700`. Primary uses the accent teal, secondary uses green, disabled uses gray with reduced text opacity. Icon buttons are `34px` circles with `var(--line)` border and translucent white background.
+All buttons share: white text, `border-radius: 10px`, `font-weight: 700`.
 
-Shared traits across icon buttons (back, settings, etc.): same size, border, background, hover shadow, focus ring. These should be a single visual pattern.
+**Standard** — Teal `130deg` linear gradient (`var(--accent)` → `#1b8d8f`). Used everywhere except on the felt.
+
+**Felt (gold)** — Three-stop `130deg` gradient (`#8b6914` → `#b8860b` → `#9a7209`), white text. Darkened gold for legibility. Inset top highlight, inset bottom shadow, and outer drop shadow for an embossed feel. Used for trick center buttons (`.felt-btn`).
+
+**Disabled** — Gray gradient with reduced text opacity. No shadow.
+
+**Icon** — `34px` circles with `var(--line)` border and translucent white background. Shared traits across all icon buttons (back, settings, etc.): same size, border, background, hover shadow, focus ring.
 
 ### Surfaces
 
@@ -97,7 +104,7 @@ Minimal table. Player name column uses `--muted`, data uses inherited `--ink`. C
 
 Hand cards for the bottom (local) player are slightly larger than opponents'. Cards overlap to form a fan. Hover and selection states use vertical lift and glow effects. Back cards are small and understated -- they indicate hidden information without drawing focus.
 
-Trick center cards animate in from each seat direction with scale, rotation, and opacity. The trick center is the focal point during play.
+Trick center cards animate in from each seat direction with scale, rotation, and opacity. The trick center is the focal point during play. Control buttons (Start, Continue, Pass) render directly on the felt with no backing panel — the trick center itself hosts them. Text on the trick center uses light mint (`#e7fff8`) with a subtle shadow for legibility.
 
 ## Animation Timing
 
