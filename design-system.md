@@ -104,7 +104,7 @@ Panels and cards use `--panel` background, `1px solid --line` border, and a subt
 
 ### Overlays
 
-Full-screen scrim with dark semi-transparent background and `backdrop-filter: blur(3px)`. Centered surface card with generous padding. Game-over and game-paused overlays share the same visual treatment.
+Full-screen scrim with dark semi-transparent background and `backdrop-filter: blur(3px)`. Centered surface card with generous padding. Used for game-over only; game-paused is an inline control in the trick center.
 
 ### Scoreboard
 
@@ -114,7 +114,7 @@ Minimal table. Player name column uses `--muted`, data uses `--ink`. Current-rou
 
 Hand cards for the local player are slightly larger than opponents'. Cards overlap to form a fan. Hover and selection states use vertical lift and glow. Back cards are small and understated — they indicate hidden information without drawing focus.
 
-Trick center cards animate in from each seat direction with scale, rotation, and opacity. The trick center is the focal point during play. Control buttons (Start, Continue, Pass) render directly on the felt with no backing panel. Text on the trick center uses light mint (`#e7fff8`) with a subtle shadow.
+Trick center cards animate in from each seat direction with scale, rotation, and opacity. The trick center is the focal point during play. Control buttons (Start, Continue, Pass, Game Paused) appear in a centered overlay within the trick center, backed by a solid felt-colored panel with rounded corners that fully covers trick slots behind it. Text on the trick center uses light mint (`#e7fff8`) with a subtle shadow.
 
 ## Animation Timing
 

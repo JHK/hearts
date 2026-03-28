@@ -552,7 +552,7 @@ export function createRenderer({ dom, state, send, claimSeat }) {
   }
 
   function renderPassPanel(snapshot) {
-    if (state.isObserver) {
+    if (state.isObserver || !!snapshot.paused) {
       dom.passSummaryEl.hidden = true;
       dom.passDetailsEl.hidden = true;
       dom.passSelectionEl.hidden = true;
@@ -620,7 +620,7 @@ export function createRenderer({ dom, state, send, claimSeat }) {
 
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'secondary';
+    btn.className = 'felt-btn';
     btn.textContent = 'Continue with Bot';
     btn.onclick = () => {
       send({ type: 'resume_game' });
@@ -680,7 +680,7 @@ export function createRenderer({ dom, state, send, claimSeat }) {
     }
 
     const isPaused = !!snapshot.paused;
-    dom.gamePausedOverlayEl.classList.toggle('hidden', !isPaused);
+    dom.gamePausedControlsEl.classList.toggle('hidden', !isPaused);
     if (isPaused) {
       renderPausedPanel(snapshot);
     }
@@ -694,9 +694,11 @@ export function createRenderer({ dom, state, send, claimSeat }) {
     }
 
     const queueIdle = !state.processingTrickEventQueue && state.trickEventQueue.length === 0;
-    const showStartControl = !state.isObserver && !snapshot.started && players.length >= 1 && queueIdle && !isGameOver;
-    const showPassControls = !state.isObserver && (isPassing || isPassReview);
-    dom.centerControlsEl.classList.toggle('hidden', !showStartControl && !showPassControls);
+    const showStartControl = !isPaused && !state.isObserver && !snapshot.started && players.length >= 1 && queueIdle && !isGameOver;
+    const showPassControls = !isPaused && !state.isObserver && (isPassing || isPassReview);
+    dom.centerControlsEl.classList.toggle('hidden', !showStartControl && !showPassControls && !isPaused);
+    const showButtonRow = showStartControl || showPassControls;
+    dom.startButtonEl.parentElement.hidden = !showButtonRow;
     dom.startButtonEl.hidden = !showStartControl;
     dom.startButtonEl.disabled = !showStartControl;
     const hasCompletedRound = Object.values(totalPoints).some((points) => Number(points) > 0);

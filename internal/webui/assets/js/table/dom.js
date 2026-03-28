@@ -28,7 +28,7 @@ export function createTableDom() {
   const seatBottomNameEl = document.getElementById('seatBottomName');
   const seatBottomHandEl = document.getElementById('seatBottomHand');
   const trickSlotEls = createTrickSlots(trickCenterEl);
-  const gamePausedOverlayEl = document.getElementById('gamePausedOverlay');
+  const gamePausedControlsEl = document.getElementById('gamePausedControls');
   const gamePausedMessageEl = document.getElementById('gamePausedMessage');
   const gamePausedActionsEl = document.getElementById('gamePausedActions');
   const gameOverOverlayEl = document.getElementById('gameOverOverlay');
@@ -73,7 +73,7 @@ export function createTableDom() {
     seatBottomNameEl,
     seatBottomHandEl,
     trickSlotEls,
-    gamePausedOverlayEl,
+    gamePausedControlsEl,
     gamePausedMessageEl,
     gamePausedActionsEl,
     gameOverOverlayEl,

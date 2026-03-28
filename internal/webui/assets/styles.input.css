@@ -756,6 +756,8 @@
     padding: 10px 12px;
     color: #e7fff8;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    background: var(--felt);
+    border-radius: 11px;
   }
 
   .trick-center-controls .muted {
@@ -1162,22 +1164,6 @@
     opacity: 0.88;
   }
 
-  .game-paused-panel {
-    max-width: 380px;
-    gap: 12px;
-  }
-
-  .game-paused-message {
-    margin: 0;
-    color: var(--muted);
-  }
-
-  .game-paused-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 4px;
-  }
 }
 
 @media (min-width: 1280px) {

@@ -64,6 +64,11 @@
                 <button id="submitPass" class="felt-btn"></button>
                 <button id="readyAfterPass" class="felt-btn">Continue</button>
               </div>
+              <div id="gamePausedControls" class="hidden" aria-live="polite" style="text-align:center;">
+                <p style="margin:0; font-weight:600;">Game Paused</p>
+                <p id="gamePausedMessage" class="muted" style="margin:4px 0 0;"></p>
+                <div id="gamePausedActions" style="margin-top:8px;"></div>
+              </div>
             </div>
           </div>
           <div id="trickAnimationLayer" class="trick-animation-layer"></div>
@@ -81,14 +86,6 @@
       </section>
     </div>
   </main>
-
-  <div id="gamePausedOverlay" class="overlay hidden">
-    <div class="overlay-panel game-paused-panel">
-      <h2>Game Paused</h2>
-      <p id="gamePausedMessage" class="game-paused-message"></p>
-      <div id="gamePausedActions" class="game-paused-actions"></div>
-    </div>
-  </div>
 
   <div id="gameOverOverlay" class="overlay game-over-overlay hidden">
     <div class="overlay-panel game-over-panel">
