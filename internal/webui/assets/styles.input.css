@@ -525,6 +525,15 @@
     min-width: 0;
   }
 
+  .settings-select {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 0.875rem;
+    background: var(--panel);
+    color: inherit;
+  }
+
   .settings-switch {
     position: relative;
     width: 36px;

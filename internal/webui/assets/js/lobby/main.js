@@ -1,4 +1,4 @@
-import { nameKey, tokenKey, speedKey, soundKey, notifyKey, ensureToken, initSettingsPopover } from '../shared/settings.js';
+import { nameKey, tokenKey, speedKey, soundKey, notifyKey, ensureToken, initSettingsPopover, initLocaleSelect } from '../shared/settings.js';
 
 // --- Animated card background ---
 {
@@ -51,6 +51,7 @@ const settingsPanelEl = document.getElementById('settingsPanel');
 const speedToggleEl = document.getElementById('speedToggle');
 const soundToggleEl = document.getElementById('soundToggle');
 const notifyToggleEl = document.getElementById('notifyToggle');
+const localeSelectEl = document.getElementById('localeSelect');
 
 function getName() {
   const name = nameEl.value.trim();
@@ -70,6 +71,7 @@ function openTable(tableId) {
 // --- Settings popover ---
 
 initSettingsPopover(settingsToggleEl, settingsPanelEl);
+initLocaleSelect(localeSelectEl);
 
 // --- Settings controls ---
 

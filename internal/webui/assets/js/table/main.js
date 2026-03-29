@@ -1,7 +1,7 @@
 import { createTableDom } from './dom.js';
 import { createRenderer } from './render.js';
 import { playHeartsBreaking, playQueenOfSpades, setMuted } from './audio.js';
-import { nameKey, tokenKey, speedKey, soundKey, notifyKey, ensureToken, initSettingsPopover } from '../shared/settings.js';
+import { nameKey, tokenKey, speedKey, soundKey, notifyKey, ensureToken, initSettingsPopover, initLocaleSelect } from '../shared/settings.js';
 const trickCardInBufferMs = 80;
 let reconnectTimer = null;
 
@@ -99,6 +99,7 @@ dom.nameInputEl.addEventListener('input', () => {
 });
 
 initSettingsPopover(dom.settingsToggleEl, dom.settingsPanelEl);
+initLocaleSelect(dom.localeSelectEl);
 initSettingsPopover(dom.claimSeatToggleEl, dom.claimSeatPanelEl);
 initSettingsPopover(dom.addBotToggleEl, dom.addBotPanelEl);
 

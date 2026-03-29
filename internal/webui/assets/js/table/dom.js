@@ -45,6 +45,7 @@ export function createTableDom() {
   const speedToggleEl = document.getElementById('speedToggle');
   const soundToggleEl = document.getElementById('soundToggle');
   const notifyToggleEl = document.getElementById('notifyToggle');
+  const localeSelectEl = document.getElementById('localeSelect');
 
   return {
     claimSeatContainerEl,
@@ -92,7 +93,8 @@ export function createTableDom() {
     nameInputEl,
     speedToggleEl,
     soundToggleEl,
-    notifyToggleEl
+    notifyToggleEl,
+    localeSelectEl
   };
 }
 

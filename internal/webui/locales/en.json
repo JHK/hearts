@@ -1,4 +1,6 @@
 {
+  "_meta.displayName": "English",
+
   "app.title": "Hearts",
 
   "lobby.title": "Hearts Lobby",
@@ -48,5 +50,6 @@
   "settings.playerName": "Player name",
   "settings.fastAnimations": "Fast animations",
   "settings.sound": "Sound",
-  "settings.turnNotifications": "Turn notifications"
+  "settings.turnNotifications": "Turn notifications",
+  "settings.language": "Language"
 }

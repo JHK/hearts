@@ -15,6 +15,24 @@ export function ensureToken() {
   return token;
 }
 
+export const localeKey = 'hearts.locale';
+
+export function initLocaleSelect(selectEl) {
+  const all = window.__i18n_all || {};
+  const locales = Object.keys(all).sort();
+  for (const code of locales) {
+    const opt = document.createElement('option');
+    opt.value = code;
+    opt.textContent = (all[code] && all[code]['_meta.displayName']) || code;
+    selectEl.appendChild(opt);
+  }
+  selectEl.value = window.__i18n_locale || 'en';
+  selectEl.onchange = () => {
+    localStorage.setItem(localeKey, selectEl.value);
+    location.reload();
+  };
+}
+
 export function initSettingsPopover(toggleEl, panelEl) {
   function setOpen(open) {
     panelEl.classList.toggle('hidden', !open);
