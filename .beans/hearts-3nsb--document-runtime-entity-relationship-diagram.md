@@ -1,10 +1,11 @@
 ---
 # hearts-3nsb
 title: Document runtime entity relationship diagram
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-03-26T14:37:10Z
-updated_at: 2026-03-26T14:37:10Z
+updated_at: 2026-03-29T12:35:01Z
 ---
 
 ## Context
@@ -59,13 +60,23 @@ Make the runtime architecture easy to reason about for future development. A dev
 
 ## Acceptance Criteria
 
-- [ ] Add an entity-relationship section to `architecture.md` documenting all runtime entities, their cardinalities (1:1, 1:N), ownership, and communication mechanisms
-- [ ] Include an ASCII or Mermaid diagram showing the entity graph
-- [ ] Cover both the "static" ownership tree and the "dynamic" communication patterns (channels, callbacks, subscriptions)
-- [ ] Document the WebSocket → Table → Player connection flow (lobby WS vs table WS)
+- [x] Add an entity-relationship section to `architecture.md` documenting all runtime entities, their cardinalities (1:1, 1:N), ownership, and communication mechanisms
+- [x] Include an ASCII or Mermaid diagram showing the entity graph
+- [x] Cover both the "static" ownership tree and the "dynamic" communication patterns (channels, callbacks, subscriptions)
+- [x] Document the WebSocket → Table → Player connection flow (lobby WS vs table WS)
 
 ## Out of Scope
 
 - Changing any code or architecture
 - Domain layer entities (game.Round internals, card types, etc.)
 - Protocol message types
+
+## Summary of Changes
+
+Added a comprehensive "Runtime entity relationships" section to `architecture.md` covering:
+- Mermaid entity graph showing all actors and their relationships
+- Core actors table with package, goroutine, ownership, and channel info
+- Static ownership tree with cardinalities
+- Communication patterns table (all channel-based message flows)
+- Lobby and table WebSocket connection flow diagrams
+- Multi-tab handling and orphan cleanup documentation
