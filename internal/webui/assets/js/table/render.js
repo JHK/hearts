@@ -317,7 +317,7 @@ export function createRenderer({ dom, state, send }) {
     if (sortedPlayers.length === 0) {
       const playersHeaderCell = document.createElement('th');
       playersHeaderCell.scope = 'col';
-      playersHeaderCell.textContent = 'Players';
+      playersHeaderCell.textContent = t('table.scoreboard.players');
       headerRow.appendChild(playersHeaderCell);
 
       dom.scoreboardHeadEl.appendChild(headerRow);
@@ -453,10 +453,10 @@ export function createRenderer({ dom, state, send }) {
     dom.rematchButtonEl.hidden = !isPlayer;
     if (voted) {
       dom.rematchButtonEl.disabled = true;
-      dom.rematchButtonEl.textContent = `Waiting\u2026 ${votes}/${total}`;
+      dom.rematchButtonEl.textContent = t('game.rematch_waiting', { votes, total });
     } else {
       dom.rematchButtonEl.disabled = false;
-      dom.rematchButtonEl.textContent = 'Play Again';
+      dom.rematchButtonEl.textContent = t('game.play_again');
     }
   }
 
@@ -512,7 +512,7 @@ export function createRenderer({ dom, state, send }) {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              title: (items) => items.length ? `Round ${items[0].label}` : '',
+              title: (items) => items.length ? t('game.chart_round', { label: items[0].label }) : '',
             },
           },
         },
@@ -566,13 +566,13 @@ export function createRenderer({ dom, state, send }) {
 
     if (phase === 'passing') {
       if (passSubmitted) {
-        dom.passDetailsEl.textContent = 'Waiting for other players…';
+        dom.passDetailsEl.textContent = t('game.pass_waiting');
         dom.passDetailsEl.hidden = false;
         dom.submitPassEl.hidden = true;
         dom.readyAfterPassEl.hidden = true;
       } else {
         const dir = snapshot.pass_direction;
-        const label = dir ? `Pass ${dir.charAt(0).toUpperCase() + dir.slice(1)}` : 'Pass 3 Cards';
+        const label = dir ? t('game.pass_direction', { direction: dir.charAt(0).toUpperCase() + dir.slice(1) }) : t('game.pass_cards');
         dom.submitPassEl.textContent = label;
         dom.submitPassEl.hidden = false;
         dom.submitPassEl.disabled = state.selectedPassCards.length !== 3;
@@ -590,8 +590,8 @@ export function createRenderer({ dom, state, send }) {
     const players = Array.isArray(snapshot.players) ? snapshot.players : [];
     const pid = snapshot.paused_for_player_id || '';
     const match = players.find((p) => p.player_id === pid);
-    const who = match ? match.name : 'A player';
-    dom.gamePausedMessageEl.textContent = `${who} disconnected`;
+    const who = match ? match.name : t('game.unknown_player');
+    dom.gamePausedMessageEl.textContent = t('game.player_disconnected', { name: who });
 
     dom.gamePausedActionsEl.innerHTML = '';
     if (state.isObserver) {
@@ -601,7 +601,7 @@ export function createRenderer({ dom, state, send }) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'felt-btn';
-    btn.textContent = 'Continue with Bot';
+    btn.textContent = t('game.continue_with_bot');
     btn.onclick = () => {
       send({ type: 'resume_game' });
     };
@@ -703,9 +703,9 @@ export function createRenderer({ dom, state, send }) {
     const hasCompletedRound = Object.values(totalPoints).some((points) => Number(points) > 0);
     const seatsOpen = players.length < 4;
     if (hasCompletedRound) {
-      dom.startButtonEl.textContent = seatsOpen ? 'Continue with bots' : 'Continue';
+      dom.startButtonEl.textContent = seatsOpen ? t('game.continue_with_bots') : t('game.continue');
     } else {
-      dom.startButtonEl.textContent = seatsOpen ? 'Start with bots' : 'Start';
+      dom.startButtonEl.textContent = seatsOpen ? t('game.start_with_bots') : t('game.start');
     }
 
     const serverTrickPlays = (snapshot.trick_plays || []).slice();

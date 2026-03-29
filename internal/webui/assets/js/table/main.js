@@ -80,7 +80,7 @@ dom.notifyToggleEl.onchange = async () => {
 function notifyTurn(body) {
   if (!notificationsEnabled || document.hasFocus()) return;
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  const n = new Notification('Hearts', { body, tag: 'hearts-turn' });
+  const n = new Notification(t('app.title'), { body, tag: 'hearts-turn' });
   n.onclick = () => { window.focus(); n.close(); };
 }
 
@@ -88,7 +88,7 @@ dom.nameInputEl.value = playerName();
 
 let renameTimer = null;
 dom.nameInputEl.addEventListener('input', () => {
-  const name = dom.nameInputEl.value.trim() || 'Player';
+  const name = dom.nameInputEl.value.trim() || t('settings.defaultName');
   localStorage.setItem(nameKey, name);
   clearTimeout(renameTimer);
   renameTimer = setTimeout(() => {
@@ -161,7 +161,7 @@ window.addEventListener('pageshow', (event) => {
 
 function playerName() {
   const stored = (localStorage.getItem(nameKey) || '').trim();
-  return stored || 'Player';
+  return stored || t('settings.defaultName');
 }
 
 function waitMs(durationMs) {
@@ -404,12 +404,12 @@ function connect() {
         scheduleStateRefresh(0);
         break;
       case 'your_turn':
-        notifyTurn("It's your turn to play!");
+        notifyTurn(t('notify.your_turn'));
         scheduleStateRefresh(0);
         break;
       case 'pass_submitted':
         if (msg.data && msg.data.submitted === 0 && msg.data.direction && !state.isObserver) {
-          notifyTurn('Time to pass cards!');
+          notifyTurn(t('notify.pass_cards'));
         }
         scheduleStateRefresh(0);
         break;

@@ -54,7 +54,7 @@ const notifyToggleEl = document.getElementById('notifyToggle');
 
 function getName() {
   const name = nameEl.value.trim();
-  return name || 'Player';
+  return name || t('settings.defaultName');
 }
 
 function storeIdentity() {
@@ -152,7 +152,7 @@ function renderTables(tables) {
     const card = document.createElement('div');
     card.className = 'table-card' + (isFlipped ? ' flipped' : '');
 
-    li.setAttribute('aria-label', `Table ${table.table_id}`);
+    li.setAttribute('aria-label', t('lobby.table_aria', { id: table.table_id }));
     li.setAttribute('aria-expanded', String(isFlipped));
 
     // --- Front face ---
@@ -364,6 +364,6 @@ nameEl.addEventListener('input', () => {
   announceTimer = setTimeout(announceSelf, 300);
 });
 
-nameEl.value = localStorage.getItem(nameKey) || 'Player';
+nameEl.value = localStorage.getItem(nameKey) || t('settings.defaultName');
 ensureToken();
 connectLobbyWs();

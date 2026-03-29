@@ -9,6 +9,37 @@
     window.__i18n = window.__i18n_all[locale] || {};
     window.__i18n_locale = locale;
   })();
-  function t(key) { var v = window.__i18n && window.__i18n[key]; return v !== undefined ? v : key; }
+  // Regex built via concatenation to avoid Go html/template parsing braces as actions.
+  var __i18n_re = new RegExp('\\{' + '\\{(\\w+)\\}' + '\\}', 'g');
+  function t(key, params) {
+    var v = window.__i18n && window.__i18n[key];
+    if (v === undefined) return key;
+    if (params && typeof params.count === 'number') {
+      if (typeof v === 'object' && v !== null) {
+        v = (params.count === 1 && v.one !== undefined) ? v.one : (v.other !== undefined ? v.other : key);
+      }
+    }
+    if (typeof v !== 'string') return key;
+    if (params) {
+      v = v.replace(__i18n_re, function(m, k) { return params[k] !== undefined ? params[k] : m; });
+    }
+    return v;
+  }
+  // Translate <title> immediately (runs in <head> before first paint).
+  document.title = t(document.title);
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+      el.textContent = t(el.dataset.i18n);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+      el.placeholder = t(el.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(function(el) {
+      el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+      el.title = t(el.dataset.i18nTitle);
+    });
+  });
   </script>
 {{end}}

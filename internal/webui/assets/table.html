@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hearts Table</title>
+  <title>table.title</title>
   <link rel="stylesheet" href="{{.StylesURL}}" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/svg+xml" href="/icon.svg" />
@@ -13,7 +13,7 @@
 <body class="table-page">
   <main>
     {{define "page_header_back"}}
-    <a href="/" class="page-header-back" aria-label="Back to lobby" title="Back to lobby">
+    <a href="/" class="page-header-back" data-i18n-aria-label="table.back_to_lobby" data-i18n-title="table.back_to_lobby" aria-label="table.back_to_lobby" title="table.back_to_lobby">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M14.78 18.72a.75.75 0 0 1-1.06 0l-6.19-6.19a.75.75 0 0 1 0-1.06l6.19-6.19a.75.75 0 1 1 1.06 1.06L9.12 12l5.66 5.66a.75.75 0 0 1 0 1.06Z" />
       </svg>
@@ -21,7 +21,7 @@
     {{end}}
     {{define "page_header_extra_actions"}}
     <div id="claimSeatContainer" class="settings-container hidden">
-      <button id="claimSeatToggle" type="button" class="icon-btn" aria-label="Take seat" title="Take seat">
+      <button id="claimSeatToggle" type="button" class="icon-btn" data-i18n-aria-label="table.take_seat" data-i18n-title="table.take_seat" aria-label="table.take_seat" title="table.take_seat">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M4 9.5a.75.75 0 0 1 .75-.75h11.69l-2.22-2.22a.75.75 0 1 1 1.06-1.06l3.5 3.5a.75.75 0 0 1 0 1.06l-3.5 3.5a.75.75 0 1 1-1.06-1.06l2.22-2.22H4.75A.75.75 0 0 1 4 9.5Zm16 5a.75.75 0 0 0-.75-.75H7.56l2.22-2.22a.75.75 0 1 0-1.06-1.06l-3.5 3.5a.75.75 0 0 0 0 1.06l3.5 3.5a.75.75 0 1 0 1.06-1.06L7.56 15.2h11.69a.75.75 0 0 0 .75-.75Z" />
         </svg>
@@ -29,15 +29,15 @@
       <div id="claimSeatPanel" class="settings-panel popover-menu hidden"></div>
     </div>
     <div id="addBotContainer" class="settings-container hidden">
-      <button id="addBotToggle" type="button" class="icon-btn" aria-label="Add bot" title="Add bot">
+      <button id="addBotToggle" type="button" class="icon-btn" data-i18n-aria-label="table.add_bot" data-i18n-title="table.add_bot" aria-label="table.add_bot" title="table.add_bot">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M17.753 14a2.25 2.25 0 0 1 2.25 2.25v.904A3.75 3.75 0 0 1 18.696 20c-1.565 1.344-3.75 2-6.696 2s-5.128-.656-6.69-2a3.75 3.75 0 0 1-1.307-2.846v-.904A2.25 2.25 0 0 1 6.253 14h11.5ZM11.9 2.006 12 2a.75.75 0 0 1 .743.648l.007.102v.5h3.5a2.25 2.25 0 0 1 2.25 2.25v4a2.25 2.25 0 0 1-2.25 2.25h-8.5A2.25 2.25 0 0 1 5.5 9.5v-4a2.25 2.25 0 0 1 2.25-2.25h3.5v-.5a.75.75 0 0 1 .65-.744ZM9.75 6.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Zm4.5 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5Z" />
         </svg>
       </button>
       <div id="addBotPanel" class="settings-panel popover-menu hidden">
-        <button type="button" class="popover-menu-option" data-strategy="hard">Hard</button>
-        <button type="button" class="popover-menu-option" data-strategy="medium">Medium</button>
-        <button type="button" class="popover-menu-option" data-strategy="easy">Easy</button>
+        <button type="button" class="popover-menu-option" data-strategy="hard" data-i18n="table.bot.hard">table.bot.hard</button>
+        <button type="button" class="popover-menu-option" data-strategy="medium" data-i18n="table.bot.medium">table.bot.medium</button>
+        <button type="button" class="popover-menu-option" data-strategy="easy" data-i18n="table.bot.easy">table.bot.easy</button>
       </div>
     </div>
     {{end}}
@@ -68,12 +68,12 @@
               <div id="passDetails" class="muted" style="margin-top:6px;"></div>
               <div id="passSelection" class="muted" style="margin-top:6px;"></div>
               <div class="row center-controls-row" style="margin-top:8px;">
-                <button id="start" class="felt-btn">Start</button>
+                <button id="start" class="felt-btn"></button>
                 <button id="submitPass" class="felt-btn"></button>
-                <button id="readyAfterPass" class="felt-btn">Continue</button>
+                <button id="readyAfterPass" class="felt-btn"></button>
               </div>
               <div id="gamePausedControls" class="hidden" aria-live="polite" style="text-align:center;">
-                <p style="margin:0; font-weight:600;">Game Paused</p>
+                <p style="margin:0; font-weight:600;" data-i18n="game.paused">game.paused</p>
                 <p id="gamePausedMessage" class="muted" style="margin:4px 0 0;"></p>
                 <div id="gamePausedActions" style="margin-top:8px;"></div>
               </div>
@@ -83,9 +83,9 @@
       </section>
 
       <section id="scoreboardSection" class="scoreboard-section">
-        <h2>Scoreboard</h2>
+        <h2 data-i18n="table.scoreboard">table.scoreboard</h2>
         <div class="scoreboard-wrap">
-          <table class="scoreboard-table" aria-label="Scoreboard">
+          <table class="scoreboard-table" data-i18n-aria-label="table.scoreboard" aria-label="table.scoreboard">
             <thead id="scoreboardHead"></thead>
             <tbody id="scoreboardBody"></tbody>
           </table>
@@ -96,13 +96,13 @@
 
   <div id="gameOverOverlay" class="overlay game-over-overlay hidden">
     <div class="overlay-panel game-over-panel">
-      <h2>Game Over</h2>
+      <h2 data-i18n="game.over">game.over</h2>
       <div id="gameOverChart" class="game-over-chart">
         <canvas id="gameOverCanvas"></canvas>
       </div>
       <div id="gameOverScores" class="game-over-scores"></div>
-      <button id="rematchButton" type="button" class="primary" hidden>Play Again</button>
-      <a href="/" class="game-over-back-link">Back to Lobby</a>
+      <button id="rematchButton" type="button" class="primary" hidden></button>
+      <a href="/" class="game-over-back-link" data-i18n="game.back_to_lobby">game.back_to_lobby</a>
     </div>
   </div>
 
