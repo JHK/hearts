@@ -21,7 +21,7 @@ Each browser tab represents one player identity at one table. A player can have 
 
 The codebase is split into layers with strict boundaries — higher layers depend on lower ones, never the reverse.
 
-The **web app** (`cmd/hearts`, `internal/webui`) starts the HTTP server, serves embedded assets with content-hash fingerprinting, and manages WebSocket lifecycle. It routes messages but makes no game decisions.
+The **web app** (`cmd/hearts`, `internal/webui`) starts the HTTP server, serves embedded assets with content-hash fingerprinting, and manages WebSocket lifecycle. It loads locale JSON files at startup and inlines all translations into every page so the client can resolve the active locale without a round-trip. Locale is determined client-side with a three-level fallback: an explicit user choice in LocalStorage takes priority over the server-provided Accept-Language match, which in turn falls back to English. This ordering exists because multiplayer means different players on the same table may have different locales — the server can't bake a single locale into the shared HTML, so the decision must happen in the browser. It routes messages but makes no game decisions.
 
 The **session runtime** (`internal/session`) is where authority lives. `Manager` handles table lifecycle (create, destroy, list). `Table` is the authoritative runtime for one game session: it assigns player IDs and seats, validates inputs by delegating to `game.Round`, and emits events. The table treats human players and bots identically — both submit commands through the same channel.
 

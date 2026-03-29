@@ -116,7 +116,7 @@ function activateCard(li, handler) {
 
 function buildPlusCard() {
   const li = document.createElement('li');
-  li.setAttribute('aria-label', 'Create new table');
+  li.setAttribute('aria-label', t('lobby.create'));
   const card = document.createElement('div');
   card.className = 'table-card create-card';
 
@@ -170,13 +170,13 @@ function renderTables(tables) {
     const badge = document.createElement('span');
     if (table.paused) {
       badge.className = 'badge badge-paused';
-      badge.textContent = 'Paused';
+      badge.textContent = t('lobby.badge.paused');
     } else if (table.started) {
       badge.className = 'badge badge-active';
-      badge.textContent = 'In progress';
+      badge.textContent = t('lobby.badge.active');
     } else {
       badge.className = 'badge badge-waiting';
-      badge.textContent = 'Waiting';
+      badge.textContent = t('lobby.badge.waiting');
     }
 
     const players = document.createElement('span');
@@ -198,7 +198,7 @@ function renderTables(tables) {
     backName.textContent = table.table_id;
 
     const btn = document.createElement('button');
-    btn.textContent = 'Join Table';
+    btn.textContent = t('lobby.join');
     btn.onclick = (e) => {
       e.stopPropagation();
       openTable(table.table_id);

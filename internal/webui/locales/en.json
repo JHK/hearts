@@ -1,0 +1,12 @@
+{
+  "lobby.title": "Hearts Lobby",
+  "lobby.badge.paused": "Paused",
+  "lobby.badge.active": "In progress",
+  "lobby.badge.waiting": "Waiting",
+  "lobby.join": "Join Table",
+  "lobby.create": "Create new table",
+  "settings.playerName": "Player name",
+  "settings.fastAnimations": "Fast animations",
+  "settings.sound": "Sound",
+  "settings.turnNotifications": "Turn notifications"
+}

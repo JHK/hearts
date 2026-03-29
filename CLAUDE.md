@@ -66,3 +66,7 @@ HTML partials (`_page_header.html`, `_settings_panel.html`) are shared Go templa
 ### Asset fingerprinting
 
 HTML pages are Go `html/template` files with `{{.StylesURL}}`, `{{.ScriptURL}}`, and `{{.ExtraScripts}}` placeholders for asset URLs. Templates are rendered once at startup with either fingerprinted or plain URLs depending on mode. In production, CSS and JS are served at content-hashed URLs (e.g. `/assets/styles.a1b2c3d4.css`) with `Cache-Control: public, max-age=31536000, immutable`; plain CSS/JS paths return 404. JS module imports are rewritten to use fingerprinted filenames. In dev mode (`-dev` flag / `mise dev`), assets are served at plain paths with no cache headers so hot-reload works normally. See `internal/webui/fingerprint.go`.
+
+### i18n (internationalization)
+
+Client-side translation with server-inlined strings. Locale JSON files live in `internal/webui/locales/` (e.g. `en.json`) and are embedded into the binary. At startup, all locale data is inlined into every HTML page as `window.__i18n_all`. A `<script>` block in `<head>` selects the active locale: LocalStorage (`hearts.locale`) > server-detected Accept-Language > `en` fallback, then sets `window.__i18n` to the matching strings. A global `t(key)` function returns the translated string or the key itself as fallback. HTML pages are pre-rendered per locale with `Vary: Accept-Language` for correct caching. See `internal/webui/i18n.go`.

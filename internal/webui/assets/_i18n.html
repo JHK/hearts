@@ -1,0 +1,14 @@
+{{define "i18n_head"}}
+  <script>
+  window.__i18n_all = {{.I18nJSON}};
+  (function() {
+    var stored = localStorage.getItem("hearts.locale");
+    var locale = stored || "{{.ServerLocale}}" || "en";
+    if (!window.__i18n_all[locale]) locale = "en";
+    if (!stored) localStorage.setItem("hearts.locale", locale);
+    window.__i18n = window.__i18n_all[locale] || {};
+    window.__i18n_locale = locale;
+  })();
+  function t(key) { var v = window.__i18n && window.__i18n[key]; return v !== undefined ? v : key; }
+  </script>
+{{end}}

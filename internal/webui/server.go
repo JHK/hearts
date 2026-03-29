@@ -18,7 +18,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-//go:embed assets/index.html assets/table.html assets/_settings_panel.html assets/_page_header.html assets/styles.css assets/cards/*.svg assets/js assets/icon.svg assets/favicon.ico assets/apple-touch-icon.png
+//go:embed assets/index.html assets/table.html assets/_settings_panel.html assets/_page_header.html assets/_i18n.html assets/styles.css assets/cards/*.svg assets/js assets/icon.svg assets/favicon.ico assets/apple-touch-icon.png
 var assetsFS embed.FS
 
 type Config struct {

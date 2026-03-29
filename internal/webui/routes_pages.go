@@ -18,12 +18,56 @@ type templateData struct {
 	ScriptURL    string
 	ChartJSURL   string
 	ExtraScripts template.HTML
+	I18nJSON     template.JS
+	ServerLocale string
+}
+
+// localizedPage holds pre-rendered HTML variants, one per supported locale.
+type localizedPage struct {
+	variants   map[string]pageVariant
+	localeSet  localeSet
+}
+
+type pageVariant struct {
+	content []byte
+	etag    string
+}
+
+func buildLocalizedPage(tmpl *template.Template, data templateData, locales []string) *localizedPage {
+	lp := &localizedPage{
+		variants:  make(map[string]pageVariant, len(locales)),
+		localeSet: newLocaleSet(locales),
+	}
+	for _, locale := range locales {
+		data.ServerLocale = locale
+		content := mustRenderTemplate(tmpl, data)
+		lp.variants[locale] = pageVariant{
+			content: content,
+			etag:    contentETag(content),
+		}
+	}
+	return lp
+}
+
+func (lp *localizedPage) serve(w http.ResponseWriter, r *http.Request) {
+	locale := detectLocale(r, lp.localeSet)
+	v, ok := lp.variants[locale]
+	if !ok {
+		v = lp.variants["en"]
+	}
+	w.Header().Set("Vary", "Accept-Language")
+	serveHTMLWithETag(w, r, v.content, v.etag)
 }
 
 // registerPageRoutes mounts HTML page handlers, static card/icon assets, and
 // dev-only routes onto the router.
 func registerPageRoutes(r chi.Router, cfg Config, manager *session.Manager) error {
-	partials := string(mustReadAsset("assets/_settings_panel.html")) + string(mustReadAsset("assets/_page_header.html"))
+	i18n, err := loadI18n()
+	if err != nil {
+		return fmt.Errorf("load i18n: %w", err)
+	}
+
+	partials := string(mustReadAsset("assets/_i18n.html")) + string(mustReadAsset("assets/_settings_panel.html")) + string(mustReadAsset("assets/_page_header.html"))
 	indexTmpl, err := template.New("index").Parse(partials + string(mustReadAsset("assets/index.html")))
 	if err != nil {
 		return fmt.Errorf("parse index template: %w", err)
@@ -36,11 +80,13 @@ func registerPageRoutes(r chi.Router, cfg Config, manager *session.Manager) erro
 	indexData := templateData{
 		StylesURL: "/assets/styles.css",
 		ScriptURL: "/assets/js/lobby/main.js",
+		I18nJSON:  template.JS(i18n.allJSON),
 	}
 	tableData := templateData{
 		StylesURL:  "/assets/styles.css",
 		ScriptURL:  "/assets/js/table/main.js",
 		ChartJSURL: "/assets/js/vendor/chart.umd.js",
+		I18nJSON:   template.JS(i18n.allJSON),
 	}
 
 	if cfg.Dev {
@@ -59,18 +105,15 @@ func registerPageRoutes(r chi.Router, cfg Config, manager *session.Manager) erro
 		registerFingerprintedAssetHandlers(r, fp)
 	}
 
-	indexHTML := mustRenderTemplate(indexTmpl, indexData)
-	tableHTML := mustRenderTemplate(tableTmpl, tableData)
-
-	indexETag := contentETag(indexHTML)
-	tableETag := contentETag(tableHTML)
+	indexPage := buildLocalizedPage(indexTmpl, indexData, i18n.locales)
+	tablePage := buildLocalizedPage(tableTmpl, tableData, i18n.locales)
 
 	// HTML pages
 	r.Group(func(pages chi.Router) {
 		pages.Use(requestLoggingMiddleware)
 
 		pages.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			serveHTMLWithETag(w, r, indexHTML, indexETag)
+			indexPage.serve(w, r)
 		})
 
 		pages.Get("/table/{tableID}", func(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +128,7 @@ func registerPageRoutes(r chi.Router, cfg Config, manager *session.Manager) erro
 				return
 			}
 
-			serveHTMLWithETag(w, r, tableHTML, tableETag)
+			tablePage.serve(w, r)
 		})
 	})
 
