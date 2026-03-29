@@ -13,7 +13,7 @@
   var __i18n_re = new RegExp('\\{' + '\\{(\\w+)\\}' + '\\}', 'g');
   function t(key, params) {
     var v = window.__i18n && window.__i18n[key];
-    if (v === undefined) return key;
+    if (v === undefined) { console.warn('[i18n] missing key:', key); return key; }
     if (params && typeof params.count === 'number') {
       if (typeof v === 'object' && v !== null) {
         v = (params.count === 1 && v.one !== undefined) ? v.one : (v.other !== undefined ? v.other : key);

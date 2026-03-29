@@ -572,7 +572,7 @@ export function createRenderer({ dom, state, send }) {
         dom.readyAfterPassEl.hidden = true;
       } else {
         const dir = snapshot.pass_direction;
-        const label = dir ? t('game.pass_direction', { direction: dir.charAt(0).toUpperCase() + dir.slice(1) }) : t('game.pass_cards');
+        const label = dir ? t('game.pass_direction', { direction: t('game.direction.' + dir) }) : t('game.pass_cards');
         dom.submitPassEl.textContent = label;
         dom.submitPassEl.hidden = false;
         dom.submitPassEl.disabled = state.selectedPassCards.length !== 3;
@@ -582,6 +582,7 @@ export function createRenderer({ dom, state, send }) {
     }
 
     dom.submitPassEl.hidden = true;
+    dom.readyAfterPassEl.textContent = t('game.continue');
     dom.readyAfterPassEl.hidden = false;
     dom.readyAfterPassEl.disabled = passReady;
   }

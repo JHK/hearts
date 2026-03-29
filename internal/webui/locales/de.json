@@ -1,0 +1,52 @@
+{
+  "app.title": "Hearts",
+
+  "lobby.title": "Hearts Lobby",
+  "lobby.badge.paused": "Pausiert",
+  "lobby.badge.active": "Läuft",
+  "lobby.badge.waiting": "Wartet",
+  "lobby.join": "Beitreten",
+  "lobby.create": "Neuen Tisch erstellen",
+  "lobby.table_aria": "Tisch {{id}}",
+
+  "table.title": "Hearts Tisch",
+  "table.back_to_lobby": "Zur Lobby",
+  "table.take_seat": "Platz nehmen",
+  "table.add_bot": "Bot hinzufügen",
+  "table.bot.hard": "Schwer",
+  "table.bot.medium": "Mittel",
+  "table.bot.easy": "Leicht",
+  "table.scoreboard": "Spielstand",
+  "table.scoreboard.players": "Spieler",
+
+  "game.start": "Start",
+  "game.start_with_bots": "Mit Bots starten",
+  "game.continue": "Weiter",
+  "game.continue_with_bots": "Mit Bots fortfahren",
+  "game.continue_with_bot": "Mit Bot fortfahren",
+  "game.paused": "Spiel pausiert",
+  "game.player_disconnected": "{{name}} getrennt",
+  "game.pass_direction": "Nach {{direction}} passen",
+  "game.direction.left": "links",
+  "game.direction.right": "rechts",
+  "game.direction.across": "gegenüber",
+  "game.pass_cards": "3 Karten weitergeben",
+  "game.pass_waiting": "Warte auf andere Spieler\u2026",
+  "game.over": "Spiel vorbei",
+  "game.play_again": "Nochmal spielen",
+  "game.back_to_lobby": "Zur Lobby",
+  "game.rematch_waiting": "Warte\u2026 {{votes}}/{{total}}",
+  "game.chart_round": "Runde {{label}}",
+
+  "notify.your_turn": "Du bist am Zug!",
+  "notify.pass_cards": "Zeit, Karten weiterzugeben!",
+
+  "game.unknown_player": "Ein Spieler",
+
+  "settings.title": "Einstellungen",
+  "settings.defaultName": "Spieler",
+  "settings.playerName": "Spielername",
+  "settings.fastAnimations": "Schnellanimation",
+  "settings.sound": "Ton",
+  "settings.turnNotifications": "Benachrichtigungen"
+}
