@@ -6,6 +6,6 @@
     "watch:css": "tailwindcss -c tailwind.config.js -i ./internal/webui/assets/styles.input.css -o ./internal/webui/assets/styles.css --watch"
   },
   "devDependencies": {
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^4.2.2"
   }
 }
