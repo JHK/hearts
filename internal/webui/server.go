@@ -128,7 +128,7 @@ func NewHandler(cfg Config, manager *session.Manager, ct *tracker.ConnTracker) (
 	registerAPIRoutes(compressed, cfg, manager)
 
 	// WebSocket endpoints — no compression (upgrade must pass through unmodified)
-	registerWSRoutes(r, manager, lobby, presence, playerPresence, ct)
+	registerWSRoutes(r, manager, lobby, presence, playerPresence, ct, cfg.Dev)
 
 	return &Handler{
 		Handler:        r,

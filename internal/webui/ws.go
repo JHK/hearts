@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -37,14 +38,39 @@ const maxLobbyNameLen = 32
 const maxLobbyTokenLen = 128
 
 // registerWSRoutes mounts WebSocket upgrade endpoints.
-func registerWSRoutes(r chi.Router, manager *session.Manager, lobby *lobbyHub, presence *tracker.HumanPresence, playerPresence *tracker.PlayerPresence, ct *tracker.ConnTracker) {
-	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+func registerWSRoutes(r chi.Router, manager *session.Manager, lobby *lobbyHub, presence *tracker.HumanPresence, playerPresence *tracker.PlayerPresence, ct *tracker.ConnTracker, devMode bool) {
+	upgrader := websocket.Upgrader{CheckOrigin: checkOriginFunc(devMode)}
 	r.Get("/ws/lobby", func(w http.ResponseWriter, r *http.Request) {
 		handleLobbyWebSocket(manager, lobby, ct, upgrader, w, r)
 	})
 	r.Get("/ws/table/{tableID}", func(w http.ResponseWriter, r *http.Request) {
 		handleTableWebSocket(manager, presence, playerPresence, ct, upgrader, w, r)
 	})
+}
+
+// checkOriginFunc returns a CheckOrigin function for the WebSocket upgrader.
+// In dev mode all origins are accepted. In production the Origin header must
+// match the request Host.
+func checkOriginFunc(devMode bool) func(*http.Request) bool {
+	if devMode {
+		return func(r *http.Request) bool { return true }
+	}
+	return func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true // non-browser clients (e.g. curl) don't send Origin
+		}
+		u, err := url.Parse(origin)
+		if err != nil || u.Host == "" || u.User != nil {
+			slog.Warn("websocket bad origin", "origin", origin, "remote", r.RemoteAddr)
+			return false
+		}
+		if u.Host != r.Host {
+			slog.Warn("websocket origin mismatch", "origin", origin, "host", r.Host, "remote", r.RemoteAddr)
+			return false
+		}
+		return true
+	}
 }
 
 func handleLobbyWebSocket(manager *session.Manager, lobby *lobbyHub, ct *tracker.ConnTracker, upgrader websocket.Upgrader, w http.ResponseWriter, r *http.Request) {

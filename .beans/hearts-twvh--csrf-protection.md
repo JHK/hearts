@@ -1,13 +1,13 @@
 ---
 # hearts-twvh
 title: Origin-check WebSocket upgrades in production
-status: todo
+status: completed
 type: task
 priority: normal
 tags:
     - security
 created_at: 2026-03-25T09:20:46Z
-updated_at: 2026-03-30T09:55:50Z
+updated_at: 2026-03-30T10:00:44Z
 ---
 
 ## Context
@@ -23,12 +23,16 @@ Prevent unauthorized frontends from using the game's WebSocket API when deployed
 
 ## Acceptance Criteria
 
-- [ ] In production, WebSocket upgrades are rejected unless the `Origin` header matches the request's `Host` header
-- [ ] In dev mode (`-dev` flag), all origins are accepted (preserves hot-reload workflows)
-- [ ] Rejected upgrades return HTTP 403 with a log line at `warn` level
+- [x] In production, WebSocket upgrades are rejected unless the `Origin` header matches the request's `Host` header
+- [x] In dev mode (`-dev` flag), all origins are accepted (preserves hot-reload workflows)
+- [x] Rejected upgrades return HTTP 403 with a log line at `warn` level
 
 ## Out of Scope
 
 - CORS headers for regular HTTP responses (no cross-origin HTTP API exists)
 - CSRF tokens or double-submit cookies (no POST handlers exist)
 - Authentication or authorization of WebSocket sessions
+
+## Summary of Changes
+
+Added origin-checking `CheckOrigin` function for the WebSocket upgrader. In production, the `Origin` header must match `Host`; mismatches are rejected with HTTP 403 and a `slog.Warn` log line. In dev mode all origins are accepted. Unit tests cover all cases.
