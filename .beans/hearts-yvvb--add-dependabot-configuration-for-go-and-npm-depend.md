@@ -1,13 +1,13 @@
 ---
 # hearts-yvvb
 title: Add Dependabot configuration for Go and npm dependencies
-status: todo
+status: completed
 type: task
 priority: normal
 tags:
     - infrastructure
 created_at: 2026-03-30T09:45:38Z
-updated_at: 2026-03-30T09:46:46Z
+updated_at: 2026-03-30T09:53:11Z
 ---
 
 Add .github/dependabot.yml with weekly grouped updates for gomod and npm ecosystems
@@ -22,9 +22,9 @@ Keep dependencies current with minimal manual effort, reducing security exposure
 
 ## Acceptance Criteria
 
-- [ ] `.github/dependabot.yml` added with `gomod` and `npm` ecosystems, weekly schedule
-- [ ] Go dependencies grouped into a single PR
-- [ ] npm dependencies grouped into a single PR (future-proofing if more devDeps are added)
+- [x] `.github/dependabot.yml` added with `gomod` and `npm` ecosystems, weekly schedule
+- [x] Go dependencies grouped into a single PR
+- [x] npm dependencies grouped into a single PR (future-proofing if more devDeps are added)
 - [ ] First Dependabot PRs appear after merge (verified manually)
 
 ## Out of Scope
@@ -32,3 +32,7 @@ Keep dependencies current with minimal manual effort, reducing security exposure
 - Auto-merge setup (Actions workflow or branch rulesets)
 - Go toolchain version updates
 - GitHub Actions dependency updates (no workflows exist yet)
+
+## Summary of Changes
+
+Added `.github/dependabot.yml` with weekly grouped updates for `gomod` and `npm` ecosystems. Both ecosystems use `chore` commit-message prefix for conventional commit consistency. All Go deps are grouped into one PR; all npm deps are grouped into one PR.
