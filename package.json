@@ -2,10 +2,11 @@
   "name": "hearts-webui",
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -c tailwind.config.js -i ./internal/webui/assets/styles.input.css -o ./internal/webui/assets/styles.css --minify",
-    "watch:css": "tailwindcss -c tailwind.config.js -i ./internal/webui/assets/styles.input.css -o ./internal/webui/assets/styles.css --watch"
+    "build:css": "tailwindcss -i ./internal/webui/assets/styles.input.css -o ./internal/webui/assets/styles.css --minify",
+    "watch:css": "tailwindcss -i ./internal/webui/assets/styles.input.css -o ./internal/webui/assets/styles.css --watch"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.2.2",
     "tailwindcss": "^4.2.2"
   }
 }

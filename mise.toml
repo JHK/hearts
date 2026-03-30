@@ -18,7 +18,7 @@ run = "npm run build:css"
 [tasks.serve]
 depends = ["css"]
 run = "go run ./cmd/hearts -dev"
-sources = ["**/*.go", "internal/**/*.html", "internal/**/*.js", "internal/webui/assets/styles.input.css", "tailwind.config.js"]
+sources = ["**/*.go", "internal/**/*.html", "internal/**/*.js", "internal/webui/assets/styles.input.css"]
 
 [tasks.dev]
 depends = ["setup"]
