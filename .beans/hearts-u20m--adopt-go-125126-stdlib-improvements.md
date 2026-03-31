@@ -1,13 +1,13 @@
 ---
 # hearts-u20m
 title: Adopt Go 1.25/1.26 stdlib improvements
-status: todo
+status: completed
 type: epic
 priority: normal
 tags:
     - backend
 created_at: 2026-03-31T15:36:01Z
-updated_at: 2026-03-31T15:37:13Z
+updated_at: 2026-03-31T15:54:04Z
 ---
 
 ## Vision
