@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "schedule": ["before 9am on monday"],
+  "commitMessagePrefix": "chore: ",
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require"],
+      "groupName": "go-dependencies"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["golang"],
+      "rangeStrategy": "bump"
+    },
+    {
+      "matchManagers": ["npm"],
+      "groupName": "npm-dependencies"
+    }
+  ]
+}
