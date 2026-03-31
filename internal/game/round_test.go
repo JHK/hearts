@@ -27,7 +27,7 @@ func TestRoundSubmitAndApplyPasses(t *testing.T) {
 	}
 	r := NewRound(hands, PassDirectionLeft)
 
-	for seat := 0; seat < PlayersPerTable; seat++ {
+	for seat := range PlayersPerTable {
 		require.NoError(t, r.SubmitPass(seat, r.Hand(seat)[:3]), "submit pass seat %d", seat)
 	}
 
@@ -73,7 +73,7 @@ func TestRoundPlayTrickCompletion(t *testing.T) {
 	require.Equal(t, 0, r.TurnSeat(), "expected seat 0 to lead (has 2C)")
 
 	// Play all 4 cards.
-	for seat := 0; seat < PlayersPerTable; seat++ {
+	for seat := range PlayersPerTable {
 		result, err := r.Play(r.TurnSeat(), r.Hand(r.TurnSeat())[0])
 		require.NoError(t, err, "play seat %d", seat)
 		if seat < 3 {

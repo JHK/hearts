@@ -7,7 +7,7 @@ ko = "latest"
 run = ["npm install", "go mod download"]
 
 [tasks.fmt]
-run = "gofmt -w cmd internal"
+run = ["go fix ./...", "gofmt -w cmd internal"]
 
 [tasks.test]
 run = "go test ./..."

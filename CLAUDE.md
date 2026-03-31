@@ -7,11 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 mise run setup        # Install deps (npm + go mod download)
 mise run test         # go test ./...
-mise run fmt          # gofmt -w cmd internal
+mise run fmt          # go fix ./... + gofmt -w cmd internal
 mise run css          # Compile Tailwind CSS
 mise run serve        # Start server (runs css first)
 mise dev              # Hot-reload dev server on 127.0.0.1:8080
 ```
+
+**Always run `mise run fmt` after making code changes** — before committing or running tests. This applies Go modernizers (`go fix`) and formats code (`gofmt`).
 
 To run a single test package:
 ```bash

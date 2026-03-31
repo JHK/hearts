@@ -139,4 +139,3 @@ func TestLocalizedPageServe(t *testing.T) {
 		t.Errorf("expected 304, got %d", w304.Code)
 	}
 }
-

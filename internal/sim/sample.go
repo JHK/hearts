@@ -14,7 +14,7 @@ type GameLog struct {
 	Strategies [game.PlayersPerTable]string `json:"strategies"`
 	// SeatToStrategy maps seat index to strategy slot index.
 	SeatToStrategy [game.PlayersPerTable]int `json:"seat_to_strategy"`
-	Rounds         []RoundLog               `json:"rounds"`
+	Rounds         []RoundLog                `json:"rounds"`
 	FinalScores    [game.PlayersPerTable]int `json:"final_scores"`
 	Winners        []int                     `json:"winners"` // strategy slot indices
 }

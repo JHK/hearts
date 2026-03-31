@@ -141,12 +141,7 @@ func SortCards(cards []Card) {
 }
 
 func ContainsCard(cards []Card, target Card) bool {
-	for _, card := range cards {
-		if card == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(cards, target)
 }
 
 func RemoveCard(cards []Card, target Card) ([]Card, bool) {

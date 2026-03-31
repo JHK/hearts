@@ -87,7 +87,7 @@ func (s *Simulation) Run() Result {
 	remainder := s.iterations % workers
 
 	results := make(chan Result, workers)
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		n := perWorker
 		if w < remainder {
 			n++

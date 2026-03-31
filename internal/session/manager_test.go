@@ -1,6 +1,7 @@
 package session
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -17,8 +18,8 @@ func TestCreateGeneratedTableIDUsesNamePools(t *testing.T) {
 
 	parts := strings.Split(runtime.ID(), "-")
 	require.Len(t, parts, 2, "expected generated id with 2 parts, got %q", runtime.ID())
-	require.True(t, contains(tableIDAdjectives, parts[0]), "expected adjective part from pool, got %q", parts[0])
-	require.True(t, contains(tableIDNouns, parts[1]), "expected noun part from pool, got %q", parts[1])
+	require.True(t, slices.Contains(tableIDAdjectives, parts[0]), "expected adjective part from pool, got %q", parts[0])
+	require.True(t, slices.Contains(tableIDNouns, parts[1]), "expected noun part from pool, got %q", parts[1])
 }
 
 func TestCreateFailsAfterThreeNameCollisions(t *testing.T) {
@@ -39,14 +40,4 @@ func TestCreateFailsAfterThreeNameCollisions(t *testing.T) {
 
 	_, _, err = manager.Create("")
 	require.Error(t, err, "expected create to fail after repeated collisions")
-}
-
-func contains(items []string, target string) bool {
-	for _, item := range items {
-		if item == target {
-			return true
-		}
-	}
-
-	return false
 }

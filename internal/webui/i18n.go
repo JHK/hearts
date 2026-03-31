@@ -94,16 +94,16 @@ func detectLocale(r *http.Request, supported localeSet) string {
 	}
 	var entries []langQ
 
-	for _, part := range strings.Split(accept, ",") {
+	for part := range strings.SplitSeq(accept, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
 		}
 		lang := part
 		q := 1.0
-		if idx := strings.Index(part, ";"); idx >= 0 {
-			lang = part[:idx]
-			qPart := strings.TrimSpace(part[idx+1:])
+		if before, after, ok := strings.Cut(part, ";"); ok {
+			lang = before
+			qPart := strings.TrimSpace(after)
 			if strings.HasPrefix(qPart, "q=") {
 				fmt.Sscanf(qPart[2:], "%f", &q)
 			}

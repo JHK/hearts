@@ -24,8 +24,8 @@ type templateData struct {
 
 // localizedPage holds pre-rendered HTML variants, one per supported locale.
 type localizedPage struct {
-	variants   map[string]pageVariant
-	localeSet  localeSet
+	variants  map[string]pageVariant
+	localeSet localeSet
 }
 
 type pageVariant struct {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -346,7 +346,7 @@ func (r *Table) handlePass(state *tableState, playerID protocol.PlayerID, cardsR
 	}
 
 	submitted := 0
-	for i := 0; i < game.PlayersPerTable; i++ {
+	for i := range game.PlayersPerTable {
 		if state.round.HasSubmittedPass(i) {
 			submitted++
 		}
@@ -378,7 +378,7 @@ func (r *Table) handleReadyAfterPass(state *tableState, playerID protocol.Player
 	}
 
 	ready := 0
-	for i := 0; i < game.PlayersPerTable; i++ {
+	for i := range game.PlayersPerTable {
 		if state.round.IsPassReady(i) {
 			ready++
 		}
@@ -429,7 +429,7 @@ func (r *Table) startPassReview(state *tableState) {
 	}
 
 	ready := 0
-	for i := 0; i < game.PlayersPerTable; i++ {
+	for i := range game.PlayersPerTable {
 		if state.round.IsPassReady(i) {
 			ready++
 		}
@@ -629,7 +629,7 @@ func (r *Table) seatWinnersToPlayerIDs(state *tableState, seats []int) []protoco
 	for _, seat := range seats {
 		winners = append(winners, state.players[seat].id)
 	}
-	sort.Slice(winners, func(i, j int) bool { return winners[i] < winners[j] })
+	slices.Sort(winners)
 	return winners
 }
 
@@ -664,7 +664,7 @@ func (r *Table) resumeAfterPause(state *tableState) {
 			}
 		}
 		ready := 0
-		for i := 0; i < game.PlayersPerTable; i++ {
+		for i := range game.PlayersPerTable {
 			if state.round.IsPassReady(i) {
 				ready++
 			}

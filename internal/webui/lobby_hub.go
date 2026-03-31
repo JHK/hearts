@@ -36,9 +36,9 @@ type lobbyOp struct {
 	sub  chan lobbySnapshot // unsubscribe: channel to remove
 	done chan struct{}      // unsubscribe: signals completion
 
-	replyInt  chan int              // Join
-	replySnap chan lobbySnapshot    // Snapshot
-	replySub  chan lobbySubResult   // Subscribe
+	replyInt  chan int            // Join
+	replySnap chan lobbySnapshot  // Snapshot
+	replySub  chan lobbySubResult // Subscribe
 }
 
 type lobbySubResult struct {

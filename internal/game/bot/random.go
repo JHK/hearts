@@ -43,7 +43,7 @@ func (r *Random) ChoosePass(input game.PassInput) ([]game.Card, error) {
 
 	perm := r.rng.Perm(len(input.Hand))
 	selected := make([]game.Card, 0, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		selected = append(selected, input.Hand[perm[i]])
 	}
 

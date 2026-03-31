@@ -1,6 +1,7 @@
 package session
 
 import (
+	"maps"
 	"sort"
 	"strconv"
 	"strings"
@@ -232,7 +233,7 @@ func (r *Table) buildSnapshot(state *tableState, forPlayer protocol.PlayerID) Sn
 
 		submitted := 0
 		readyCount := 0
-		for i := 0; i < game.PlayersPerTable; i++ {
+		for i := range game.PlayersPerTable {
 			if state.round.HasSubmittedPass(i) {
 				submitted++
 			}
@@ -294,9 +295,7 @@ func roundPhaseString(phase game.RoundPhase) string {
 
 func copyPoints(source map[protocol.PlayerID]game.Points) map[protocol.PlayerID]game.Points {
 	out := make(map[protocol.PlayerID]game.Points, len(source))
-	for key, value := range source {
-		out[key] = value
-	}
+	maps.Copy(out, source)
 	return out
 }
 

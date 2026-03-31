@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -114,10 +115,10 @@ func analyzePassingWeaknesses(games []sim.GameLog, lostGames []int, hardSlot int
 				}
 			}
 			for _, cs := range dealt {
-				if cs == "QS" && !contains(passed, "QS") {
+				if cs == "QS" && !slices.Contains(passed, "QS") {
 					keptQueenSpades++
 				}
-				if (cs == "AS" || cs == "KS") && !contains(passed, cs) {
+				if (cs == "AS" || cs == "KS") && !slices.Contains(passed, cs) {
 					keptHighSpades++
 				}
 			}
@@ -176,8 +177,8 @@ func analyzePointDumping(games []sim.GameLog, lostGames []int, hardSlot int) {
 	fmt.Println("=== POINT ACCUMULATION ANALYSIS (lost games) ===")
 
 	// Analyze rounds where the hard bot took a lot of points.
-	highPointRounds := 0     // rounds where hard bot took 10+ points
-	queenSpadesCaught := 0   // rounds where hard bot ate the queen
+	highPointRounds := 0   // rounds where hard bot took 10+ points
+	queenSpadesCaught := 0 // rounds where hard bot ate the queen
 	type bigRound struct {
 		gameIdx  int
 		roundIdx int
@@ -209,10 +210,7 @@ func analyzePointDumping(games []sim.GameLog, lostGames []int, hardSlot int) {
 	fmt.Printf("  Rounds catching QS (13+ pts): %d\n", queenSpadesCaught)
 
 	// Show details of worst rounds.
-	limit := 10
-	if len(worstRounds) < limit {
-		limit = len(worstRounds)
-	}
+	limit := min(len(worstRounds), 10)
 	fmt.Printf("\n  Top %d worst rounds:\n", limit)
 	for i := range limit {
 		wr := worstRounds[i]
@@ -337,15 +335,6 @@ func isHighHeart(card string) bool {
 		return false
 	}
 	return card[0] == 'T' || card[0] == 'J' || card[0] == 'Q' || card[0] == 'K' || card[0] == 'A'
-}
-
-func contains(ss []string, s string) bool {
-	for _, x := range ss {
-		if x == s {
-			return true
-		}
-	}
-	return false
 }
 
 func summarizeHand(hand []string) string {
