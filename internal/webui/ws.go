@@ -388,21 +388,26 @@ func handleTableWebSocket(manager *session.Manager, presence *tracker.HumanPrese
 
 	if humanJoined && presence.Leave(runtime.ID()) == 0 {
 		slog.Warn("table orphaned", "event", "table_orphaned", "table_id", runtime.ID())
-		tableID := runtime.ID()
 		gracePeriod := 60 * time.Second
 		if info := runtime.Info(); !info.Started {
 			gracePeriod = 500 * time.Millisecond
 		}
-		go func() {
-			timer := time.NewTimer(gracePeriod)
-			defer timer.Stop()
-			<-timer.C
-			if presence.Count(tableID) == 0 {
-				slog.Warn("closing orphaned table after grace period", "event", "table_closed_orphaned", "table_id", tableID)
-				manager.CloseTable(tableID)
-			}
-		}()
+		scheduleOrphanCleanup(runtime.ID(), gracePeriod, presence, manager.CloseTable)
 	}
+}
+
+// scheduleOrphanCleanup starts a background timer that closes the table
+// if no humans reconnect within the grace period.
+func scheduleOrphanCleanup(tableID string, gracePeriod time.Duration, presence *tracker.HumanPresence, closeTable func(string) bool) {
+	go func() {
+		timer := time.NewTimer(gracePeriod)
+		defer timer.Stop()
+		<-timer.C
+		if presence.Count(tableID) == 0 {
+			slog.Warn("closing orphaned table after grace period", "event", "table_closed_orphaned", "table_id", tableID)
+			closeTable(tableID)
+		}
+	}()
 }
 
 // truncateUTF8 truncates s to at most maxRunes runes without splitting
