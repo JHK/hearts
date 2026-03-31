@@ -2,6 +2,7 @@ package session
 
 import (
 	"testing"
+	"testing/synctest"
 
 	"github.com/JHK/hearts/internal/game"
 	"github.com/JHK/hearts/internal/game/bot"
@@ -737,46 +738,47 @@ func TestDisconnectDuringPassingDoesNotAutoSubmit(t *testing.T) {
 }
 
 func TestDisconnectDuringPassingBotSubmitsOnResume(t *testing.T) {
-	runtime := NewTable("pass-resume-bot", nil)
-	defer runtime.Close()
+	synctest.Test(t, func(t *testing.T) {
+		runtime := NewTable("pass-resume-bot", nil)
+		defer runtime.Close()
 
-	alice, err := runtime.Join("Alice", "alice-token")
-	require.NoError(t, err)
-	bob, err := runtime.Join("Bob", "bob-token")
-	require.NoError(t, err)
-	_, err = runtime.AddBot("")
-	require.NoError(t, err)
-	_, err = runtime.AddBot("")
-	require.NoError(t, err)
+		alice, err := runtime.Join("Alice", "alice-token")
+		require.NoError(t, err)
+		bob, err := runtime.Join("Bob", "bob-token")
+		require.NoError(t, err)
+		_, err = runtime.AddBot("")
+		require.NoError(t, err)
+		_, err = runtime.AddBot("")
+		require.NoError(t, err)
 
-	start := runtime.Start(alice.PlayerID)
-	require.True(t, start.Accepted, "start: %s", start.Reason)
+		start := runtime.Start(alice.PlayerID)
+		require.True(t, start.Accepted, "start: %s", start.Reason)
 
-	snap := runtime.Snapshot(bob.PlayerID)
-	require.Equal(t, "passing", snap.Phase)
+		snap := runtime.Snapshot(bob.PlayerID)
+		require.Equal(t, "passing", snap.Phase)
 
-	// Bob disconnects — pass not auto-submitted.
-	runtime.Leave(bob.PlayerID)
+		// Bob disconnects — pass not auto-submitted.
+		runtime.Leave(bob.PlayerID)
 
-	snap = runtime.Snapshot(alice.PlayerID)
-	require.True(t, snap.Paused)
+		snap = runtime.Snapshot(alice.PlayerID)
+		require.True(t, snap.Paused)
 
-	// Bob's pass must not have been auto-submitted.
-	bobSnap := runtime.Snapshot(bob.PlayerID)
-	require.False(t, bobSnap.PassSubmitted, "bob's pass should not be auto-submitted")
+		// Bob's pass must not have been auto-submitted.
+		bobSnap := runtime.Snapshot(bob.PlayerID)
+		require.False(t, bobSnap.PassSubmitted, "bob's pass should not be auto-submitted")
 
-	// Alice resumes without Bob reconnecting — bot should submit on resume.
-	resumeResp := runtime.ResumeGame(alice.PlayerID)
-	require.True(t, resumeResp.Accepted, "resume: %s", resumeResp.Reason)
+		// Alice resumes without Bob reconnecting — bot should submit on resume.
+		resumeResp := runtime.ResumeGame(alice.PlayerID)
+		require.True(t, resumeResp.Accepted, "resume: %s", resumeResp.Reason)
 
-	// Submit Alice's pass so we can check all passes complete.
-	aliceSnap := runtime.Snapshot(alice.PlayerID)
-	passResp := runtime.Pass(alice.PlayerID, aliceSnap.Hand[:3])
-	require.True(t, passResp.Accepted, "alice pass: %s", passResp.Reason)
+		// Submit Alice's pass so we can check all passes complete.
+		aliceSnap := runtime.Snapshot(alice.PlayerID)
+		passResp := runtime.Pass(alice.PlayerID, aliceSnap.Hand[:3])
+		require.True(t, passResp.Accepted, "alice pass: %s", passResp.Reason)
 
-	// After resume, bot passes are scheduled asynchronously. Give the table
-	// goroutine a moment to process them, then check all passes are in.
-	runtime.Drain()
-	snap = runtime.Snapshot(alice.PlayerID)
-	require.Equal(t, 4, snap.PassSubmittedCount, "all 4 passes should be submitted after resume")
+		// Let all bot pass goroutines settle through the actor channel.
+		synctest.Wait()
+		snap = runtime.Snapshot(alice.PlayerID)
+		require.Equal(t, 4, snap.PassSubmittedCount, "all 4 passes should be submitted after resume")
+	})
 }
