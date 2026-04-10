@@ -68,6 +68,7 @@
     position: absolute;
     width: 80px;
     animation: card-drift linear infinite alternate;
+    will-change: translate;
   }
 
   .card-bg-card .card-bg-backing {

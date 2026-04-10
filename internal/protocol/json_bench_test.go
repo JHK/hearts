@@ -29,28 +29,28 @@ type wsCommand struct {
 
 // snapshot mirrors session.Snapshot (the largest JSON payload).
 type snapshot struct {
-	TableID            string                                    `json:"table_id"`
-	Players            []protocol.PlayerInfo                     `json:"players"`
-	Started            bool                                      `json:"started"`
-	Phase              string                                    `json:"phase"`
-	TrickNumber        int                                       `json:"trick_number"`
-	TurnPlayerID       protocol.PlayerID                         `json:"turn_player_id"`
-	HeartsBroken       bool                                      `json:"hearts_broken"`
-	CurrentTrick       []string                                  `json:"current_trick"`
-	Hand               []string                                  `json:"hand"`
-	HandSizes          map[protocol.PlayerID]int                 `json:"hand_sizes"`
-	PassDirection      game.PassDirection                        `json:"pass_direction"`
-	PassSubmitted      bool                                      `json:"pass_submitted"`
-	PassSubmittedCount int                                       `json:"pass_submitted_count"`
-	RoundPoints        map[protocol.PlayerID]game.Points         `json:"round_points"`
-	RoundHistory       []map[protocol.PlayerID]game.Points       `json:"round_history"`
-	TotalPoints        map[protocol.PlayerID]game.Points         `json:"total_points"`
-	GameOver           bool                                      `json:"game_over"`
-	Winners            []protocol.PlayerID                       `json:"winners,omitempty"`
-	RematchVotes       int                                       `json:"rematch_votes,omitempty"`
-	RematchTotal       int                                       `json:"rematch_total,omitempty"`
-	Paused             bool                                      `json:"paused,omitempty"`
-	PausedForPlayerID  protocol.PlayerID                         `json:"paused_for_player_id,omitempty"`
+	TableID            string                              `json:"table_id"`
+	Players            []protocol.PlayerInfo               `json:"players"`
+	Started            bool                                `json:"started"`
+	Phase              string                              `json:"phase"`
+	TrickNumber        int                                 `json:"trick_number"`
+	TurnPlayerID       protocol.PlayerID                   `json:"turn_player_id"`
+	HeartsBroken       bool                                `json:"hearts_broken"`
+	CurrentTrick       []string                            `json:"current_trick"`
+	Hand               []string                            `json:"hand"`
+	HandSizes          map[protocol.PlayerID]int           `json:"hand_sizes"`
+	PassDirection      game.PassDirection                  `json:"pass_direction"`
+	PassSubmitted      bool                                `json:"pass_submitted"`
+	PassSubmittedCount int                                 `json:"pass_submitted_count"`
+	RoundPoints        map[protocol.PlayerID]game.Points   `json:"round_points"`
+	RoundHistory       []map[protocol.PlayerID]game.Points `json:"round_history"`
+	TotalPoints        map[protocol.PlayerID]game.Points   `json:"total_points"`
+	GameOver           bool                                `json:"game_over"`
+	Winners            []protocol.PlayerID                 `json:"winners,omitempty"`
+	RematchVotes       int                                 `json:"rematch_votes,omitempty"`
+	RematchTotal       int                                 `json:"rematch_total,omitempty"`
+	Paused             bool                                `json:"paused,omitempty"`
+	PausedForPlayerID  protocol.PlayerID                   `json:"paused_for_player_id,omitempty"`
 }
 
 // --- fixtures ---
