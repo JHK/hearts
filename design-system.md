@@ -112,7 +112,7 @@ Minimal table. Player name column uses `--muted`, data uses `--ink`. Current-rou
 
 ## Play Cards
 
-Hand cards for the local player are slightly larger than opponents'. Cards overlap to form a fan. Hover and selection states use vertical lift and glow. Back cards are small and understated — they indicate hidden information without drawing focus.
+Hand cards for the local player are slightly larger than opponents'. Cards overlap to form a fan. Hover and selection states use vertical lift and glow. Back cards are small and understated — they indicate hidden information without drawing focus. The whole card system scales with the felt board's width (not the viewport): all cards and the fan overlap grow proportionally between a mobile minimum and a desktop target.
 
 Trick center cards animate in from each seat direction with scale, rotation, and opacity. The trick center is the focal point during play. Control buttons (Start, Continue, Pass, Game Paused) appear in a centered overlay within the trick center, backed by a solid felt-colored panel with rounded corners that fully covers trick slots behind it. Text on the trick center uses light mint (`#e7fff8`) with a subtle shadow.
 

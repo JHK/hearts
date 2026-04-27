@@ -316,6 +316,9 @@
     --anim-card-in: 520ms;
     --anim-trick-capture: 1400ms;
     --anim-winner-pulse: 1200ms;
+    --card-size-min: 68px;
+    --card-size-target: 96px;
+    --card-size: clamp(var(--card-size-min), calc(26px + 8.75cqw), var(--card-size-target));
     --bg: #eae7df;
     color: var(--ink);
     background: var(--bg);
@@ -593,6 +596,8 @@
     grid-template-columns: auto 320px auto;
     grid-template-rows: auto 1fr auto;
     gap: 10px;
+    container-type: inline-size;
+    container-name: table-board;
   }
 
   .popover-menu {
@@ -769,8 +774,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 76px;
-    height: 110px;
+    width: calc(var(--card-size) * 1.0);
+    height: calc(var(--card-size) * 1.62);
   }
 
   .trick-slot-top {
@@ -815,7 +820,7 @@
 
   .play-card {
     position: relative;
-    width: 74px;
+    width: calc(var(--card-size) * 1.09);
     aspect-ratio: 167.0869141 / 242.6669922;
     border: 0;
     border-radius: 0;
@@ -908,7 +913,7 @@
     -webkit-appearance: none;
     border: 0;
     border-radius: 0;
-    width: 56px;
+    width: calc(var(--card-size) * 0.82);
     aspect-ratio: 167.0869141 / 242.6669922;
     padding: 0;
     background: transparent;
@@ -924,25 +929,25 @@
   }
 
   .seat.bottom .hand-card {
-    width: 68px;
+    width: var(--card-size);
   }
 
   .seat-hand .hand-card + .hand-card {
-    margin-left: -30px;
+    margin-left: calc(var(--card-size) * -0.44);
   }
 
   .seat.bottom .seat-hand .hand-card + .hand-card {
-    margin-left: -38px;
+    margin-left: calc(var(--card-size) * -0.56);
   }
 
   .seat.top .seat-hand .back-card + .back-card,
   .seat.bottom .seat-hand .back-card + .back-card {
-    margin-left: -10px;
+    margin-left: calc(var(--card-size) * -0.15);
   }
 
   .seat.left .seat-hand .back-card + .back-card,
   .seat.right .seat-hand .back-card + .back-card {
-    margin-top: -20px;
+    margin-top: calc(var(--card-size) * -0.29);
   }
 
   .seat.left .seat-hand .back-card,
@@ -981,8 +986,8 @@
   }
 
   .back-card {
-    width: 22px;
-    height: 32px;
+    width: calc(var(--card-size) * 0.32);
+    height: calc(var(--card-size) * 0.47);
     border-radius: 5px;
     border: 1px solid var(--card-back-c);
     box-shadow:
@@ -1276,7 +1281,7 @@
   .seat.left .seat-hand .back-card + .back-card,
   .seat.right .seat-hand .back-card + .back-card {
     margin-top: 0;
-    margin-left: -10px;
+    margin-left: calc(var(--card-size) * -0.15);
   }
 
   .seat.bottom .seat-hand {
@@ -1284,27 +1289,17 @@
   }
 
   .seat-hand .hand-card + .hand-card {
-    margin-left: -34px;
+    margin-left: calc(var(--card-size) * -0.5);
   }
 
   .seat.bottom .seat-hand .hand-card + .hand-card {
-    margin-left: -40px;
+    margin-left: calc(var(--card-size) * -0.59);
   }
 
   .table-page input,
   .table-page select,
   .table-page button:not(.hand-card):not(.icon-btn) {
     width: 100%;
-  }
-}
-
-@media (max-width: 490px) {
-  .seat.bottom .hand-card {
-    width: clamp(65px, 49.15px + 4vw, 68px);
-  }
-
-  .seat.bottom .seat-hand .hand-card + .hand-card {
-    margin-left: -38px;
   }
 }
 
